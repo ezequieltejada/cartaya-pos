@@ -1,34 +1,45 @@
-import { Component } from '@angular/core';
-import { IonButton, IonContent, IonHeader, IonTitle, IonToolbar } from '@ionic/angular/standalone';
-import { CapacitorThermalPrinter } from 'capacitor-thermal-printer';
+import { Component, inject } from '@angular/core';
+import { IonButton, IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonSpinner, IonTitle, IonToolbar } from '@ionic/angular/standalone';
+import { Printer } from '../services/printer';
 
 @Component({
   selector: 'app-home',
   templateUrl: 'home.page.html',
   styleUrls: ['home.page.scss'],
-  imports: [IonHeader, IonToolbar, IonTitle, IonContent, IonButton],
+  imports: [IonHeader, IonToolbar, IonTitle, IonContent, IonButton, IonList, IonItem, IonLabel, IonIcon, IonSpinner],
 })
 export class HomePage {
-  constructor() {}
+  private printer = inject(Printer);
+
+  get discoveredPrinters() {
+    return this.printer.discoveredPrinters;
+  }
+
+  get selectedPrinter() {
+    return this.printer.selectedPrinter;
+  }
+
+  get selectedAddress() {
+    return this.printer.selectedAddress;
+  }
+
+  get isScanning() {
+    return this.printer.isScanning;
+  }
+
+  get isPrintButtonEnabled() {
+    return !!this.selectedPrinter;
+  }
+
+  async scanForPrinters() {
+    await this.printer.scanForPrinters();
+  }
+
+  selectPrinter(address: string) {
+    this.printer.selectPrinter(address);
+  }
 
   async printSample() {
-    await CapacitorThermalPrinter.startScan();
-    // Listen to devices
-    CapacitorThermalPrinter.addListener('discoverDevices', (devices) => {
-      console.log('Found devices:', devices);
-      // Choose your PT-210 by address or name
-      const myPrinter = devices.devices.find(d => d.name?.includes('PT-210'));
-      if (myPrinter) {
-        CapacitorThermalPrinter.connect({ address: myPrinter.address }).then(async () => {
-          await CapacitorThermalPrinter.begin()
-            .align('center')
-            .text('Hello from Ionic!\n')
-            .text('PT-210 Test Print\n')
-            .qr('https://www.goojprt.com')
-            .cutPaper()
-            .write();
-        });
-      }
-    });
+    await this.printer.printSample();
   }
 }

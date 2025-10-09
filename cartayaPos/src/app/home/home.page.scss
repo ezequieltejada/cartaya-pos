@@ -25,3 +25,8 @@
 #container a {
   text-decoration: none;
 }
+
+.selected {
+  --background: var(--ion-color-light);
+  font-weight: bold;
+}
