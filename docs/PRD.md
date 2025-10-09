@@ -15,3 +15,6 @@ Your Ionic app is ready! Follow these next steps:
 - Run ionic serve within the app directory to see your app in the browser
 - Run ionic capacitor add to add a native iOS or Android project using Capacitor
 - Generate your app icon and splash screens using cordova-res --skip-config --copy
+
+# Capacitor Thermal Printer Plugin
+https://github.com/Malik12tree/capacitor-thermal-printer/blob/main/docs/README.md
