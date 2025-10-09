@@ -14,41 +14,6 @@
   </ion-header>
 
   <div id="container">
-    <h2>Printer Selection</h2>
-    
-    <ion-button (click)="scanForPrinters()" [disabled]="isScanning">
-      @if (isScanning) {
-        <ion-spinner slot="start"></ion-spinner>
-      }
-      {{ isScanning ? 'Scanning...' : 'Scan for Printers' }}
-    </ion-button>
-    
-    @if (discoveredPrinters.length > 0) {
-      <ion-list>
-        @for (printer of discoveredPrinters; track printer.address) {
-          <ion-item (click)="selectPrinter(printer.address)" [class.selected]="selectedAddress === printer.address">
-            <ion-icon [name]="selectedAddress === printer.address ? 'radio-button-on' : 'radio-button-off'" slot="start"></ion-icon>
-            <ion-label>
-              <h3>{{ printer.name || 'Unknown Device' }}</h3>
-              <p>{{ printer.address }}</p>
-            </ion-label>
-          </ion-item>
-        }
-      </ion-list>
-    }
-    
-    @if (selectedPrinter) {
-      <div style="margin: 20px 0;">
-        <p><strong>Selected Printer:</strong> {{ selectedPrinter.name || 'Unknown Device' }}</p>
-        <p><strong>Address:</strong> {{ selectedPrinter.address }}</p>
-      </div>
-    }
-    
-    <ion-button 
-      (click)="printSample()" 
-      [disabled]="!isPrintButtonEnabled"
-      color="primary">
-      Print Sample
-    </ion-button>
+    <strong>Welcome to Cartaya POS</strong>
   </div>
 </ion-content>
