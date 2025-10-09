@@ -1,0 +1,7 @@
+{
+  "name": "cartayaPos",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular-standalone"
+}
