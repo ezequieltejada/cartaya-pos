@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.cartaya.pos',
-  appName: 'CartaYa Pos',
+  appId: 'io.ionic.starter',
+  appName: 'cartayaPos',
   webDir: 'www'
 };
 
