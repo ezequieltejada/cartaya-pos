@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { Observable, catchError, from, map, of, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Product } from '../models/product.model';
@@ -27,6 +28,7 @@ export class ProductService {
   private httpClient = inject(HttpClient);
   private storageService = inject(StorageService);
   private tenantService = inject(TenantService);
+  private router = inject(Router);
 
   private readonly API_URL = `${environment.apiUrl}/api`;
   private readonly CACHE_TTL = 15 * 60 * 1000; // 15 minutes
@@ -35,6 +37,7 @@ export class ProductService {
   readonly products = signal<Product[]>([]);
   readonly filterText = signal<string>('');
   readonly isLoading = signal(false);
+  readonly error = signal<string | null>(null);
 
   // Computed signal for filtered products
   readonly filteredProducts = computed(() => {
@@ -47,6 +50,26 @@ export class ProductService {
         product.sku?.toLowerCase().includes(query)
     );
   });
+
+  /**
+   * Get user-friendly error message based on HTTP error
+   * Maps HTTP status codes to appropriate user messages
+   * @param error - HTTP error object
+   * @returns User-friendly error message
+   */
+  private getErrorMessage(error: any): string {
+    if (error.status === 0) {
+      return 'No internet connection. Please check your network.';
+    } else if (error.status === 401) {
+      return 'Session expired. Please log in again.';
+    } else if (error.status === 403) {
+      return 'You do not have permission to view products.';
+    } else if (error.status >= 500) {
+      return 'Server error. Please try again later.';
+    } else {
+      return 'Failed to load products. Please try again.';
+    }
+  }
 
   /**
    * Get cache key for a tenant
@@ -142,11 +165,14 @@ export class ProductService {
    * 1. Check cache first (return immediately if valid)
    * 2. Make API call if cache miss or expired
    * 3. Cache results for subsequent calls
+   * 4. Handle errors gracefully with user-friendly messages
+   * 5. Return cached products if available on error
    * Uses RxJS switchMap pattern to chain async operations
    * @param tenantId - Optional tenant ID (uses current tenant if not provided)
+   * @param forceRefresh - Force refresh from API, bypassing cache
    * @returns Observable of fetched products
    */
-  fetchProducts(tenantId?: string): Observable<Product[]> {
+  fetchProducts(tenantId?: string, forceRefresh = false): Observable<Product[]> {
     // If no tenantId is provided, use the currently selected tenant
     const activeTenantId = tenantId || this.tenantService.getCurrentTenantId();
 
@@ -160,10 +186,12 @@ export class ProductService {
     // Convert async getCache to Observable using from()
     return from(this.getCache(activeTenantId)).pipe(
       switchMap((cachedProducts) => {
-        if (cachedProducts) {
+        // If forceRefresh is true, skip cache and go directly to API
+        if (!forceRefresh && cachedProducts) {
           // Return cached data immediately (no loading spinner)
           this.products.set(cachedProducts);
           this.isLoading.set(false);
+          this.error.set(null);
           return of(cachedProducts);
         }
 
@@ -183,11 +211,30 @@ export class ProductService {
               this.products.set(response.data);
               await this.setCache(activeTenantId, response.data);
               this.isLoading.set(false);
+              this.error.set(null);
             }),
             map((response): Product[] => response.data),
-            catchError(() => {
+            catchError((error) => {
+              console.error('Failed to fetch products:', error);
               this.isLoading.set(false);
-              console.error('Failed to fetch products');
+
+              // Set user-friendly error message
+              const errorMessage = this.getErrorMessage(error);
+              this.error.set(errorMessage);
+
+              // Handle 401 Unauthorized - redirect to login
+              if (error.status === 401) {
+                this.router.navigate(['/auth/login']);
+                return of([]);
+              }
+
+              // Return cached products if available, otherwise empty array
+              if (cachedProducts) {
+                this.products.set(cachedProducts);
+                return of(cachedProducts);
+              }
+
+              this.products.set([]);
               return of([]);
             })
           );

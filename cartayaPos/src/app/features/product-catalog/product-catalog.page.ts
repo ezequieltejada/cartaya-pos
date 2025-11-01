@@ -5,6 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
   IonButton,
+  IonCard,
+  IonCardContent,
   IonCol,
   IonContent,
   IonGrid,
@@ -59,6 +61,8 @@ import { ProductCardComponent } from './components/product-card/product-card.com
     IonSearchbar,
     IonButton,
     IonIcon,
+    IonCard,
+    IonCardContent,
     ProductCardComponent,
   ],
   templateUrl: './product-catalog.page.html',
@@ -125,6 +129,13 @@ export class ProductCatalogPage implements OnInit {
   }
 
   /**
+   * Get error message from ProductService signal
+   */
+  get errorMessage(): string | null {
+    return this.productService.error();
+  }
+
+  /**
    * Handle search input with debouncing
    * Updates the ProductService filter text to trigger filtered products recomputation
    * @param event - The ionInput event from IonSearchbar
@@ -140,6 +151,17 @@ export class ProductCatalogPage implements OnInit {
   clearSearch(): void {
     this.searchQuery = '';
     this.productService.setFilterText('');
+  }
+
+  /**
+   * Retry fetching products after an error
+   * Forces refresh from API, bypassing cache
+   */
+  retry(): void {
+    const tenantId = this.tenantService.getCurrentTenantId();
+    if (tenantId) {
+      this.productService.fetchProducts(tenantId, true).subscribe();
+    }
   }
 
   /**

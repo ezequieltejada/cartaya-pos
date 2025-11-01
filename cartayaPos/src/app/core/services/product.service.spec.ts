@@ -1,5 +1,6 @@
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import { Product } from '../models/product.model';
 import { ProductService } from './product.service';
 import { StorageService } from './storage.service';
@@ -10,6 +11,7 @@ describe('ProductService', () => {
   let httpMock: HttpTestingController;
   let storageService: jasmine.SpyObj<StorageService>;
   let tenantService: jasmine.SpyObj<TenantService>;
+  let router: jasmine.SpyObj<Router>;
 
   const mockProducts: Product[] = [
     {
@@ -70,6 +72,7 @@ describe('ProductService', () => {
     const tenantServiceSpy = jasmine.createSpyObj('TenantService', [
       'getCurrentTenantId',
     ]);
+    const routerSpy = jasmine.createSpyObj('Router', ['navigate']);
     tenantServiceSpy.getCurrentTenantId.and.returnValue(tenantId);
 
     TestBed.configureTestingModule({
@@ -78,6 +81,7 @@ describe('ProductService', () => {
         ProductService,
         { provide: StorageService, useValue: storageServiceSpy },
         { provide: TenantService, useValue: tenantServiceSpy },
+        { provide: Router, useValue: routerSpy },
       ],
     });
 
@@ -89,6 +93,7 @@ describe('ProductService', () => {
     tenantService = TestBed.inject(
       TenantService
     ) as jasmine.SpyObj<TenantService>;
+    router = TestBed.inject(Router) as jasmine.SpyObj<Router>;
   });
 
   afterEach(() => {
@@ -112,6 +117,7 @@ describe('ProductService', () => {
       expect(service.products()).toEqual([]);
       expect(service.filterText()).toEqual('');
       expect(service.isLoading()).toBe(false);
+      expect(service.error()).toBeNull();
     });
 
     it('should have filteredProducts computed signal', () => {
@@ -553,6 +559,170 @@ describe('ProductService', () => {
         r.url.includes(`/tenants/${tenantId}/products`)
       );
       req.error(new ErrorEvent('Network error'));
+    });
+
+    it('should set error signal with user-friendly message on network error', (done) => {
+      storageService.get.and.returnValue(Promise.resolve(null));
+
+      service.fetchProducts(tenantId).subscribe(() => {
+        expect(service.error()).toBe(
+          'No internet connection. Please check your network.'
+        );
+        done();
+      });
+
+      const req = httpMock.expectOne((r) =>
+        r.url.includes(`/tenants/${tenantId}/products`)
+      );
+      req.error(new ErrorEvent('Network error'), { status: 0 });
+    });
+
+    it('should set error signal with 401 message on unauthorized error', (done) => {
+      storageService.get.and.returnValue(Promise.resolve(null));
+
+      service.fetchProducts(tenantId).subscribe(() => {
+        expect(service.error()).toBe('Session expired. Please log in again.');
+        done();
+      });
+
+      const req = httpMock.expectOne((r) =>
+        r.url.includes(`/tenants/${tenantId}/products`)
+      );
+      req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+    });
+
+    it('should set error signal with 403 message on forbidden error', (done) => {
+      storageService.get.and.returnValue(Promise.resolve(null));
+
+      service.fetchProducts(tenantId).subscribe(() => {
+        expect(service.error()).toBe(
+          'You do not have permission to view products.'
+        );
+        done();
+      });
+
+      const req = httpMock.expectOne((r) =>
+        r.url.includes(`/tenants/${tenantId}/products`)
+      );
+      req.flush('Forbidden', { status: 403, statusText: 'Forbidden' });
+    });
+
+    it('should set error signal with 500 message on server error', (done) => {
+      storageService.get.and.returnValue(Promise.resolve(null));
+
+      service.fetchProducts(tenantId).subscribe(() => {
+        expect(service.error()).toBe('Server error. Please try again later.');
+        done();
+      });
+
+      const req = httpMock.expectOne((r) =>
+        r.url.includes(`/tenants/${tenantId}/products`)
+      );
+      req.flush('Server error', { status: 500, statusText: 'Internal Server Error' });
+    });
+
+    it('should set generic error message for other errors', (done) => {
+      storageService.get.and.returnValue(Promise.resolve(null));
+
+      service.fetchProducts(tenantId).subscribe(() => {
+        expect(service.error()).toBe('Failed to load products. Please try again.');
+        done();
+      });
+
+      const req = httpMock.expectOne((r) =>
+        r.url.includes(`/tenants/${tenantId}/products`)
+      );
+      req.flush('Bad request', { status: 400, statusText: 'Bad Request' });
+    });
+
+    it('should redirect to login on 401 error', (done) => {
+      storageService.get.and.returnValue(Promise.resolve(null));
+
+      service.fetchProducts(tenantId).subscribe(() => {
+        expect(router.navigate).toHaveBeenCalledWith(['/auth/login']);
+        done();
+      });
+
+      const req = httpMock.expectOne((r) =>
+        r.url.includes(`/tenants/${tenantId}/products`)
+      );
+      req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+    });
+
+    it('should return cached products on error if available', (done) => {
+      const cache = {
+        products: mockProducts,
+        timestamp: Date.now(),
+        tenantId,
+      };
+      storageService.get.and.returnValue(Promise.resolve(cache));
+
+      service.fetchProducts(tenantId, true).subscribe((products) => {
+        expect(products).toEqual(mockProducts);
+        expect(service.error()).toBeTruthy();
+        done();
+      });
+
+      const req = httpMock.expectOne((r) =>
+        r.url.includes(`/tenants/${tenantId}/products`)
+      );
+      req.error(new ErrorEvent('Network error'), { status: 0 });
+    });
+
+    it('should force refresh when forceRefresh parameter is true', (done) => {
+      const cache = {
+        products: mockProducts,
+        timestamp: Date.now(),
+        tenantId,
+      };
+      storageService.get.and.returnValue(Promise.resolve(cache));
+      storageService.set.and.returnValue(Promise.resolve());
+
+      service.fetchProducts(tenantId, true).subscribe(() => {
+        expect(service.products()).toEqual(mockProducts);
+        done();
+      });
+
+      // Should make API call even with valid cache when forceRefresh is true
+      const req = httpMock.expectOne((r) =>
+        r.url.includes(`/tenants/${tenantId}/products`)
+      );
+      req.flush(mockApiResponse);
+    });
+
+    it('should clear error signal on successful fetch', (done) => {
+      service.error.set('Previous error');
+      storageService.get.and.returnValue(Promise.resolve(null));
+      storageService.set.and.returnValue(Promise.resolve());
+
+      service.fetchProducts(tenantId).subscribe(() => {
+        expect(service.error()).toBeNull();
+        done();
+      });
+
+      const req = httpMock.expectOne((r) =>
+        r.url.includes(`/tenants/${tenantId}/products`)
+      );
+      req.flush(mockApiResponse);
+    });
+
+    it('should clear error signal when using valid cache', (done) => {
+      service.error.set('Previous error');
+      const cache = {
+        products: mockProducts,
+        timestamp: Date.now(),
+        tenantId,
+      };
+      storageService.get.and.returnValue(Promise.resolve(cache));
+
+      service.fetchProducts(tenantId).subscribe(() => {
+        expect(service.error()).toBeNull();
+        done();
+      });
+
+      httpMock.expectNone((r) =>
+        r.url.includes(`/tenants/${tenantId}/products`)
+      );
     });
   });
 

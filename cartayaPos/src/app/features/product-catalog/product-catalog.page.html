@@ -13,6 +13,22 @@
 </ion-header>
 
 <ion-content>
+  <!-- Error banner -->
+  <ion-card *ngIf="errorMessage" color="danger" class="error-card">
+    <ion-card-content>
+      <div class="error-content">
+        <ion-icon name="alert-circle-outline"></ion-icon>
+        <div>
+          <p class="error-message">{{ errorMessage }}</p>
+          <ion-button size="small" fill="outline" (click)="retry()">
+            <ion-icon slot="start" name="refresh-outline"></ion-icon>
+            Retry
+          </ion-button>
+        </div>
+      </div>
+    </ion-card-content>
+  </ion-card>
+
   <!-- Loading state -->
   <div *ngIf="isLoading" class="loading-container">
     <ion-spinner></ion-spinner>
