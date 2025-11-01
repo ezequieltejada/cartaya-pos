@@ -1,3 +1,13 @@
 <ion-app>
+  <!-- Language Switcher -->
+  <div style="padding: 10px; background-color: #f0f0f0; text-align: center;">
+    <span style="margin-right: 10px; font-weight: bold;">{{ 'LANGUAGE' | translate }}:</span>
+    <button (click)="switchLanguage('en')" [class.active]="currentLanguage === 'en'" style="margin-right: 5px;">
+      {{ 'ENGLISH' | translate }}
+    </button>
+    <button (click)="switchLanguage('es')" [class.active]="currentLanguage === 'es'">
+      {{ 'SPANISH' | translate }}
+    </button>
+  </div>
   <ion-router-outlet></ion-router-outlet>
 </ion-app>
