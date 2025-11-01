@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { AlertController, ModalController, ToastController } from '@ionic/angular';
+import { AlertController, ToastController } from '@ionic/angular';
 import {
     IonButton,
     IonButtons,
@@ -73,7 +73,6 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private toastController = inject(ToastController);
   private alertController = inject(AlertController);
-  private modalController = inject(ModalController);
 
   // Expose Math.abs for template use
   Math = Math;

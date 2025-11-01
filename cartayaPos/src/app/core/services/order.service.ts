@@ -115,8 +115,17 @@ export class OrderService {
     return this.orderItems().length > 0;
   });
 
+  private isInitialized = false;
+
   constructor() {
-    this.loadOrderFromStorage();
+    // Defer storage loading to allow StorageService to initialize first
+    // This is called automatically after app initialization
+    setTimeout(() => {
+      if (!this.isInitialized) {
+        this.loadOrderFromStorage();
+        this.isInitialized = true;
+      }
+    }, 0);
   }
 
   /**
