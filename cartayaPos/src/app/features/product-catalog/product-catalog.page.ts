@@ -17,6 +17,7 @@ import {
   IonSpinner,
   IonTitle,
   IonToolbar,
+  ToastController,
 } from '@ionic/angular/standalone';
 import { Pos } from '../../core/models/pos.model';
 import { Product } from '../../core/models/product.model';
@@ -73,6 +74,7 @@ export class ProductCatalogPage implements OnInit {
   private tenantService = inject(TenantService);
   private posService = inject(PosService);
   private router = inject(Router);
+  private toastController = inject(ToastController);
 
   searchQuery = '';
 
@@ -166,11 +168,67 @@ export class ProductCatalogPage implements OnInit {
 
   /**
    * Handle product selection
-   * This will be used for future implementation of product detail view
+   * Checks if product has modifiers and shows appropriate placeholder
    * @param product - The selected product
    */
-  onProductTap(product: Product): void {
-    // TODO: Implement product detail navigation
-    console.log('Product selected:', product);
+  async onProductTap(product: Product): Promise<void> {
+    // Log for analytics (future)
+    console.log('Product selected:', product.id, product.name);
+
+    // Check if product has modifiers
+    const hasModifiers = await this.checkProductModifiers(product);
+
+    if (hasModifiers) {
+      // Navigate to modifiers screen (placeholder for now)
+      await this.showModifiersPlaceholder(product);
+    } else {
+      // Add directly to order (future feature)
+      await this.showAddToOrderPlaceholder(product);
+    }
+  }
+
+  /**
+   * Check if product has modifiers
+   * For MVP, assume all products may have modifiers
+   * In future, check product.modifiers array or query API
+   * @param product - Product to check
+   * @returns true if product has modifiers
+   */
+  private async checkProductModifiers(product: Product): Promise<boolean> {
+    // Placeholder: In future, implement actual check
+    // Could check product.modifiers array, metadata, or API
+    return true;
+  }
+
+  /**
+   * Show toast for modifiers placeholder
+   * Displays message that modifier selection is coming soon
+   * @param product - Product with modifiers
+   */
+  private async showModifiersPlaceholder(product: Product): Promise<void> {
+    const toast = await this.toastController.create({
+      message: `Modifiers for "${product.name}" - Coming soon!`,
+      duration: 2000,
+      position: 'bottom',
+      color: 'medium',
+      icon: 'construct-outline',
+    });
+    await toast.present();
+  }
+
+  /**
+   * Show toast for add to order placeholder
+   * Displays message that add to order is coming soon
+   * @param product - Product to add to order
+   */
+  private async showAddToOrderPlaceholder(product: Product): Promise<void> {
+    const toast = await this.toastController.create({
+      message: `"${product.name}" added to order - Coming soon!`,
+      duration: 2000,
+      position: 'bottom',
+      color: 'success',
+      icon: 'checkmark-circle-outline',
+    });
+    await toast.present();
   }
 }

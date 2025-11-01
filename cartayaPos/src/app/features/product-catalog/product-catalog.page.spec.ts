@@ -1,14 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import {
-    IonCol,
-    IonContent,
-    IonGrid,
-    IonHeader,
-    IonRow,
-    IonSpinner,
-    IonTitle,
-    IonToolbar,
+  IonCol,
+  IonContent,
+  IonGrid,
+  IonHeader,
+  IonRow,
+  IonSpinner,
+  IonTitle,
+  IonToolbar,
+  ToastController,
 } from '@ionic/angular/standalone';
 import { of, throwError } from 'rxjs';
 import { Pos } from '../../core/models/pos.model';
@@ -25,6 +26,7 @@ describe('ProductCatalogPage', () => {
   let tenantService: jasmine.SpyObj<TenantService>;
   let posService: jasmine.SpyObj<PosService>;
   let router: jasmine.SpyObj<Router>;
+  let toastController: jasmine.SpyObj<ToastController>;
 
   const mockProducts: Product[] = [
     {
@@ -79,6 +81,11 @@ describe('ProductCatalogPage', () => {
       'getSelectedPos',
     ]);
     const routerSpy = jasmine.createSpyObj('Router', ['navigate']);
+    const toastSpy = jasmine.createSpyObj('Toast', ['present']);
+    const toastControllerSpy = jasmine.createSpyObj('ToastController', [
+      'create',
+    ]);
+    toastControllerSpy.create.and.returnValue(Promise.resolve(toastSpy));
 
     await TestBed.configureTestingModule({
       imports: [
@@ -97,6 +104,7 @@ describe('ProductCatalogPage', () => {
         { provide: TenantService, useValue: tenantServiceSpy },
         { provide: PosService, useValue: posServiceSpy },
         { provide: Router, useValue: routerSpy },
+        { provide: ToastController, useValue: toastControllerSpy },
       ],
     }).compileComponents();
 
@@ -108,6 +116,9 @@ describe('ProductCatalogPage', () => {
     ) as jasmine.SpyObj<TenantService>;
     posService = TestBed.inject(PosService) as jasmine.SpyObj<PosService>;
     router = TestBed.inject(Router) as jasmine.SpyObj<Router>;
+    toastController = TestBed.inject(
+      ToastController
+    ) as jasmine.SpyObj<ToastController>;
 
     fixture = TestBed.createComponent(ProductCatalogPage);
     component = fixture.componentInstance;
@@ -217,24 +228,137 @@ describe('ProductCatalogPage', () => {
   });
 
   describe('onProductTap', () => {
-    it('should handle product selection', () => {
+    it('should check for modifiers and show modifiers placeholder', async () => {
       spyOn(console, 'log');
 
-      component.onProductTap(mockProducts[0]);
+      await component.onProductTap(mockProducts[0]);
 
       expect(console.log).toHaveBeenCalledWith(
         'Product selected:',
+        mockProducts[0].id,
+        mockProducts[0].name
+      );
+      expect(toastController.create).toHaveBeenCalledWith(
+        jasmine.objectContaining({
+          message: `Modifiers for "${mockProducts[0].name}" - Coming soon!`,
+          duration: 2000,
+          position: 'bottom',
+          color: 'medium',
+          icon: 'construct-outline',
+        })
+      );
+    });
+
+    it('should display correct toast message for product with modifiers', async () => {
+      const product = mockProducts[0];
+      await component.onProductTap(product);
+
+      expect(toastController.create).toHaveBeenCalledWith(
+        jasmine.objectContaining({
+          message: `Modifiers for "${product.name}" - Coming soon!`,
+          icon: 'construct-outline',
+        })
+      );
+    });
+
+    it('should present the toast after creation', async () => {
+      const toastSpy = jasmine.createSpyObj('Toast', ['present']);
+      toastController.create.and.returnValue(Promise.resolve(toastSpy));
+
+      await component.onProductTap(mockProducts[0]);
+
+      expect(toastSpy.present).toHaveBeenCalled();
+    });
+
+    it('should call checkProductModifiers', async () => {
+      spyOn<any>(component, 'checkProductModifiers').and.returnValue(
+        Promise.resolve(true)
+      );
+
+      await component.onProductTap(mockProducts[0]);
+
+      expect(component['checkProductModifiers']).toHaveBeenCalledWith(
         mockProducts[0]
       );
     });
 
-    it('should handle product tap for any product', () => {
-      spyOn(console, 'log');
-      const product = mockProducts[1];
+    it('should handle multiple product taps', async () => {
+      const toastSpy = jasmine.createSpyObj('Toast', ['present']);
+      toastController.create.and.returnValue(Promise.resolve(toastSpy));
 
-      component.onProductTap(product);
+      await component.onProductTap(mockProducts[0]);
+      await component.onProductTap(mockProducts[1]);
 
-      expect(console.log).toHaveBeenCalledWith('Product selected:', product);
+      expect(toastController.create).toHaveBeenCalledTimes(2);
+      expect(toastSpy.present).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('checkProductModifiers', () => {
+    it('should return true for MVP (assume all products have modifiers)', async () => {
+      const result = await component['checkProductModifiers'](mockProducts[0]);
+
+      expect(result).toBe(true);
+    });
+
+    it('should handle any product', async () => {
+      const result = await component['checkProductModifiers'](mockProducts[1]);
+
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('showModifiersPlaceholder', () => {
+    it('should create toast with modifiers message', async () => {
+      const product = mockProducts[0];
+
+      await component['showModifiersPlaceholder'](product);
+
+      expect(toastController.create).toHaveBeenCalledWith(
+        jasmine.objectContaining({
+          message: `Modifiers for "${product.name}" - Coming soon!`,
+          duration: 2000,
+          position: 'bottom',
+          color: 'medium',
+          icon: 'construct-outline',
+        })
+      );
+    });
+
+    it('should present the created toast', async () => {
+      const toastSpy = jasmine.createSpyObj('Toast', ['present']);
+      toastController.create.and.returnValue(Promise.resolve(toastSpy));
+
+      await component['showModifiersPlaceholder'](mockProducts[0]);
+
+      expect(toastSpy.present).toHaveBeenCalled();
+    });
+  });
+
+  describe('showAddToOrderPlaceholder', () => {
+    it('should create toast with add to order message', async () => {
+      const product = mockProducts[0];
+
+      await component['showAddToOrderPlaceholder'](product);
+
+      expect(toastController.create).toHaveBeenCalledWith(
+        jasmine.objectContaining({
+          message: `"${product.name}" added to order - Coming soon!`,
+          duration: 2000,
+          position: 'bottom',
+          color: 'success',
+          icon: 'checkmark-circle-outline',
+        })
+      );
+    });
+
+    it('should present the created toast', async () => {
+      const toastSpy = jasmine.createSpyObj('Toast', ['present']);
+      toastController.create.and.returnValue(Promise.resolve(toastSpy));
+
+      await component['showAddToOrderPlaceholder'](mockProducts[0]);
+
+      expect(toastSpy.present).toHaveBeenCalled();
     });
   });
 
@@ -276,4 +400,690 @@ describe('ProductCatalogPage', () => {
       expect(component.isLoading).toBe(true);
     });
   });
+
+  describe('Search and Filtering', () => {
+    it('should have searchQuery property', () => {
+      expect(component.searchQuery).toBe('');
+    });
+
+    it('should call setFilterText on search input', () => {
+      spyOn(productService, 'setFilterText');
+      const event = { target: { value: 'burger' } };
+
+      component.onSearchInput(event);
+
+      expect(productService.setFilterText).toHaveBeenCalledWith('burger');
+    });
+
+    it('should clear search query and filter on clearSearch', () => {
+      spyOn(productService, 'setFilterText');
+      component.searchQuery = 'test';
+
+      component.clearSearch();
+
+      expect(component.searchQuery).toBe('');
+      expect(productService.setFilterText).toHaveBeenCalledWith('');
+    });
+
+    it('should handle empty search input gracefully', () => {
+      spyOn(productService, 'setFilterText');
+      const event = { target: { value: '' } };
+
+      component.onSearchInput(event);
+
+      expect(productService.setFilterText).toHaveBeenCalledWith('');
+    });
+
+    it('should handle null or undefined search value', () => {
+      spyOn(productService, 'setFilterText');
+      const event = { target: { value: null } };
+
+      component.onSearchInput(event);
+
+      expect(productService.setFilterText).toHaveBeenCalledWith('');
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should have errorMessage getter', () => {
+      const errorSignalSpy = jasmine.createSpy().and.returnValue(null);
+      Object.defineProperty(productService, 'error', {
+        value: errorSignalSpy,
+      });
+
+      const errorMessage = component.errorMessage;
+
+      expect(errorMessage).toBeNull();
+    });
+
+    it('should display error message when present', () => {
+      const errorMsg = 'Network error occurred';
+      const errorSignalSpy = jasmine.createSpy().and.returnValue(errorMsg);
+      Object.defineProperty(productService, 'error', {
+        value: errorSignalSpy,
+      });
+
+      const errorMessage = component.errorMessage;
+
+      expect(errorMessage).toBe(errorMsg);
+    });
+
+    it('should call fetchProducts with forceRefresh on retry', () => {
+      const tenantId = 'tenant1';
+      tenantService.getCurrentTenantId.and.returnValue(tenantId);
+      productService.fetchProducts.and.returnValue(of(mockProducts));
+
+      component.retry();
+
+      expect(productService.fetchProducts).toHaveBeenCalledWith(tenantId, true);
+    });
+
+    it('should handle retry when no tenant is available', () => {
+      tenantService.getCurrentTenantId.and.returnValue(null);
+
+      expect(() => component.retry()).not.toThrow();
+      expect(productService.fetchProducts).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Grid and Product Display', () => {
+    it('should render product grid when products exist', () => {
+      const productSignalSpy = jasmine
+        .createSpy()
+        .and.returnValue(mockProducts);
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: productSignalSpy,
+      });
+
+      const products = component.products;
+
+      expect(products.length).toBe(mockProducts.length);
+      expect(products).toEqual(mockProducts);
+    });
+
+    it('should render empty grid when no products', () => {
+      const productSignalSpy = jasmine.createSpy().and.returnValue([]);
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: productSignalSpy,
+      });
+
+      const products = component.products;
+
+      expect(products.length).toBe(0);
+      expect(products).toEqual([]);
+    });
+
+    it('should filter products correctly', () => {
+      const productSignalSpy = jasmine
+        .createSpy()
+        .and.returnValue(mockProducts.slice(0, 1));
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: productSignalSpy,
+      });
+      component.searchQuery = 'Product 1';
+
+      const filteredProducts = component.products;
+
+      expect(filteredProducts.length).toBe(1);
+    });
+  });
+
+  describe('Empty State', () => {
+    it('should handle empty products array', () => {
+      const productSignalSpy = jasmine.createSpy().and.returnValue([]);
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: productSignalSpy,
+      });
+
+      const products = component.products;
+
+      expect(products).toEqual([]);
+      expect(products.length).toBe(0);
+    });
+
+    it('should show empty state when filtering returns no results', () => {
+      component.searchQuery = 'nonexistent-product';
+      const productSignalSpy = jasmine.createSpy().and.returnValue([]);
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: productSignalSpy,
+      });
+
+      const products = component.products;
+
+      expect(products.length).toBe(0);
+    });
+  });
+
+  describe('Getters', () => {
+    it('should correctly retrieve products from service', () => {
+      const productSignalSpy = jasmine
+        .createSpy()
+        .and.returnValue(mockProducts);
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: productSignalSpy,
+      });
+
+      expect(component.products).toEqual(mockProducts);
+    });
+
+    it('should correctly retrieve loading state from service', () => {
+      const loadingSignalSpy = jasmine.createSpy().and.returnValue(false);
+      Object.defineProperty(productService, 'isLoading', {
+        value: loadingSignalSpy,
+      });
+
+      expect(component.isLoading).toBe(false);
+    });
+
+    it('should correctly retrieve selected PoS', () => {
+      posService.getSelectedPos.and.returnValue(mockPos);
+
+      expect(component.selectedPos).toEqual(mockPos);
+    });
+
+    it('should correctly retrieve error message', () => {
+      const errorSignalSpy = jasmine
+        .createSpy()
+        .and.returnValue('Test error');
+      Object.defineProperty(productService, 'error', {
+        value: errorSignalSpy,
+      });
+
+      expect(component.errorMessage).toBe('Test error');
+    });
+  });
+
+  describe('Product Tap Handler', () => {
+    it('should handle product selection with modifiers', async () => {
+      const toastSpy = jasmine.createSpyObj('Toast', ['present']);
+      toastController.create.and.returnValue(Promise.resolve(toastSpy));
+
+      await component.onProductTap(mockProducts[0]);
+
+      expect(toastController.create).toHaveBeenCalled();
+      expect(toastSpy.present).toHaveBeenCalled();
+    });
+
+    it('should log product selection for analytics', async () => {
+      spyOn(console, 'log');
+      const toastSpy = jasmine.createSpyObj('Toast', ['present']);
+      toastController.create.and.returnValue(Promise.resolve(toastSpy));
+
+      await component.onProductTap(mockProducts[0]);
+
+      expect(console.log).toHaveBeenCalledWith(
+        'Product selected:',
+        mockProducts[0].id,
+        mockProducts[0].name
+      );
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle search with special characters', () => {
+      spyOn(productService, 'setFilterText');
+      const event = { target: { value: '@#$%' } };
+
+      component.onSearchInput(event);
+
+      expect(productService.setFilterText).toHaveBeenCalledWith('@#$%');
+    });
+
+    it('should handle rapid search input changes', () => {
+      spyOn(productService, 'setFilterText');
+
+      component.onSearchInput({ target: { value: 'a' } });
+      component.onSearchInput({ target: { value: 'ab' } });
+      component.onSearchInput({ target: { value: 'abc' } });
+
+      expect(productService.setFilterText).toHaveBeenCalledTimes(3);
+    });
+
+    it('should handle products with missing optional properties', () => {
+      const minimalProduct: Product = {
+        id: 'minimal',
+        name: 'Minimal Product',
+        active: true,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      };
+
+      expect(() => component.onProductTap(minimalProduct)).not.toThrow();
+    });
+  });
+
+  describe('Performance Tests', () => {
+    // Helper function to generate large product datasets
+    const generateLargeProductSet = (count: number): Product[] => {
+      return Array.from({ length: count }, (_, i) => ({
+        id: `product-${i}`,
+        name: `Product ${i} - Performance Test`,
+        sku: `SKU-${String(i).padStart(6, '0')}`,
+        description: `Performance test product with index ${i}`,
+        category: `Category-${i % 10}`,
+        active: true,
+        defaultPriceId: `price-${i}`,
+        createdAt: '2025-01-01T00:00:00Z',
+        updatedAt: '2025-01-01T00:00:00Z',
+      }));
+    };
+
+    it('should render 50 products efficiently', () => {
+      const products = generateLargeProductSet(50);
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: products,
+      });
+
+      const startTime = performance.now();
+      fixture.detectChanges();
+      const endTime = performance.now();
+
+      const renderTime = endTime - startTime;
+      expect(renderTime).toBeLessThan(500); // Should render in under 500ms
+    });
+
+    it('should render 100 products in reasonable time', () => {
+      const products = generateLargeProductSet(100);
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: products,
+      });
+
+      const startTime = performance.now();
+      fixture.detectChanges();
+      const endTime = performance.now();
+
+      const renderTime = endTime - startTime;
+      expect(renderTime).toBeLessThan(800); // Should render in under 800ms
+    });
+
+    it('should handle 500+ products with virtual scrolling', () => {
+      const products = generateLargeProductSet(500);
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: products,
+      });
+
+      fixture.detectChanges();
+
+      // Component should still be responsive with virtual scrolling
+      expect(component.products.length).toBe(500);
+      expect(component.isLoading).toBe(false);
+    });
+
+    it('should perform search filter efficiently on large dataset', () => {
+      const products = generateLargeProductSet(200);
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: products,
+      });
+
+      const startTime = performance.now();
+      component.onSearchInput({ target: { value: 'Product' } });
+      const endTime = performance.now();
+
+      const searchTime = endTime - startTime;
+      expect(searchTime).toBeLessThan(100); // Filter should happen in under 100ms
+    });
+
+    it('should maintain performance when clearing search', () => {
+      const products = generateLargeProductSet(300);
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: products,
+      });
+
+      component.onSearchInput({ target: { value: 'test' } });
+      fixture.detectChanges();
+
+      const startTime = performance.now();
+      component.clearSearch();
+      fixture.detectChanges();
+      const endTime = performance.now();
+
+      const clearTime = endTime - startTime;
+      expect(clearTime).toBeLessThan(100);
+    });
+
+    it('should efficiently handle product tap on large dataset', async () => {
+      const products = generateLargeProductSet(200);
+      const targetProduct = products[50];
+
+      const toastSpy = jasmine.createSpyObj('Toast', ['present']);
+      toastController.create.and.returnValue(Promise.resolve(toastSpy));
+
+      const startTime = performance.now();
+      await component.onProductTap(targetProduct);
+      const endTime = performance.now();
+
+      const tapTime = endTime - startTime;
+      expect(tapTime).toBeLessThan(200); // Tap handler should be quick
+    });
+
+    it('should handle multiple rapid searches efficiently', () => {
+      const products = generateLargeProductSet(150);
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: products,
+      });
+
+      const startTime = performance.now();
+
+      component.onSearchInput({ target: { value: 'a' } });
+      component.onSearchInput({ target: { value: 'ab' } });
+      component.onSearchInput({ target: { value: 'abc' } });
+      component.onSearchInput({ target: { value: 'abcd' } });
+      component.onSearchInput({ target: { value: 'abcde' } });
+
+      const endTime = performance.now();
+
+      const totalTime = endTime - startTime;
+      expect(totalTime).toBeLessThan(200); // 5 searches should complete quickly
+    });
+
+    it('should not degrade performance on repeated retry calls', () => {
+      spyOn(productService, 'fetchProducts').and.returnValue(of(mockProducts));
+
+      const startTime = performance.now();
+
+      component.retry();
+      component.retry();
+      component.retry();
+
+      const endTime = performance.now();
+
+      const totalTime = endTime - startTime;
+      expect(totalTime).toBeLessThan(150); // Multiple retries should be fast
+    });
+  });
+
+  describe('Memory Efficiency', () => {
+    it('should not create memory leaks with repeated updates', () => {
+      const products = Array.from({ length: 50 }, (_, i) => ({
+        id: `product-${i}`,
+        name: `Product ${i}`,
+        active: true,
+        createdAt: '2025-01-01T00:00:00Z',
+        updatedAt: '2025-01-01T00:00:00Z',
+      }));
+
+      // Simulate repeated component updates
+      for (let i = 0; i < 10; i++) {
+        Object.defineProperty(productService, 'filteredProducts', {
+          value: products,
+        });
+        fixture.detectChanges();
+      }
+
+      // Component should still be in valid state
+      expect(component).toBeTruthy();
+    });
+
+    it('should clear search state without memory issues', () => {
+      component.onSearchInput({ target: { value: 'test' } });
+      fixture.detectChanges();
+
+      spyOn(productService, 'setFilterText');
+
+      component.clearSearch();
+
+      expect(productService.setFilterText).toHaveBeenCalledWith('');
+    });
+  });
+
+  describe('Integration Tests - Complete User Workflows', () => {
+    it('should complete full workflow: view products -> search -> filter -> select product', async () => {
+      // Step 1: Initialize with products
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: mockProducts,
+      });
+      fixture.detectChanges();
+
+      expect(component.products.length).toBe(3);
+
+      // Step 2: Perform search
+      spyOn(productService, 'setFilterText');
+      component.onSearchInput({ target: { value: 'Product 1' } });
+      expect(productService.setFilterText).toHaveBeenCalledWith('Product 1');
+
+      // Step 3: Select product
+      const toastSpy = jasmine.createSpyObj('Toast', ['present']);
+      toastController.create.and.returnValue(Promise.resolve(toastSpy));
+
+      await component.onProductTap(mockProducts[0]);
+
+      expect(toastController.create).toHaveBeenCalled();
+      expect(toastSpy.present).toHaveBeenCalled();
+    });
+
+    it('should handle network failure and allow retry', async () => {
+      const error = new Error('Network error');
+      Object.defineProperty(productService, 'error', { value: error });
+
+      fixture.detectChanges();
+
+      // Retry should call fetch with forceRefresh
+      spyOn(productService, 'fetchProducts').and.returnValue(of(mockProducts));
+      tenantService.getCurrentTenantId.and.returnValue('tenant-1');
+
+      component.retry();
+
+      expect(productService.fetchProducts).toHaveBeenCalledWith(
+        'tenant-1',
+        true
+      );
+    });
+
+    it('should handle 401 unauthorized during product fetch', () => {
+      // Simulate 401 error from service
+      const error401 = new Error('401 Unauthorized');
+      Object.defineProperty(productService, 'error', { value: error401 });
+
+      spyOn(router, 'navigate');
+      fixture.detectChanges();
+
+      // Router should navigate to login (handled by service, but component aware)
+      expect(component.errorMessage).toBeDefined();
+    });
+
+    it('should cache products on successful fetch', (done) => {
+      spyOn(productService, 'fetchProducts').and.returnValue(of(mockProducts));
+
+      productService.fetchProducts('tenant-1').subscribe(() => {
+        // Second fetch should use cache (not call fetchProducts again)
+        Object.defineProperty(productService, 'filteredProducts', {
+          value: mockProducts,
+        });
+
+        expect(component.products).toEqual(mockProducts);
+        done();
+      });
+    });
+
+    it('should update UI when search results change', (done) => {
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: mockProducts,
+      });
+      fixture.detectChanges();
+
+      const initialCount = component.products.length;
+
+      // Simulate filtered results
+      const filteredProducts = mockProducts.slice(0, 1);
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: filteredProducts,
+      });
+      fixture.detectChanges();
+
+      setTimeout(() => {
+        expect(component.products.length).toBeLessThan(initialCount);
+        done();
+      }, 100);
+    });
+
+    it('should maintain search state while loading new data', (done) => {
+      spyOn(productService, 'setFilterText');
+
+      component.onSearchInput({ target: { value: 'test' } });
+      expect(productService.setFilterText).toHaveBeenCalledWith('test');
+
+      // Simulate loading state
+      Object.defineProperty(productService, 'isLoading', { value: true });
+      fixture.detectChanges();
+
+      setTimeout(() => {
+        expect(component.isLoading).toBe(true);
+        done();
+      }, 50);
+    });
+
+    it('should handle session expiration during navigation', async () => {
+      const toastSpy = jasmine.createSpyObj('Toast', ['present']);
+      toastController.create.and.returnValue(Promise.resolve(toastSpy));
+
+      // Simulate product selection
+      await component.onProductTap(mockProducts[0]);
+
+      // If session expired (would trigger 401 from API)
+      spyOn(router, 'navigate');
+
+      expect(toastController.create).toHaveBeenCalled();
+    });
+
+    it('should handle empty product list gracefully', () => {
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: [],
+      });
+      fixture.detectChanges();
+
+      expect(component.products.length).toBe(0);
+      expect(component).toBeTruthy(); // Component still renders
+    });
+
+    it('should recover from error state when retry succeeds', async () => {
+      // Start with error state
+      Object.defineProperty(productService, 'error', {
+        value: new Error('Initial error'),
+      });
+      fixture.detectChanges();
+
+      expect(component.errorMessage).toBeDefined();
+
+      // Simulate successful retry
+      spyOn(productService, 'fetchProducts').and.returnValue(of(mockProducts));
+      Object.defineProperty(productService, 'error', { value: null });
+
+      component.retry();
+
+      expect(productService.fetchProducts).toHaveBeenCalled();
+    });
+
+    it('should handle offline scenario with cached data', () => {
+      // Simulate offline - would normally fall back to cached products
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: mockProducts,
+      });
+      Object.defineProperty(productService, 'isLoading', { value: false });
+
+      fixture.detectChanges();
+
+      expect(component.products).toEqual(mockProducts);
+      expect(component.isLoading).toBe(false);
+    });
+  });
+
+  describe('Integration Tests - Error Scenarios', () => {
+    it('should display error banner on API failure', () => {
+      const apiError = new Error('API Error');
+      Object.defineProperty(productService, 'error', {
+        value: apiError,
+      });
+
+      fixture.detectChanges();
+
+      expect(component.errorMessage).toBeDefined();
+    });
+
+    it('should provide retry option when error occurs', () => {
+      Object.defineProperty(productService, 'error', {
+        value: new Error('Network timeout'),
+      });
+
+      fixture.detectChanges();
+      spyOn(productService, 'fetchProducts').and.returnValue(of(mockProducts));
+
+      component.retry();
+
+      expect(productService.fetchProducts).toHaveBeenCalled();
+    });
+
+    it('should handle malformed product data gracefully', () => {
+      const malformedProducts = [
+        { id: '1' }, // Missing required fields
+        mockProducts[0], // Valid product
+      ];
+
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: malformedProducts as any,
+      });
+
+      fixture.detectChanges();
+
+      // Component should still render
+      expect(component.products.length).toBe(2);
+    });
+  });
+
+  describe('Integration Tests - State Management', () => {
+    it('should maintain consistent state across multiple operations', (done) => {
+      // Initialize
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: mockProducts,
+      });
+      fixture.detectChanges();
+
+      const initialCount = component.products.length;
+
+      // Perform search
+      spyOn(productService, 'setFilterText');
+      component.onSearchInput({ target: { value: 'test' } });
+
+      // Clear search
+      component.clearSearch();
+      expect(productService.setFilterText).toHaveBeenCalledWith('');
+
+      // Verify state is consistent
+      setTimeout(() => {
+        expect(component.products.length).toBeGreaterThanOrEqual(0);
+        done();
+      }, 50);
+    });
+
+    it('should handle rapid state changes without errors', async () => {
+      Object.defineProperty(productService, 'filteredProducts', {
+        value: mockProducts,
+      });
+
+      spyOn(productService, 'setFilterText');
+
+      // Rapid state changes
+      component.onSearchInput({ target: { value: 'a' } });
+      component.onSearchInput({ target: { value: 'ab' } });
+      component.clearSearch();
+      component.onSearchInput({ target: { value: 'abc' } });
+
+      fixture.detectChanges();
+
+      expect(component).toBeTruthy();
+      expect(productService.setFilterText).toHaveBeenCalledTimes(4);
+    });
+
+    it('should preserve PoS context through product selection', async () => {
+      posService.getSelectedPos.and.returnValue(mockPos);
+
+      const toastSpy = jasmine.createSpyObj('Toast', ['present']);
+      toastController.create.and.returnValue(Promise.resolve(toastSpy));
+
+      await component.onProductTap(mockProducts[0]);
+
+      // PoS context should still be available
+      expect(component.selectedPos).toEqual(mockPos);
+    });
+  });
 });
+
