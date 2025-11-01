@@ -21,6 +21,8 @@ import {
 } from '@ionic/angular/standalone';
 import { Pos } from '../../core/models/pos.model';
 import { Product } from '../../core/models/product.model';
+import { ModifierService } from '../../core/services/modifier.service';
+import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
 import { ProductService } from '../../core/services/product.service';
 import { TenantService } from '../../core/services/tenant.service';
@@ -75,8 +77,11 @@ export class ProductCatalogPage implements OnInit {
   private posService = inject(PosService);
   private router = inject(Router);
   private toastController = inject(ToastController);
+  private modifierService = inject(ModifierService);
+  private orderService = inject(OrderService);
 
   searchQuery = '';
+  private modifierCheckCache = new Map<string, boolean>();
 
   ngOnInit(): void {
     this.loadProducts();
@@ -170,7 +175,8 @@ export class ProductCatalogPage implements OnInit {
 
   /**
    * Handle product selection
-   * Checks if product has modifiers and shows appropriate placeholder
+   * Checks if product has modifiers and either navigates to ModifiersPage
+   * or adds directly to order
    * @param product - The selected product
    */
   async onProductTap(product: Product): Promise<void> {
@@ -181,51 +187,70 @@ export class ProductCatalogPage implements OnInit {
     const hasModifiers = await this.checkProductModifiers(product);
 
     if (hasModifiers) {
-      // Navigate to modifiers screen (placeholder for now)
-      await this.showModifiersPlaceholder(product);
+      // Navigate to modifiers page with product data via route state
+      this.router.navigate(['/products', product.id, 'modifiers'], {
+        state: { product },
+      });
     } else {
-      // Add directly to order (future feature)
-      await this.showAddToOrderPlaceholder(product);
+      // Add directly to order without modifiers
+      this.orderService.addConfiguredProduct(product, []);
+      await this.showSuccessToast(`"${product.name}" added to order`);
     }
   }
 
   /**
    * Check if product has modifiers
-   * For MVP, assume all products may have modifiers
-   * In future, check product.modifiers array or query API
+   * Uses API call to fetch modifiers for the product, with caching
+   * Returns true if product has any active modifiers
+   * Returns false if no modifiers, API error, or product is invalid
    * @param product - Product to check
    * @returns true if product has modifiers
    */
   private async checkProductModifiers(product: Product): Promise<boolean> {
-    // Placeholder: In future, implement actual check
-    // Could check product.modifiers array, metadata, or API
-    return true;
+    // Check cache first to avoid repeated API calls
+    if (this.modifierCheckCache.has(product.id)) {
+      return this.modifierCheckCache.get(product.id) || false;
+    }
+
+    try {
+      const tenantId = this.tenantService.getCurrentTenantId();
+      const pos = this.posService.getSelectedPos();
+
+      if (!tenantId || !pos) {
+        console.warn('Cannot check modifiers: missing tenantId or PoS');
+        return false;
+      }
+
+      // Fetch modifiers from API
+      const modifiers = await this.modifierService
+        .fetchProductModifiers(tenantId, product.id, pos.id)
+        .toPromise();
+
+      // Determine if product has modifiers
+      const hasModifiers = (modifiers?.length ?? 0) > 0;
+
+      // Cache the result
+      this.modifierCheckCache.set(product.id, hasModifiers);
+
+      return hasModifiers;
+    } catch (error) {
+      console.error(
+        `Failed to check modifiers for product ${product.id}:`,
+        error
+      );
+      // On error, assume no modifiers to allow graceful degradation
+      this.modifierCheckCache.set(product.id, false);
+      return false;
+    }
   }
 
   /**
-   * Show toast for modifiers placeholder
-   * Displays message that modifier selection is coming soon
-   * @param product - Product with modifiers
+   * Show success toast when product is added to order
+   * @param message - Success message to display
    */
-  private async showModifiersPlaceholder(product: Product): Promise<void> {
+  private async showSuccessToast(message: string): Promise<void> {
     const toast = await this.toastController.create({
-      message: `Modifiers for "${product.name}" - Coming soon!`,
-      duration: 2000,
-      position: 'bottom',
-      color: 'medium',
-      icon: 'construct-outline',
-    });
-    await toast.present();
-  }
-
-  /**
-   * Show toast for add to order placeholder
-   * Displays message that add to order is coming soon
-   * @param product - Product to add to order
-   */
-  private async showAddToOrderPlaceholder(product: Product): Promise<void> {
-    const toast = await this.toastController.create({
-      message: `"${product.name}" added to order - Coming soon!`,
+      message,
       duration: 2000,
       position: 'bottom',
       color: 'success',

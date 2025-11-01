@@ -12,8 +12,11 @@ import {
   ToastController,
 } from '@ionic/angular/standalone';
 import { of, throwError } from 'rxjs';
+import { Modifier } from '../../core/models/modifier.model';
 import { Pos } from '../../core/models/pos.model';
 import { Product } from '../../core/models/product.model';
+import { ModifierService } from '../../core/services/modifier.service';
+import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
 import { ProductService } from '../../core/services/product.service';
 import { TenantService } from '../../core/services/tenant.service';
@@ -27,6 +30,8 @@ describe('ProductCatalogPage', () => {
   let posService: jasmine.SpyObj<PosService>;
   let router: jasmine.SpyObj<Router>;
   let toastController: jasmine.SpyObj<ToastController>;
+  let modifierService: jasmine.SpyObj<ModifierService>;
+  let orderService: jasmine.SpyObj<OrderService>;
 
   const mockProducts: Product[] = [
     {
@@ -85,6 +90,12 @@ describe('ProductCatalogPage', () => {
     const toastControllerSpy = jasmine.createSpyObj('ToastController', [
       'create',
     ]);
+    const modifierServiceSpy = jasmine.createSpyObj('ModifierService', [
+      'fetchProductModifiers',
+    ]);
+    const orderServiceSpy = jasmine.createSpyObj('OrderService', [
+      'addConfiguredProduct',
+    ]);
     toastControllerSpy.create.and.returnValue(Promise.resolve(toastSpy));
 
     await TestBed.configureTestingModule({
@@ -105,6 +116,8 @@ describe('ProductCatalogPage', () => {
         { provide: PosService, useValue: posServiceSpy },
         { provide: Router, useValue: routerSpy },
         { provide: ToastController, useValue: toastControllerSpy },
+        { provide: ModifierService, useValue: modifierServiceSpy },
+        { provide: OrderService, useValue: orderServiceSpy },
       ],
     }).compileComponents();
 
@@ -119,6 +132,12 @@ describe('ProductCatalogPage', () => {
     toastController = TestBed.inject(
       ToastController
     ) as jasmine.SpyObj<ToastController>;
+    modifierService = TestBed.inject(
+      ModifierService
+    ) as jasmine.SpyObj<ModifierService>;
+    orderService = TestBed.inject(
+      OrderService
+    ) as jasmine.SpyObj<OrderService>;
 
     fixture = TestBed.createComponent(ProductCatalogPage);
     component = fixture.componentInstance;
@@ -228,8 +247,21 @@ describe('ProductCatalogPage', () => {
   });
 
   describe('onProductTap', () => {
-    it('should check for modifiers and show modifiers placeholder', async () => {
+    const mockModifier: Modifier = {
+      id: 'mod1',
+      name: 'Modifier 1',
+      priceDelta: 1.5,
+      currency: 'USD',
+      active: true,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+    };
+
+    it('should check for modifiers and navigate to ModifiersPage if modifiers exist', async () => {
       spyOn(console, 'log');
+      modifierService.fetchProductModifiers.and.returnValue(of([mockModifier]));
+      tenantService.getCurrentTenantId.and.returnValue('tenant1');
+      posService.getSelectedPos.and.returnValue(mockPos);
 
       await component.onProductTap(mockProducts[0]);
 
@@ -238,127 +270,239 @@ describe('ProductCatalogPage', () => {
         mockProducts[0].id,
         mockProducts[0].name
       );
-      expect(toastController.create).toHaveBeenCalledWith(
-        jasmine.objectContaining({
-          message: `Modifiers for "${mockProducts[0].name}" - Coming soon!`,
-          duration: 2000,
-          position: 'bottom',
-          color: 'medium',
-          icon: 'construct-outline',
-        })
+      expect(router.navigate).toHaveBeenCalledWith(
+        ['/products', mockProducts[0].id, 'modifiers'],
+        { state: { product: mockProducts[0] } }
       );
     });
 
-    it('should display correct toast message for product with modifiers', async () => {
-      const product = mockProducts[0];
-      await component.onProductTap(product);
-
-      expect(toastController.create).toHaveBeenCalledWith(
-        jasmine.objectContaining({
-          message: `Modifiers for "${product.name}" - Coming soon!`,
-          icon: 'construct-outline',
-        })
-      );
-    });
-
-    it('should present the toast after creation', async () => {
+    it('should add product directly to order if no modifiers exist', async () => {
+      spyOn(console, 'log');
+      modifierService.fetchProductModifiers.and.returnValue(of([]));
+      tenantService.getCurrentTenantId.and.returnValue('tenant1');
+      posService.getSelectedPos.and.returnValue(mockPos);
       const toastSpy = jasmine.createSpyObj('Toast', ['present']);
       toastController.create.and.returnValue(Promise.resolve(toastSpy));
 
-      await component.onProductTap(mockProducts[0]);
+      const productWithPrice = {
+        ...mockProducts[0],
+        defaultPrice: { id: 'price1', amount: 10, currency: 'USD' },
+      };
 
-      expect(toastSpy.present).toHaveBeenCalled();
-    });
+      await component.onProductTap(productWithPrice as any);
 
-    it('should call checkProductModifiers', async () => {
-      spyOn<any>(component, 'checkProductModifiers').and.returnValue(
-        Promise.resolve(true)
+      expect(orderService.addConfiguredProduct).toHaveBeenCalledWith(
+        productWithPrice,
+        []
       );
-
-      await component.onProductTap(mockProducts[0]);
-
-      expect(component['checkProductModifiers']).toHaveBeenCalledWith(
-        mockProducts[0]
-      );
-    });
-
-    it('should handle multiple product taps', async () => {
-      const toastSpy = jasmine.createSpyObj('Toast', ['present']);
-      toastController.create.and.returnValue(Promise.resolve(toastSpy));
-
-      await component.onProductTap(mockProducts[0]);
-      await component.onProductTap(mockProducts[1]);
-
-      expect(toastController.create).toHaveBeenCalledTimes(2);
-      expect(toastSpy.present).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  describe('checkProductModifiers', () => {
-    it('should return true for MVP (assume all products have modifiers)', async () => {
-      const result = await component['checkProductModifiers'](mockProducts[0]);
-
-      expect(result).toBe(true);
-    });
-
-    it('should handle any product', async () => {
-      const result = await component['checkProductModifiers'](mockProducts[1]);
-
-      expect(result).toBe(true);
-    });
-  });
-
-  describe('showModifiersPlaceholder', () => {
-    it('should create toast with modifiers message', async () => {
-      const product = mockProducts[0];
-
-      await component['showModifiersPlaceholder'](product);
-
       expect(toastController.create).toHaveBeenCalledWith(
         jasmine.objectContaining({
-          message: `Modifiers for "${product.name}" - Coming soon!`,
-          duration: 2000,
-          position: 'bottom',
-          color: 'medium',
-          icon: 'construct-outline',
-        })
-      );
-    });
-
-    it('should present the created toast', async () => {
-      const toastSpy = jasmine.createSpyObj('Toast', ['present']);
-      toastController.create.and.returnValue(Promise.resolve(toastSpy));
-
-      await component['showModifiersPlaceholder'](mockProducts[0]);
-
-      expect(toastSpy.present).toHaveBeenCalled();
-    });
-  });
-
-  describe('showAddToOrderPlaceholder', () => {
-    it('should create toast with add to order message', async () => {
-      const product = mockProducts[0];
-
-      await component['showAddToOrderPlaceholder'](product);
-
-      expect(toastController.create).toHaveBeenCalledWith(
-        jasmine.objectContaining({
-          message: `"${product.name}" added to order - Coming soon!`,
+          message: `"${productWithPrice.name}" added to order`,
           duration: 2000,
           position: 'bottom',
           color: 'success',
           icon: 'checkmark-circle-outline',
         })
       );
+      expect(toastSpy.present).toHaveBeenCalled();
     });
 
-    it('should present the created toast', async () => {
+    it('should handle API errors gracefully and add product directly', async () => {
+      modifierService.fetchProductModifiers.and.returnValue(
+        throwError(() => new Error('API Error'))
+      );
+      tenantService.getCurrentTenantId.and.returnValue('tenant1');
+      posService.getSelectedPos.and.returnValue(mockPos);
+      spyOn(console, 'error');
+
+      const productWithPrice = {
+        ...mockProducts[0],
+        defaultPrice: { id: 'price1', amount: 10, currency: 'USD' },
+      };
+
+      await component.onProductTap(productWithPrice as any);
+
+      expect(orderService.addConfiguredProduct).toHaveBeenCalled();
+    });
+
+    it('should call checkProductModifiers', async () => {
+      spyOn<any>(component, 'checkProductModifiers').and.returnValue(
+        Promise.resolve(false)
+      );
+      const productWithPrice = {
+        ...mockProducts[0],
+        defaultPrice: { id: 'price1', amount: 10, currency: 'USD' },
+      };
+
+      await component.onProductTap(productWithPrice as any);
+
+      expect(component['checkProductModifiers']).toHaveBeenCalledWith(
+        productWithPrice
+      );
+    });
+
+    it('should cache modifier check results', async () => {
+      modifierService.fetchProductModifiers.and.returnValue(of([]));
+      tenantService.getCurrentTenantId.and.returnValue('tenant1');
+      posService.getSelectedPos.and.returnValue(mockPos);
       const toastSpy = jasmine.createSpyObj('Toast', ['present']);
       toastController.create.and.returnValue(Promise.resolve(toastSpy));
 
-      await component['showAddToOrderPlaceholder'](mockProducts[0]);
+      const productWithPrice = {
+        ...mockProducts[0],
+        defaultPrice: { id: 'price1', amount: 10, currency: 'USD' },
+      };
 
+      // First tap - should call API
+      await component.onProductTap(productWithPrice as any);
+      expect(modifierService.fetchProductModifiers).toHaveBeenCalledTimes(1);
+
+      // Second tap - should use cache
+      await component.onProductTap(productWithPrice as any);
+      expect(modifierService.fetchProductModifiers).toHaveBeenCalledTimes(1); // No additional call
+    });
+
+    it('should log product selection for analytics', async () => {
+      spyOn(console, 'log');
+      modifierService.fetchProductModifiers.and.returnValue(of([]));
+      tenantService.getCurrentTenantId.and.returnValue('tenant1');
+      posService.getSelectedPos.and.returnValue(mockPos);
+      const toastSpy = jasmine.createSpyObj('Toast', ['present']);
+      toastController.create.and.returnValue(Promise.resolve(toastSpy));
+
+      const productWithPrice = {
+        ...mockProducts[0],
+        defaultPrice: { id: 'price1', amount: 10, currency: 'USD' },
+      };
+
+      await component.onProductTap(productWithPrice as any);
+
+      expect(console.log).toHaveBeenCalledWith(
+        'Product selected:',
+        mockProducts[0].id,
+        mockProducts[0].name
+      );
+    });
+  });
+
+  describe('checkProductModifiers', () => {
+    const mockModifier: Modifier = {
+      id: 'mod1',
+      name: 'Modifier 1',
+      priceDelta: 1.5,
+      currency: 'USD',
+      active: true,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+    };
+
+    it('should return true when API returns modifiers', async () => {
+      modifierService.fetchProductModifiers.and.returnValue(of([mockModifier]));
+      tenantService.getCurrentTenantId.and.returnValue('tenant1');
+      posService.getSelectedPos.and.returnValue(mockPos);
+
+      const result = await component['checkProductModifiers'](mockProducts[0]);
+
+      expect(result).toBe(true);
+      expect(modifierService.fetchProductModifiers).toHaveBeenCalledWith(
+        'tenant1',
+        mockProducts[0].id,
+        mockPos.id
+      );
+    });
+
+    it('should return false when API returns empty modifiers', async () => {
+      modifierService.fetchProductModifiers.and.returnValue(of([]));
+      tenantService.getCurrentTenantId.and.returnValue('tenant1');
+      posService.getSelectedPos.and.returnValue(mockPos);
+
+      const result = await component['checkProductModifiers'](mockProducts[0]);
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false on API error', async () => {
+      modifierService.fetchProductModifiers.and.returnValue(
+        throwError(() => new Error('API Error'))
+      );
+      tenantService.getCurrentTenantId.and.returnValue('tenant1');
+      posService.getSelectedPos.and.returnValue(mockPos);
+      spyOn(console, 'error');
+
+      const result = await component['checkProductModifiers'](mockProducts[0]);
+
+      expect(result).toBe(false);
+      expect(console.error).toHaveBeenCalled();
+    });
+
+    it('should return false when tenant is missing', async () => {
+      tenantService.getCurrentTenantId.and.returnValue(null);
+      spyOn(console, 'warn');
+
+      const result = await component['checkProductModifiers'](mockProducts[0]);
+
+      expect(result).toBe(false);
+      expect(console.warn).toHaveBeenCalled();
+    });
+
+    it('should return false when PoS is missing', async () => {
+      tenantService.getCurrentTenantId.and.returnValue('tenant1');
+      posService.getSelectedPos.and.returnValue(null);
+      spyOn(console, 'warn');
+
+      const result = await component['checkProductModifiers'](mockProducts[0]);
+
+      expect(result).toBe(false);
+      expect(console.warn).toHaveBeenCalled();
+    });
+
+    it('should cache results to avoid repeated API calls', async () => {
+      modifierService.fetchProductModifiers.and.returnValue(of([mockModifier]));
+      tenantService.getCurrentTenantId.and.returnValue('tenant1');
+      posService.getSelectedPos.and.returnValue(mockPos);
+
+      // First call
+      await component['checkProductModifiers'](mockProducts[0]);
+      expect(modifierService.fetchProductModifiers).toHaveBeenCalledTimes(1);
+
+      // Second call should use cache
+      await component['checkProductModifiers'](mockProducts[0]);
+      expect(modifierService.fetchProductModifiers).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('showSuccessToast', () => {
+    it('should create and present success toast', async () => {
+      const toastSpy = jasmine.createSpyObj('Toast', ['present']);
+      toastController.create.and.returnValue(Promise.resolve(toastSpy));
+
+      await component['showSuccessToast']('Test message');
+
+      expect(toastController.create).toHaveBeenCalledWith(
+        jasmine.objectContaining({
+          message: 'Test message',
+          duration: 2000,
+          position: 'bottom',
+          color: 'success',
+          icon: 'checkmark-circle-outline',
+        })
+      );
       expect(toastSpy.present).toHaveBeenCalled();
+    });
+
+    it('should use correct product name in message', async () => {
+      const toastSpy = jasmine.createSpyObj('Toast', ['present']);
+      toastController.create.and.returnValue(Promise.resolve(toastSpy));
+
+      await component['showSuccessToast'](
+        `"${mockProducts[0].name}" added to order`
+      );
+
+      expect(toastController.create).toHaveBeenCalledWith(
+        jasmine.objectContaining({
+          message: `"${mockProducts[0].name}" added to order`,
+        })
+      );
     });
   });
 
