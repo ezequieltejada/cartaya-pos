@@ -1,15 +1,19 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
-    IonCol,
-    IonContent,
-    IonGrid,
-    IonHeader,
-    IonRow,
-    IonSpinner,
-    IonTitle,
-    IonToolbar,
+  IonButton,
+  IonCol,
+  IonContent,
+  IonGrid,
+  IonHeader,
+  IonIcon,
+  IonRow,
+  IonSearchbar,
+  IonSpinner,
+  IonTitle,
+  IonToolbar,
 } from '@ionic/angular/standalone';
 import { Pos } from '../../core/models/pos.model';
 import { Product } from '../../core/models/product.model';
@@ -40,6 +44,7 @@ import { TenantService } from '../../core/services/tenant.service';
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     IonContent,
     IonHeader,
     IonTitle,
@@ -48,6 +53,9 @@ import { TenantService } from '../../core/services/tenant.service';
     IonRow,
     IonCol,
     IonSpinner,
+    IonSearchbar,
+    IonButton,
+    IonIcon,
   ],
   templateUrl: './product-catalog.page.html',
   styleUrls: ['./product-catalog.page.scss'],
@@ -57,6 +65,8 @@ export class ProductCatalogPage implements OnInit {
   private tenantService = inject(TenantService);
   private posService = inject(PosService);
   private router = inject(Router);
+
+  searchQuery = '';
 
   ngOnInit(): void {
     this.loadProducts();
@@ -89,7 +99,7 @@ export class ProductCatalogPage implements OnInit {
    * Get all products from the ProductService signal
    */
   get products(): Product[] {
-    return this.productService.products();
+    return this.productService.filteredProducts();
   }
 
   /**
@@ -104,6 +114,24 @@ export class ProductCatalogPage implements OnInit {
    */
   get selectedPos(): Pos | null {
     return this.posService.getSelectedPos();
+  }
+
+  /**
+   * Handle search input with debouncing
+   * Updates the ProductService filter text to trigger filtered products recomputation
+   * @param event - The ionInput event from IonSearchbar
+   */
+  onSearchInput(event: any): void {
+    const query = event.target.value || '';
+    this.productService.setFilterText(query);
+  }
+
+  /**
+   * Clear the search query and reset the filter
+   */
+  clearSearch(): void {
+    this.searchQuery = '';
+    this.productService.setFilterText('');
   }
 
   /**

@@ -2,6 +2,14 @@
   <ion-toolbar>
     <ion-title>{{ selectedPos?.name }}</ion-title>
   </ion-toolbar>
+  <ion-toolbar>
+    <ion-searchbar 
+      [(ngModel)]="searchQuery"
+      (ionInput)="onSearchInput($event)"
+      placeholder="Search products..."
+      debounce="300">
+    </ion-searchbar>
+  </ion-toolbar>
 </ion-header>
 
 <ion-content>
@@ -22,8 +30,15 @@
     </ion-row>
   </ion-grid>
 
-  <!-- Empty state -->
-  <div *ngIf="!isLoading && products.length === 0" class="empty-state">
+  <!-- Empty state for no products -->
+  <div *ngIf="!isLoading && products.length === 0 && !searchQuery" class="empty-state">
     <p>No products available</p>
+  </div>
+
+  <!-- Empty state for no search results -->
+  <div *ngIf="!isLoading && products.length === 0 && searchQuery" class="empty-state">
+    <ion-icon name="search-outline" size="large"></ion-icon>
+    <p>No products found for "{{ searchQuery }}"</p>
+    <ion-button (click)="clearSearch()">Clear Search</ion-button>
   </div>
 </ion-content>
