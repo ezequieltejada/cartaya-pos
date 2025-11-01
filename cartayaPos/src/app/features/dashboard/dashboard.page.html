@@ -1,0 +1,61 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Dashboard</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="dashboard-container">
+    <h1>Welcome</h1>
+
+    <!-- User Information Card -->
+    <ion-card *ngIf="currentUser" class="info-card">
+      <ion-card-header>
+        <ion-card-title>User Information</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="info-item">
+          <span class="label">Name:</span>
+          <span class="value">{{ currentUser.name || 'N/A' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Email:</span>
+          <span class="value">{{ currentUser.email }}</span>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- PoS Information Card -->
+    <ion-card *ngIf="selectedPos" class="info-card">
+      <ion-card-header>
+        <ion-card-title>Point of Sale</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="info-item">
+          <span class="label">Location:</span>
+          <span class="value">{{ selectedPos.name }}</span>
+        </div>
+        <div class="info-item" *ngIf="selectedPos.location">
+          <span class="label">Address:</span>
+          <span class="value">{{ selectedPos.location }}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Slug:</span>
+          <span class="value">{{ selectedPos.slug }}</span>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Actions -->
+    <div class="actions">
+      <ion-button
+        expand="block"
+        color="danger"
+        (click)="onLogout()"
+        [disabled]="isLoading"
+      >
+        {{ isLoading ? 'Logging out...' : 'Logout' }}
+      </ion-button>
+    </div>
+  </div>
+</ion-content>
