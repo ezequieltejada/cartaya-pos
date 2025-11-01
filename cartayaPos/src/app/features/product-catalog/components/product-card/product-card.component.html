@@ -1,0 +1,10 @@
+<ion-card (click)="onTap()">
+  <ion-img [src]="imageUrl" loading="lazy"></ion-img>
+  <ion-card-header>
+    <ion-card-title>{{ product.name }}</ion-card-title>
+  </ion-card-header>
+  <ion-card-content>
+    <p class="price">{{ formattedPrice }}</p>
+    <p class="category" *ngIf="product.category">{{ product.category }}</p>
+  </ion-card-content>
+</ion-card>
