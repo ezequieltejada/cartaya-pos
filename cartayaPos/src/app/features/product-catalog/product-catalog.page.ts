@@ -86,6 +86,7 @@ export class ProductCatalogPage implements OnInit {
    * Fetch products for the current tenant
    * Clears cache when PoS changes to force fresh data
    * Products will be displayed once loading is complete
+   * Uses fetchProductsWithPrices to fetch prices in batches
    */
   private async loadProducts(): Promise<void> {
     const tenantId = this.tenantService.getCurrentTenantId();
@@ -99,7 +100,7 @@ export class ProductCatalogPage implements OnInit {
     // Clear cache to force fresh data on PoS switch
     await this.productService.clearCache(tenantId);
     
-    this.productService.fetchProducts(tenantId).subscribe({
+    this.productService.fetchProductsWithPrices(tenantId).subscribe({
       next: () => {
         // Products are updated in the signal
       },
@@ -158,11 +159,12 @@ export class ProductCatalogPage implements OnInit {
   /**
    * Retry fetching products after an error
    * Forces refresh from API, bypassing cache
+   * Uses fetchProductsWithPrices to include price data
    */
   retry(): void {
     const tenantId = this.tenantService.getCurrentTenantId();
     if (tenantId) {
-      this.productService.fetchProducts(tenantId, true).subscribe();
+      this.productService.fetchProductsWithPrices(tenantId, true).subscribe();
     }
   }
 

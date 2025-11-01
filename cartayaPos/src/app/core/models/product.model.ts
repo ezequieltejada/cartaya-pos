@@ -10,6 +10,11 @@ export interface Product {
   category?: string;
   active: boolean;
   defaultPriceId?: string;
+  defaultPrice?: {
+    id: string;
+    amount: number;
+    currency: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

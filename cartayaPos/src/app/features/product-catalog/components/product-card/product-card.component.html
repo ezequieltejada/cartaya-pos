@@ -4,7 +4,12 @@
     <ion-card-title>{{ product.name }}</ion-card-title>
   </ion-card-header>
   <ion-card-content>
-    <p class="price">{{ formattedPrice }}</p>
+    <p class="price" [class.unavailable]="!product.defaultPrice">
+      {{ formattedPrice }}
+    </p>
+    <p class="description" *ngIf="hasDescription">
+      {{ product.description }}
+    </p>
     <p class="category" *ngIf="product.category">{{ product.category }}</p>
   </ion-card-content>
 </ion-card>

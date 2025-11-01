@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, catchError, from, map, of, switchMap, tap } from 'rxjs';
+import { Observable, catchError, forkJoin, from, map, of, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Product } from '../models/product.model';
 import { StorageService } from './storage.service';
@@ -12,6 +12,15 @@ import { TenantService } from './tenant.service';
  */
 interface ProductCache {
   products: Product[];
+  timestamp: number;
+  tenantId: string;
+}
+
+/**
+ * Cache metadata for storing price cache with TTL
+ */
+interface PriceCache {
+  prices: Record<string, { id: string; amount: number; currency: string }>;
   timestamp: number;
   tenantId: string;
 }
@@ -32,6 +41,7 @@ export class ProductService {
 
   private readonly API_URL = `${environment.apiUrl}/api`;
   private readonly CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+  private readonly PRICE_CACHE_TTL = 30 * 60 * 1000; // 30 minutes (aggressive caching)
 
   // Writable signals
   readonly products = signal<Product[]>([]);
@@ -248,5 +258,260 @@ export class ProductService {
    */
   setFilterText(query: string): void {
     this.filterText.set(query);
+  }
+
+  /**
+   * Get price cache key for a tenant
+   * @param tenantId - Tenant ID
+   * @returns Cache key string
+   */
+  private getPriceCacheKey(tenantId: string): string {
+    return `prices_${tenantId}`;
+  }
+
+  /**
+   * Get prices from cache if valid (not expired)
+   * @param tenantId - Tenant ID
+   * @returns Promise resolving to cached prices or null
+   */
+  private async getPriceCache(tenantId: string): Promise<PriceCache | null> {
+    try {
+      const key = this.getPriceCacheKey(tenantId);
+      const cached = await this.storageService.get<PriceCache>(key);
+
+      if (!cached) return null;
+
+      const age = Date.now() - cached.timestamp;
+      if (age > this.PRICE_CACHE_TTL) {
+        await this.storageService.remove(key);
+        return null;
+      }
+
+      return cached;
+    } catch (e) {
+      console.debug('Failed to retrieve price cache:', e);
+      return null;
+    }
+  }
+
+  /**
+   * Save prices to cache with timestamp
+   * @param tenantId - Tenant ID
+   * @param prices - Record of priceId -> price object
+   * @returns Promise resolving when cache is saved
+   */
+  private async setPriceCache(
+    tenantId: string,
+    prices: Record<string, { id: string; amount: number; currency: string }>
+  ): Promise<void> {
+    try {
+      const key = this.getPriceCacheKey(tenantId);
+      const cache: PriceCache = {
+        prices,
+        timestamp: Date.now(),
+        tenantId,
+      };
+      await this.storageService.set(key, cache);
+    } catch (e) {
+      console.debug('Failed to save price cache:', e);
+    }
+  }
+
+  /**
+   * Fetch price for a specific product
+   * Makes individual API call to get price details
+   * @param tenantId - Tenant ID
+   * @param productId - Product ID
+   * @param priceId - Price ID to fetch
+   * @returns Observable of price object
+   */
+  private fetchPrice(
+    tenantId: string,
+    productId: string,
+    priceId: string
+  ): Observable<{ id: string; amount: number; currency: string } | null> {
+    return this.httpClient
+      .get<{ id: string; amount: number; currency: string; validFrom: string | null; validTo: string | null }>(
+        `${this.API_URL}/tenants/${tenantId}/products/${productId}/prices/${priceId}`
+      )
+      .pipe(
+        map((price) => ({
+          id: price.id,
+          amount: price.amount,
+          currency: price.currency,
+        })),
+        catchError((error) => {
+          console.warn(`Failed to fetch price for product ${productId}:`, error);
+          return of(null);
+        })
+      );
+  }
+
+  /**
+   * Fetch prices for multiple products in parallel
+   * Uses forkJoin to make all requests concurrently, then caches results
+   * @param tenantId - Tenant ID
+   * @param productPriceMap - Map of productId -> priceId
+   * @returns Observable of record mapping priceId -> price object
+   */
+  private fetchPricesBatch(
+    tenantId: string,
+    productPriceMap: Map<string, string>
+  ): Observable<Record<string, { id: string; amount: number; currency: string }>> {
+    if (productPriceMap.size === 0) {
+      return of({});
+    }
+
+    const priceRequests: Record<
+      string,
+      Observable<{ id: string; amount: number; currency: string } | null>
+    > = {};
+
+    productPriceMap.forEach((priceId, productId) => {
+      priceRequests[priceId] = this.fetchPrice(tenantId, productId, priceId);
+    });
+
+    return forkJoin(priceRequests).pipe(
+      map((results: Record<string, { id: string; amount: number; currency: string } | null>) => {
+        // Filter out null values (failed requests)
+        const validPrices: Record<string, { id: string; amount: number; currency: string }> =
+          {};
+        for (const [priceId, price] of Object.entries(results)) {
+          if (price) {
+            validPrices[priceId] = price;
+          }
+        }
+        return validPrices;
+      })
+    );
+  }
+
+  /**
+   * Merge fetched prices with products
+   * Associates price objects with products based on defaultPriceId
+   * @param products - Products to merge prices into
+   * @param pricesMap - Map of priceId -> price object
+   * @returns Products with embedded price data
+   */
+  private mergeProductsWithPrices(
+    products: Product[],
+    pricesMap: Record<string, { id: string; amount: number; currency: string }>
+  ): Product[] {
+    return products.map((product) => {
+      if (product.defaultPriceId && pricesMap[product.defaultPriceId]) {
+        return {
+          ...product,
+          defaultPrice: pricesMap[product.defaultPriceId],
+        };
+      }
+      return product;
+    });
+  }
+
+  /**
+   * Fetch products with prices
+   * Implements two-stage loading:
+   * 1. Fetch products from API or cache
+   * 2. Batch fetch prices for all products in parallel
+   * 3. Merge prices with products
+   * 4. Cache prices aggressively for future use
+   * This approach solves the N+1 problem by batching price requests
+   * @param tenantId - Optional tenant ID (uses current tenant if not provided)
+   * @param forceRefresh - Force refresh from API, bypassing cache
+   * @returns Observable of products with embedded prices
+   */
+  fetchProductsWithPrices(tenantId?: string, forceRefresh = false): Observable<Product[]> {
+    const activeTenantId = tenantId || this.tenantService.getCurrentTenantId();
+
+    if (!activeTenantId) {
+      console.error('No tenant ID available for fetching products');
+      return of([]);
+    }
+
+    this.isLoading.set(true);
+
+    return this.fetchProducts(activeTenantId, forceRefresh).pipe(
+      switchMap((products) => {
+        // Build map of productId -> priceId for products with prices
+        const productPriceMap = new Map<string, string>();
+        products.forEach((product) => {
+          if (product.defaultPriceId) {
+            productPriceMap.set(product.id, product.defaultPriceId);
+          }
+        });
+
+        // If no products have prices, return products as-is
+        if (productPriceMap.size === 0) {
+          this.isLoading.set(false);
+          return of(products);
+        }
+
+        // Fetch prices in batch
+        return from(this.getPriceCache(activeTenantId)).pipe(
+          switchMap((priceCache) => {
+            // Check which prices are already cached
+            const cachedPrices: Record<string, { id: string; amount: number; currency: string }> = priceCache?.prices || {};
+            const uncachedPriceMap = new Map<string, string>();
+
+            productPriceMap.forEach((priceId, productId) => {
+              if (!cachedPrices[priceId]) {
+                uncachedPriceMap.set(productId, priceId);
+              }
+            });
+
+            // If all prices are cached, use them
+            if (uncachedPriceMap.size === 0) {
+              const mergedProducts = this.mergeProductsWithPrices(products, cachedPrices);
+              this.isLoading.set(false);
+              return of(mergedProducts);
+            }
+
+            // Fetch missing prices and merge with cached prices
+            return this.fetchPricesBatch(activeTenantId, uncachedPriceMap).pipe(
+              tap(async (fetchedPrices) => {
+                // Combine cached and newly fetched prices
+                const allPrices = { ...cachedPrices, ...fetchedPrices };
+                // Cache the new prices
+                await this.setPriceCache(activeTenantId, allPrices);
+              }),
+              map((fetchedPrices) => {
+                const allPrices = { ...cachedPrices, ...fetchedPrices };
+                return this.mergeProductsWithPrices(products, allPrices);
+              }),
+              tap(() => {
+                this.isLoading.set(false);
+              }),
+              catchError((error) => {
+                console.error('Failed to fetch prices:', error);
+                this.isLoading.set(false);
+                // Return products without prices on error
+                return of(products);
+              })
+            );
+          })
+        );
+      }),
+      tap((productsWithPrices) => {
+        // Update products signal with enriched data
+        this.products.set(productsWithPrices);
+      })
+    );
+  }
+
+  /**
+   * Format price with currency symbol and proper locale formatting
+   * Uses Intl.NumberFormat for locale-aware currency formatting
+   * Handles different currency symbol placements (USD: $12.99, EUR: 12,99 €)
+   * @param amount - Price amount
+   * @param currency - Currency code (e.g., 'USD', 'EUR')
+   * @returns Formatted price string with currency symbol
+   */
+  formatPrice(amount: number, currency: string): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
   }
 }

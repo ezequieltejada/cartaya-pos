@@ -9,21 +9,28 @@ import {
     IonImg,
 } from '@ionic/angular/standalone';
 import { Product } from '../../../../core/models/product.model';
+import { ProductService } from '../../../../core/services/product.service';
 import { ProductCardComponent } from './product-card.component';
 
 describe('ProductCardComponent', () => {
   let component: ProductCardComponent;
   let fixture: ComponentFixture<ProductCardComponent>;
   let compiled: DebugElement;
+  let productService: ProductService;
 
   const mockProduct: Product = {
     id: 'prod-1',
     name: 'Cheeseburger',
     sku: 'BURGER-001',
-    description: 'Classic cheeseburger',
+    description: 'Classic cheeseburger with lettuce, tomato, and special sauce',
     category: 'Burgers',
     active: true,
     defaultPriceId: 'price-1',
+    defaultPrice: {
+      id: 'price-1',
+      amount: 12.99,
+      currency: 'USD',
+    },
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
   };
@@ -38,8 +45,10 @@ describe('ProductCardComponent', () => {
         IonCardContent,
         IonImg,
       ],
+      providers: [ProductService],
     }).compileComponents();
 
+    productService = TestBed.inject(ProductService);
     fixture = TestBed.createComponent(ProductCardComponent);
     component = fixture.componentInstance;
     compiled = fixture.debugElement;
@@ -90,7 +99,23 @@ describe('ProductCardComponent', () => {
     it('should render price in card content', () => {
       const priceElement = compiled.query(By.css('.price'));
       expect(priceElement).toBeTruthy();
-      expect(priceElement.nativeElement.textContent).toContain('Price TBD');
+      expect(priceElement.nativeElement.textContent).toContain('$12.99');
+    });
+
+    it('should render description when present', () => {
+      const descriptionElement = compiled.query(By.css('.description'));
+      expect(descriptionElement).toBeTruthy();
+      expect(descriptionElement.nativeElement.textContent).toContain(
+        'Classic cheeseburger'
+      );
+    });
+
+    it('should not render description when absent', () => {
+      component.product = { ...mockProduct, description: undefined };
+      fixture.detectChanges();
+
+      const descriptionElement = compiled.query(By.css('.description'));
+      expect(descriptionElement).toBeFalsy();
     });
 
     it('should render category when present', () => {
@@ -117,6 +142,7 @@ describe('ProductCardComponent', () => {
 
     it('should use placeholder image', () => {
       const img = compiled.query(By.css('ion-img'));
+      expect(img).toBeTruthy();
       expect(img.componentInstance.src).toContain('product-placeholder.png');
     });
   });
@@ -138,13 +164,87 @@ describe('ProductCardComponent', () => {
     });
   });
 
-  describe('Getters', () => {
-    beforeEach(() => {
+  describe('Price Formatting Getters', () => {
+    it('should format price correctly when defaultPrice is present', () => {
       component.product = mockProduct;
+      expect(component.formattedPrice).toBe('$12.99');
     });
 
-    it('formattedPrice should return placeholder text', () => {
-      expect(component.formattedPrice).toBe('Price TBD');
+    it('should return "Price not available" when defaultPrice is missing', () => {
+      component.product = { ...mockProduct, defaultPrice: undefined };
+      expect(component.formattedPrice).toBe('Price not available');
+    });
+
+    it('should return "Price not available" when product is null', () => {
+      component.product = {
+        id: 'prod-2',
+        name: 'Product without price',
+        active: true,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      };
+      expect(component.formattedPrice).toBe('Price not available');
+    });
+
+    it('should format EUR currency correctly', () => {
+      component.product = {
+        ...mockProduct,
+        defaultPrice: {
+          id: 'price-1',
+          amount: 12.99,
+          currency: 'EUR',
+        },
+      };
+      const formattedPrice = component.formattedPrice;
+      expect(formattedPrice).toContain('12.99');
+    });
+
+    it('should format price with 2 decimal places', () => {
+      component.product = {
+        ...mockProduct,
+        defaultPrice: {
+          id: 'price-1',
+          amount: 10,
+          currency: 'USD',
+        },
+      };
+      expect(component.formattedPrice).toBe('$10.00');
+    });
+  });
+
+  describe('Description Getters', () => {
+    it('should return true for hasDescription when description exists', () => {
+      component.product = mockProduct;
+      expect(component.hasDescription).toBe(true);
+    });
+
+    it('should return false for hasDescription when description is undefined', () => {
+      component.product = { ...mockProduct, description: undefined };
+      expect(component.hasDescription).toBe(false);
+    });
+
+    it('should return false for hasDescription when description is empty string', () => {
+      component.product = { ...mockProduct, description: '' };
+      expect(component.hasDescription).toBe(false);
+    });
+
+    it('should return false for hasDescription when description is whitespace only', () => {
+      component.product = { ...mockProduct, description: '   ' };
+      expect(component.hasDescription).toBe(false);
+    });
+
+    it('should return true for hasDescription when description has content', () => {
+      component.product = {
+        ...mockProduct,
+        description: 'A delicious burger',
+      };
+      expect(component.hasDescription).toBe(true);
+    });
+  });
+
+  describe('getters', () => {
+    beforeEach(() => {
+      component.product = mockProduct;
     });
 
     it('imageUrl should return placeholder path', () => {
@@ -178,6 +278,9 @@ describe('ProductCardComponent', () => {
 
       const categoryElement = compiled.query(By.css('.category'));
       expect(categoryElement).toBeFalsy();
+
+      const descriptionElement = compiled.query(By.css('.description'));
+      expect(descriptionElement).toBeFalsy();
     });
 
     it('should render card correctly regardless of product content', () => {
@@ -214,20 +317,29 @@ describe('ProductCardComponent', () => {
     });
   });
 
-  describe('Price Display', () => {
-    it('should display "Price TBD" when price is not available', () => {
-      component.product = mockProduct;
-      const priceText = component.formattedPrice;
-
-      expect(priceText).toBe('Price TBD');
-    });
-
-    it('should format price correctly (future enhancement)', () => {
+  describe('Price Display with Availability Status', () => {
+    it('should display formatted price when available', () => {
       component.product = mockProduct;
       fixture.detectChanges();
 
       const priceElement = compiled.query(By.css('.price'));
-      expect(priceElement.nativeElement.textContent).toContain('Price TBD');
+      expect(priceElement.nativeElement.textContent).toContain('$12.99');
+      expect(priceElement.nativeElement.classList.contains('unavailable')).toBe(
+        false
+      );
+    });
+
+    it('should add unavailable class when price is missing', () => {
+      component.product = { ...mockProduct, defaultPrice: undefined };
+      fixture.detectChanges();
+
+      const priceElement = compiled.query(By.css('.price'));
+      expect(priceElement.nativeElement.classList.contains('unavailable')).toBe(
+        true
+      );
+      expect(priceElement.nativeElement.textContent).toContain(
+        'Price not available'
+      );
     });
   });
 
@@ -329,6 +441,14 @@ describe('ProductCardComponent', () => {
       expect(categoryElement).toBeTruthy();
       expect(categoryElement.nativeElement.textContent).toContain('Burgers');
     });
+
+    it('should display description for better product information', () => {
+      const descriptionElement = compiled.query(By.css('.description'));
+      expect(descriptionElement).toBeTruthy();
+      expect(descriptionElement.nativeElement.textContent).toContain(
+        'Classic cheeseburger'
+      );
+    });
   });
 
   describe('Layout Responsiveness', () => {
@@ -360,6 +480,17 @@ describe('ProductCardComponent', () => {
       expect(title).toBeTruthy();
       expect(title.nativeElement.textContent).toContain('Very Long');
     });
+
+    it('should maintain structure with long descriptions', () => {
+      component.product = {
+        ...mockProduct,
+        description: 'This is a very long product description '.repeat(5),
+      };
+      fixture.detectChanges();
+
+      const descriptionElement = compiled.query(By.css('.description'));
+      expect(descriptionElement).toBeTruthy();
+    });
   });
 
   describe('Component Lifecycle', () => {
@@ -386,7 +517,6 @@ describe('ProductCardComponent', () => {
       const endTime = performance.now();
       const renderTime = endTime - startTime;
 
-      // Component should render quickly (typically <50ms)
       expect(renderTime).toBeLessThan(500);
     });
   });
@@ -410,8 +540,8 @@ describe('ProductCardComponent', () => {
       };
       fixture.detectChanges();
 
-      const card = compiled.query(By.css('ion-card'));
-      expect(card).toBeTruthy();
+      const descriptionElement = compiled.query(By.css('.description'));
+      expect(descriptionElement).toBeTruthy();
     });
   });
 
@@ -437,6 +567,18 @@ describe('ProductCardComponent', () => {
 
       const card = compiled.query(By.css('ion-card'));
       expect(card).toBeTruthy();
+    });
+
+    it('should handle descriptions with special characters', () => {
+      component.product = {
+        ...mockProduct,
+        description:
+          'Special characters: & < > " \' test description with symbols',
+      };
+      fixture.detectChanges();
+
+      const descriptionElement = compiled.query(By.css('.description'));
+      expect(descriptionElement).toBeTruthy();
     });
   });
 });
