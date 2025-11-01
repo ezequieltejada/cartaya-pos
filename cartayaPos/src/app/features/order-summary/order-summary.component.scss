@@ -62,80 +62,40 @@
     margin: 0;
   }
 
-  .item-divider {
-    --background: var(--ion-color-light);
-    --padding-start: 16px;
-    --padding-end: 16px;
-    font-weight: 600;
-    margin-top: 8px;
-
-    &:first-child {
-      margin-top: 0;
-    }
-
-    ion-label h2 {
-      margin: 0;
-      font-size: 16px;
-    }
-  }
-
   .order-item {
-    --padding-start: 12px;
+    --padding-start: 16px;
     --padding-end: 12px;
-    --min-height: auto;
-    --inner-padding-end: 12px;
-    flex-wrap: wrap;
-    align-content: flex-start;
+    --min-height: 60px;
+    --inner-padding-end: 0;
 
     ion-label {
-      margin: 8px 0;
-      flex: 0 0 calc(100% - 80px);
-    }
+      margin: 0;
 
-    .modifier-label {
-      margin: 0 0 4px 0;
-      font-size: 13px;
-      color: var(--ion-color-medium);
-    }
-
-    .modifier-detail {
-      display: flex;
-      gap: 8px;
-      margin: 4px 0;
-      font-size: 13px;
-      color: var(--ion-text-color);
-      align-items: center;
-
-      .quantity {
-        color: var(--ion-color-medium);
+      h2 {
+        margin: 0;
+        font-size: 15px;
         font-weight: 500;
       }
+    }
 
-      .price {
+    .item-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .item-price {
         font-weight: 600;
-        color: var(--ion-color-secondary);
-        margin-left: auto;
+        font-size: 15px;
+        color: var(--ion-color-success);
+        min-width: 60px;
+        text-align: right;
       }
-    }
 
-    .no-modifiers {
-      margin: 4px 0;
-      font-size: 13px;
-      color: var(--ion-color-medium);
-    }
-
-    .item-subtotal {
-      flex: 0 0 100%;
-      margin-top: 8px;
-      font-weight: 600;
-      font-size: 14px;
-      text-align: right;
-    }
-
-    ion-button {
-      margin: 0;
-      --padding-start: 4px;
-      --padding-end: 4px;
+      ion-button {
+        margin: 0;
+        --padding-start: 6px;
+        --padding-end: 6px;
+      }
     }
   }
 }
@@ -156,47 +116,26 @@
 
 // ===== Order Total Section =====
 .total-section {
-  margin: 16px 12px;
-  --background: var(--ion-color-light);
-  border: none;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-
-  ion-card-content {
-    padding: 12px;
-  }
-
-  .subtotal-row {
-    margin-bottom: 12px;
-
-    .label {
-      font-size: 14px;
-      color: var(--ion-color-medium);
-    }
-
-    span {
-      text-align: right;
-      font-size: 14px;
-      color: var(--ion-text-color);
-    }
-  }
+  padding: 16px;
+  border-top: 2px solid var(--ion-border-color);
+  background: var(--ion-color-light);
 
   .total-row {
-    border-top: 2px solid var(--ion-border-color);
-    padding-top: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
 
     .label {
       font-size: 16px;
       font-weight: 600;
       color: var(--ion-text-color);
-      margin: 0;
     }
 
     .total-amount {
       font-size: 18px;
       font-weight: 700;
       color: var(--ion-color-success);
-      margin: 0;
-      text-align: right;
     }
   }
 }
@@ -296,30 +235,18 @@
     }
   }
 
-  .order-items-container {
-    .item-divider {
-      --padding-start: 12px;
-      --padding-end: 12px;
+  .order-items-container .order-item {
+    --padding-start: 12px;
 
-      ion-label h2 {
-        font-size: 14px;
-      }
+    ion-label h2 {
+      font-size: 14px;
     }
 
-    .order-item {
-      --padding-start: 8px;
-      --padding-end: 8px;
+    .item-actions {
+      gap: 6px;
 
-      .modifier-detail {
-        font-size: 12px;
-      }
-
-      .no-modifiers {
-        font-size: 12px;
-      }
-
-      .item-subtotal {
-        font-size: 13px;
+      .item-price {
+        font-size: 14px;
       }
 
       ion-button {
@@ -329,15 +256,16 @@
   }
 
   .total-section {
-    margin: 12px 8px;
+    padding: 12px;
 
-    .subtotal-row,
     .total-row {
-      font-size: 13px;
-    }
+      .label {
+        font-size: 15px;
+      }
 
-    .total-row .total-amount {
-      font-size: 16px;
+      .total-amount {
+        font-size: 16px;
+      }
     }
   }
 

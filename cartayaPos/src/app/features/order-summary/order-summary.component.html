@@ -35,81 +35,43 @@
     <div class="order-items-container" *ngIf="hasItems(); else emptyState">
       <ion-list>
         <ng-container *ngFor="let item of orderItems(); trackBy: trackByItemId">
-          <ion-item-divider class="item-divider">
+          <ion-item class="order-item">
             <ion-label>
               <h2>{{ item.productName }}</h2>
             </ion-label>
-          </ion-item-divider>
 
-          <ion-item class="order-item">
-            <ion-label>
-              <p class="modifier-label" *ngIf="item.modifiers.length > 0">
-                <strong>Modifiers:</strong>
-              </p>
-              <div *ngFor="let mod of item.modifiers" class="modifier-detail">
-                <span>{{ mod.name }}</span>
-                <span *ngIf="mod.quantity > 1" class="quantity">× {{ mod.quantity }}</span>
-                <span class="price" *ngIf="mod.priceDelta !== 0">
-                  {{ mod.priceDelta > 0 ? '+' : '' }}${{ Math.abs(mod.priceDelta).toFixed(2) }}
-                </span>
-              </div>
-              <p class="no-modifiers" *ngIf="item.modifiers.length === 0">
-                <em>No modifiers</em>
-              </p>
-            </ion-label>
-
-            <ion-note slot="end" class="item-subtotal">
-              ${{ item.subtotal.toFixed(2) }}
-            </ion-note>
-
-            <ion-button
-              slot="start"
-              fill="clear"
-              color="primary"
-              size="small"
-              (click)="editItem(item.id)"
-              title="Edit item"
-            >
-              <ion-icon name="pencil" slot="icon-only"></ion-icon>
-            </ion-button>
-
-            <ion-button
-              slot="start"
-              fill="clear"
-              color="danger"
-              size="small"
-              (click)="removeItem(item.id)"
-              title="Remove item"
-            >
-              <ion-icon name="trash" slot="icon-only"></ion-icon>
-            </ion-button>
+            <div slot="end" class="item-actions">
+              <span class="item-price">${{ item.subtotal.toFixed(2) }}</span>
+              <ion-button
+                fill="clear"
+                color="primary"
+                size="small"
+                (click)="editItem(item.id)"
+                title="Edit item"
+              >
+                <ion-icon name="pencil" slot="icon-only"></ion-icon>
+              </ion-button>
+              <ion-button
+                fill="clear"
+                color="danger"
+                size="small"
+                (click)="removeItem(item.id)"
+                title="Remove item"
+              >
+                <ion-icon name="trash" slot="icon-only"></ion-icon>
+              </ion-button>
+            </div>
           </ion-item>
         </ng-container>
       </ion-list>
 
       <!-- Order Total Section -->
-      <ion-card class="total-section">
-        <ion-card-content>
-          <ion-grid>
-            <ion-row class="subtotal-row">
-              <ion-col>
-                <span class="label">Subtotal:</span>
-              </ion-col>
-              <ion-col class="text-end">
-                <span>${{ orderTotal().toFixed(2) }}</span>
-              </ion-col>
-            </ion-row>
-            <ion-row class="total-row">
-              <ion-col>
-                <h3 class="label">Total:</h3>
-              </ion-col>
-              <ion-col class="text-end">
-                <h3 class="total-amount">${{ orderTotal().toFixed(2) }}</h3>
-              </ion-col>
-            </ion-row>
-          </ion-grid>
-        </ion-card-content>
-      </ion-card>
+      <div class="total-section">
+        <div class="total-row">
+          <span class="label">Total:</span>
+          <span class="total-amount">${{ orderTotal().toFixed(2) }}</span>
+        </div>
+      </div>
 
       <!-- Action Buttons -->
       <div class="action-buttons">
@@ -150,82 +112,44 @@
     <div class="order-items-container">
       <ion-list>
         <ng-container *ngFor="let item of orderItems(); trackBy: trackByItemId">
-          <ion-item-divider class="item-divider">
+          <ion-item class="order-item">
             <ion-label>
               <h2>{{ item.productName }}</h2>
             </ion-label>
-          </ion-item-divider>
 
-          <ion-item class="order-item">
-            <ion-label>
-              <p class="modifier-label" *ngIf="item.modifiers.length > 0">
-                <strong>Modifiers:</strong>
-              </p>
-              <div *ngFor="let mod of item.modifiers" class="modifier-detail">
-                <span>{{ mod.name }}</span>
-                <span *ngIf="mod.quantity > 1" class="quantity">× {{ mod.quantity }}</span>
-                <span class="price" *ngIf="mod.priceDelta !== 0">
-                  {{ mod.priceDelta > 0 ? '+' : '' }}${{ Math.abs(mod.priceDelta).toFixed(2) }}
-                </span>
-              </div>
-              <p class="no-modifiers" *ngIf="item.modifiers.length === 0">
-                <em>No modifiers</em>
-              </p>
-            </ion-label>
-
-            <ion-note slot="end" class="item-subtotal">
-              ${{ item.subtotal.toFixed(2) }}
-            </ion-note>
-
-            <ion-button
-              slot="start"
-              fill="clear"
-              color="primary"
-              size="small"
-              (click)="editItem(item.id)"
-              title="Edit item"
-            >
-              <ion-icon name="pencil" slot="icon-only"></ion-icon>
-            </ion-button>
-
-            <ion-button
-              slot="start"
-              fill="clear"
-              color="danger"
-              size="small"
-              (click)="removeItem(item.id)"
-              title="Remove item"
-            >
-              <ion-icon name="trash" slot="icon-only"></ion-icon>
-            </ion-button>
+            <div slot="end" class="item-actions">
+              <span class="item-price">${{ item.subtotal.toFixed(2) }}</span>
+              <ion-button
+                fill="clear"
+                color="primary"
+                size="small"
+                (click)="editItem(item.id)"
+                title="Edit item"
+              >
+                <ion-icon name="pencil" slot="icon-only"></ion-icon>
+              </ion-button>
+              <ion-button
+                fill="clear"
+                color="danger"
+                size="small"
+                (click)="removeItem(item.id)"
+                title="Remove item"
+              >
+                <ion-icon name="trash" slot="icon-only"></ion-icon>
+              </ion-button>
+            </div>
           </ion-item>
         </ng-container>
       </ion-list>
     </div>
 
     <!-- Order Total Section -->
-    <ion-card class="total-section">
-      <ion-card-content>
-        <ion-grid>
-          <ion-row class="subtotal-row">
-            <ion-col>
-              <span class="label">Subtotal:</span>
-            </ion-col>
-            <ion-col class="text-end">
-              <span>${{ orderTotal().toFixed(2) }}</span>
-            </ion-col>
-          </ion-row>
-          <ion-row class="total-row">
-            <ion-col>
-              <h3 class="label">Total:</h3>
-            </ion-col>
-            <ion-col class="text-end">
-              <h3 class="total-amount">${{ orderTotal().toFixed(2) }}</h3>
-            </ion-col>
-          </ion-row>
-        </ion-grid>
-      </ion-card-content>
-    </ion-card>
+    <div class="total-section">
+      <div class="total-row">
+        <span class="label">Total:</span>
+        <span class="total-amount">${{ orderTotal().toFixed(2) }}</span>
+      </div>
+    </div>
 
     <!-- Action Buttons -->
     <div class="action-buttons">
