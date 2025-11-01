@@ -1,0 +1,38 @@
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 50vh;
+  gap: 1rem;
+}
+
+.empty-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 50vh;
+  text-align: center;
+}
+
+.instruction-text {
+  margin-bottom: 1.5rem;
+  font-size: 1.1rem;
+}
+
+.pos-item {
+  margin-bottom: 1rem;
+  border: 1px solid var(--ion-border-color);
+  border-radius: 8px;
+}
+
+.pos-item h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.pos-item p {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.9rem;
+  opacity: 0.7;
+}

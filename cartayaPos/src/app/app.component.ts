@@ -1,7 +1,12 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { Device } from '@capacitor/device';
 import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { AuthService } from './core/services/auth.service';
+import { PosService } from './core/services/pos.service';
+import { StorageService } from './core/services/storage.service';
+import { TenantService } from './core/services/tenant.service';
 
 @Component({
   selector: 'app-root',
@@ -9,11 +14,43 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
   imports: [IonApp, IonRouterOutlet, TranslateModule],
 })
 export class AppComponent implements OnInit {
+  private storageService = inject(StorageService);
+  private authService = inject(AuthService);
+  private tenantService = inject(TenantService);
+  private posService = inject(PosService);
+  private router = inject(Router);
+  private translate = inject(TranslateService);
   currentLanguage = 'en';
 
-  constructor(private translate: TranslateService) {}
-
   async ngOnInit() {
+    // Initialize storage first
+    try {
+      await this.storageService.init();
+      
+      // After storage is initialized, restore tenant and PoS selections
+      await this.tenantService.restoreSelectedTenant();
+      await this.posService.restoreSelectedPos();
+    } catch (error) {
+      console.error('Failed to initialize storage:', error);
+    }
+
+    // Check for existing session
+    this.authService.checkSession().subscribe({
+      next: (user) => {
+        if (user) {
+          // User has valid session, navigate to dashboard
+          this.router.navigate(['/dashboard']);
+        } else {
+          // No session, navigate to login
+          this.router.navigate(['/auth/login']);
+        }
+      },
+      error: () => {
+        // Error checking session, navigate to login
+        this.router.navigate(['/auth/login']);
+      },
+    });
+
     // Initialize the translation service with default language
     this.translate.setDefaultLang('en');
 
@@ -32,7 +69,7 @@ export class AppComponent implements OnInit {
       // Try to get device language using Capacitor Device plugin
       const languageCodeResult = await Device.getLanguageCode();
       const deviceLanguage = languageCodeResult.value;
-      
+
       if (deviceLanguage) {
         console.log('Device language detected:', deviceLanguage);
         // Map common language codes to supported languages (en, es)
@@ -74,8 +111,8 @@ export class AppComponent implements OnInit {
 
     // Map to supported languages
     const supportedLanguages: { [key: string]: string } = {
-      'es': 'es',
-      'en': 'en',
+      es: 'es',
+      en: 'en',
       // Add more mappings as needed (e.g., 'fr': 'fr', 'de': 'de')
     };
 

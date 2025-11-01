@@ -1,0 +1,33 @@
+.login-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+.login-title {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 2rem;
+  color: var(--ion-color-primary);
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.error-message {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.input-error {
+  border-bottom: 2px solid var(--ion-color-danger) !important;
+}
+
+.spinner-margin {
+  margin-right: 0.5rem;
+}

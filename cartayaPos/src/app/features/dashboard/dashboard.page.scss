@@ -1,0 +1,42 @@
+.dashboard-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  color: var(--ion-color-primary);
+}
+
+.info-card {
+  margin-bottom: 1.5rem;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--ion-border-color);
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.label {
+  font-weight: 600;
+  color: var(--ion-color-dark);
+  min-width: 120px;
+}
+
+.value {
+  color: var(--ion-color-dark-shade);
+  text-align: right;
+  flex: 1;
+}
+
+.actions {
+  margin-top: 2rem;
+}
