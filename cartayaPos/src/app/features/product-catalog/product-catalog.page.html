@@ -1,0 +1,29 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>{{ selectedPos?.name }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <!-- Loading state -->
+  <div *ngIf="isLoading" class="loading-container">
+    <ion-spinner></ion-spinner>
+  </div>
+
+  <!-- Product grid -->
+  <ion-grid *ngIf="!isLoading && products.length > 0">
+    <ion-row>
+      <ion-col *ngFor="let product of products" size="6" sizeMd="4" sizeLg="3">
+        <app-product-card
+          [product]="product"
+          (click)="onProductTap(product)"
+        ></app-product-card>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+
+  <!-- Empty state -->
+  <div *ngIf="!isLoading && products.length === 0" class="empty-state">
+    <p>No products available</p>
+  </div>
+</ion-content>

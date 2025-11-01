@@ -1,0 +1,28 @@
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.empty-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 50vh;
+  text-align: center;
+  color: var(--ion-color-medium);
+
+  p {
+    font-size: 16px;
+    margin: 0;
+  }
+}
+
+ion-grid {
+  padding: 1rem;
+}
+
+ion-col {
+  padding: 0.5rem;
+}
