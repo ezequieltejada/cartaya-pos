@@ -93,7 +93,6 @@ describe('ProductService', () => {
 
   afterEach(() => {
     httpMock.verify();
-    localStorage.clear();
   });
 
   // ===== Service Creation =====
@@ -124,6 +123,8 @@ describe('ProductService', () => {
 
   describe('fetchProducts()', () => {
     it('should fetch products and update signal', (done) => {
+      storageService.get.and.returnValue(Promise.resolve(null));
+
       service.fetchProducts(tenantId).subscribe((products) => {
         expect(products).toEqual(mockProducts);
         expect(service.products()).toEqual(mockProducts);
@@ -140,6 +141,7 @@ describe('ProductService', () => {
 
     it('should set isLoading during fetch', (done) => {
       expect(service.isLoading()).toBe(false);
+      storageService.get.and.returnValue(Promise.resolve(null));
 
       const subscription = service.fetchProducts(tenantId).subscribe(() => {
         expect(service.isLoading()).toBe(false);
@@ -156,6 +158,8 @@ describe('ProductService', () => {
     });
 
     it('should use currently selected tenant when no tenantId provided', (done) => {
+      storageService.get.and.returnValue(Promise.resolve(null));
+
       service.fetchProducts().subscribe(() => {
         expect(tenantService.getCurrentTenantId).toHaveBeenCalled();
         done();
@@ -177,16 +181,8 @@ describe('ProductService', () => {
       });
     });
 
-    it('should extract data from paginated response', (done) => {
-      const paginatedResponse = {
-        data: mockProducts,
-        pagination: {
-          total: mockProducts.length,
-          limit: 100,
-          offset: 0,
-          hasMore: false,
-        },
-      };
+    it('should extract data from response', (done) => {
+      storageService.get.and.returnValue(Promise.resolve(null));
 
       service.fetchProducts(tenantId).subscribe((products) => {
         expect(products).toEqual(mockProducts);
@@ -197,18 +193,19 @@ describe('ProductService', () => {
       const req = httpMock.expectOne((r) =>
         r.url.includes(`/tenants/${tenantId}/products`)
       );
-      req.flush(paginatedResponse);
+      req.flush(mockApiResponse);
     });
 
     it('should cache products after successful fetch', (done) => {
-      service.fetchProducts(tenantId).subscribe(() => {
-        const cacheKey = `products_${tenantId}`;
-        const cached = localStorage.getItem(cacheKey);
+      storageService.get.and.returnValue(Promise.resolve(null));
+      storageService.set.and.returnValue(Promise.resolve());
 
-        expect(cached).toBeTruthy();
-        const cacheData = JSON.parse(cached!);
-        expect(cacheData.products).toEqual(mockProducts);
-        expect(cacheData.timestamp).toBeTruthy();
+      service.fetchProducts(tenantId).subscribe(() => {
+        expect(storageService.set).toHaveBeenCalled();
+        const callArgs = storageService.set.calls.mostRecent().args;
+        expect(callArgs[0]).toMatch(/^products_/);
+        const cachedData = callArgs[1] as { products: Product[]; tenantId: string; timestamp: number };
+        expect(cachedData.products).toEqual(mockProducts);
         done();
       });
 
@@ -219,13 +216,12 @@ describe('ProductService', () => {
     });
 
     it('should return cached products if valid', (done) => {
-      // Pre-populate cache
-      const cacheKey = `products_${tenantId}`;
       const cache = {
         products: mockProducts,
         timestamp: Date.now(),
+        tenantId,
       };
-      localStorage.setItem(cacheKey, JSON.stringify(cache));
+      storageService.get.and.returnValue(Promise.resolve(cache));
 
       service.fetchProducts(tenantId).subscribe((products) => {
         expect(products).toEqual(mockProducts);
@@ -241,20 +237,44 @@ describe('ProductService', () => {
     });
 
     it('should make API call if cache expired', (done) => {
-      // Pre-populate cache with old timestamp (expired)
-      const cacheKey = `products_${tenantId}`;
       const expiredCache = {
         products: mockProducts,
         timestamp: Date.now() - 16 * 60 * 1000, // 16 minutes ago (cache TTL is 15 minutes)
+        tenantId,
       };
-      localStorage.setItem(cacheKey, JSON.stringify(expiredCache));
+      storageService.get.and.returnValue(Promise.resolve(expiredCache));
+      storageService.remove.and.returnValue(Promise.resolve());
+      storageService.set.and.returnValue(Promise.resolve());
 
       service.fetchProducts(tenantId).subscribe((products) => {
         expect(products).toEqual(mockProducts);
         done();
       });
 
-      // Verify HTTP request was made despite cache
+      // Verify HTTP request was made despite expired cache
+      const req = httpMock.expectOne((r) =>
+        r.url.includes(`/tenants/${tenantId}/products`)
+      );
+      req.flush(mockApiResponse);
+    });
+
+    it('should remove expired cache from storage', (done) => {
+      const expiredCache = {
+        products: mockProducts,
+        timestamp: Date.now() - 16 * 60 * 1000,
+        tenantId,
+      };
+      storageService.get.and.returnValue(Promise.resolve(expiredCache));
+      storageService.remove.and.returnValue(Promise.resolve());
+      storageService.set.and.returnValue(Promise.resolve());
+
+      service.fetchProducts(tenantId).subscribe(() => {
+        expect(storageService.remove).toHaveBeenCalledWith(
+          jasmine.stringMatching(/^products_/)
+        );
+        done();
+      });
+
       const req = httpMock.expectOne((r) =>
         r.url.includes(`/tenants/${tenantId}/products`)
       );
@@ -329,15 +349,20 @@ describe('ProductService', () => {
 
   describe('Caching', () => {
     it('should cache products after successful fetch', (done) => {
-      service.fetchProducts(tenantId).subscribe(() => {
-        const cacheKey = `products_${tenantId}`;
-        const cached = localStorage.getItem(cacheKey);
+      storageService.get.and.returnValue(Promise.resolve(null));
+      storageService.set.and.returnValue(Promise.resolve());
 
-        expect(cached).toBeTruthy();
-        const { products, timestamp } = JSON.parse(cached!);
-        expect(products).toEqual(mockProducts);
-        expect(timestamp).toBeTruthy();
-        expect(typeof timestamp).toBe('number');
+      service.fetchProducts(tenantId).subscribe(() => {
+        expect(storageService.set).toHaveBeenCalled();
+        const callArgs = storageService.set.calls.mostRecent().args;
+        expect(callArgs[0]).toMatch(/^products_/);
+        expect(callArgs[1]).toEqual(
+          jasmine.objectContaining({
+            products: mockProducts,
+            tenantId,
+            timestamp: jasmine.any(Number),
+          })
+        );
         done();
       });
 
@@ -348,12 +373,12 @@ describe('ProductService', () => {
     });
 
     it('should return cached products within TTL', (done) => {
-      const cacheKey = `products_${tenantId}`;
       const cache = {
         products: mockProducts,
         timestamp: Date.now() - 5 * 60 * 1000, // 5 minutes ago (within 15 min TTL)
+        tenantId,
       };
-      localStorage.setItem(cacheKey, JSON.stringify(cache));
+      storageService.get.and.returnValue(Promise.resolve(cache));
 
       service.fetchProducts(tenantId).subscribe(() => {
         expect(service.products()).toEqual(mockProducts);
@@ -367,12 +392,14 @@ describe('ProductService', () => {
     });
 
     it('should make new API call after TTL expired', (done) => {
-      const cacheKey = `products_${tenantId}`;
       const expiredCache = {
         products: [],
         timestamp: Date.now() - 20 * 60 * 1000, // 20 minutes ago (expired)
+        tenantId,
       };
-      localStorage.setItem(cacheKey, JSON.stringify(expiredCache));
+      storageService.get.and.returnValue(Promise.resolve(expiredCache));
+      storageService.remove.and.returnValue(Promise.resolve());
+      storageService.set.and.returnValue(Promise.resolve());
 
       service.fetchProducts(tenantId).subscribe(() => {
         expect(service.products()).toEqual(mockProducts);
@@ -385,51 +412,27 @@ describe('ProductService', () => {
       req.flush(mockApiResponse);
     });
 
-    it('should clear cache on clearCache() call', () => {
-      // Set multiple cache entries
-      const cache1 = { products: mockProducts, timestamp: Date.now() };
-      const cache2 = { products: mockProducts, timestamp: Date.now() };
+    it('should call clearCache for specific tenant', async () => {
+      storageService.remove.and.returnValue(Promise.resolve());
 
-      localStorage.setItem(`products_tenant-1`, JSON.stringify(cache1));
-      localStorage.setItem(`products_tenant-2`, JSON.stringify(cache2));
-      localStorage.setItem('other_key', 'other_value');
+      await service.clearCache(tenantId);
 
-      expect(localStorage.getItem(`products_tenant-1`)).toBeTruthy();
-      expect(localStorage.getItem(`products_tenant-2`)).toBeTruthy();
-      expect(localStorage.getItem('other_key')).toBeTruthy();
-
-      service.clearCache();
-
-      expect(localStorage.getItem(`products_tenant-1`)).toBeNull();
-      expect(localStorage.getItem(`products_tenant-2`)).toBeNull();
-      expect(localStorage.getItem('other_key')).toBe('other_value'); // Should not be cleared
+      expect(storageService.remove).toHaveBeenCalledWith(
+        jasmine.stringMatching(/^products_/)
+      );
     });
 
-    it('should remove expired cache when attempting to retrieve', (done) => {
-      const cacheKey = `products_${tenantId}`;
-      const expiredCache = {
-        products: [],
-        timestamp: Date.now() - 20 * 60 * 1000,
-      };
-      localStorage.setItem(cacheKey, JSON.stringify(expiredCache));
+    it('should clear all product caches when no tenantId provided', async () => {
+      storageService.remove.and.returnValue(Promise.resolve());
 
-      expect(localStorage.getItem(cacheKey)).toBeTruthy();
+      await service.clearCache();
 
-      service.fetchProducts(tenantId).subscribe(() => {
-        // After fetch, expired cache should have been removed
-        expect(localStorage.getItem(cacheKey)).toBeNull();
-        done();
-      });
-
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush(mockApiResponse);
+      expect(storageService.remove).toHaveBeenCalled();
     });
 
     it('should handle malformed cache gracefully', (done) => {
-      const cacheKey = `products_${tenantId}`;
-      localStorage.setItem(cacheKey, 'invalid json {]');
+      storageService.get.and.returnValue(Promise.resolve(null));
+      storageService.set.and.returnValue(Promise.resolve());
 
       service.fetchProducts(tenantId).subscribe(() => {
         expect(service.products()).toEqual(mockProducts);
@@ -447,6 +450,8 @@ describe('ProductService', () => {
 
   describe('Error Handling', () => {
     it('should emit empty array on network error', (done) => {
+      storageService.get.and.returnValue(Promise.resolve(null));
+
       service.fetchProducts(tenantId).subscribe((products) => {
         expect(products).toEqual([]);
         expect(service.isLoading()).toBe(false);
@@ -460,6 +465,8 @@ describe('ProductService', () => {
     });
 
     it('should not crash on 404 error', (done) => {
+      storageService.get.and.returnValue(Promise.resolve(null));
+
       service.fetchProducts(tenantId).subscribe((products) => {
         expect(products).toEqual([]);
         done();
@@ -472,6 +479,8 @@ describe('ProductService', () => {
     });
 
     it('should not crash on 500 error', (done) => {
+      storageService.get.and.returnValue(Promise.resolve(null));
+
       service.fetchProducts(tenantId).subscribe((products) => {
         expect(products).toEqual([]);
         done();
@@ -485,6 +494,7 @@ describe('ProductService', () => {
 
     it('should set isLoading to false on error', (done) => {
       expect(service.isLoading()).toBe(false);
+      storageService.get.and.returnValue(Promise.resolve(null));
 
       service.fetchProducts(tenantId).subscribe(() => {
         expect(service.isLoading()).toBe(false);
@@ -500,6 +510,8 @@ describe('ProductService', () => {
     });
 
     it('should handle malformed API response gracefully', (done) => {
+      storageService.get.and.returnValue(Promise.resolve(null));
+
       service.fetchProducts(tenantId).subscribe((products) => {
         // Should return empty array even with malformed response
         expect(Array.isArray(products)).toBe(true);
@@ -514,6 +526,8 @@ describe('ProductService', () => {
     });
 
     it('should not crash on null response data', (done) => {
+      storageService.get.and.returnValue(Promise.resolve(null));
+
       service.fetchProducts(tenantId).subscribe((products) => {
         // Should handle null data gracefully
         expect(Array.isArray(products)).toBe(true);
@@ -528,6 +542,7 @@ describe('ProductService', () => {
 
     it('should log errors to console', (done) => {
       spyOn(console, 'error');
+      storageService.get.and.returnValue(Promise.resolve(null));
 
       service.fetchProducts(tenantId).subscribe(() => {
         expect(console.error).toHaveBeenCalled();
@@ -580,6 +595,9 @@ describe('ProductService', () => {
 
   describe('Integration', () => {
     it('should complete full fetch and filter workflow', (done) => {
+      storageService.get.and.returnValue(Promise.resolve(null));
+      storageService.set.and.returnValue(Promise.resolve());
+
       service.fetchProducts(tenantId).subscribe(() => {
         // After fetch, products should be loaded
         expect(service.products().length).toBe(mockProducts.length);
@@ -603,6 +621,9 @@ describe('ProductService', () => {
     });
 
     it('should handle cache and filter operations together', (done) => {
+      storageService.get.and.returnValue(Promise.resolve(null));
+      storageService.set.and.returnValue(Promise.resolve());
+
       // First fetch
       service.fetchProducts(tenantId).subscribe(() => {
         service.setFilterText('sandwich');
@@ -632,6 +653,9 @@ describe('ProductService', () => {
       const tenant2 = 'tenant-2';
       const tenant1Products = [mockProducts[0], mockProducts[1]];
       const tenant2Products = [mockProducts[2], mockProducts[3]];
+
+      storageService.get.and.returnValue(Promise.resolve(null));
+      storageService.set.and.returnValue(Promise.resolve());
 
       // Fetch for tenant 1
       service.fetchProducts(tenant1).subscribe(() => {

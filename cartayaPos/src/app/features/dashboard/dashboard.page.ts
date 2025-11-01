@@ -9,7 +9,7 @@ import {
     IonCardTitle,
     IonContent,
     IonHeader,
-    IonText,
+    IonIcon,
     IonTitle,
     IonToolbar,
 } from '@ionic/angular/standalone';
@@ -30,7 +30,7 @@ import { PosService } from '../../core/services/pos.service';
     IonCardTitle,
     IonCardContent,
     IonButton,
-    IonText,
+    IonIcon,
   ],
   templateUrl: './dashboard.page.html',
   styleUrls: ['./dashboard.page.scss'],
@@ -53,6 +53,10 @@ export class DashboardPage implements OnInit {
         this.router.navigate(['/auth/login']);
       },
     });
+  }
+
+  navigateToProducts(): void {
+    this.router.navigate(['/products']);
   }
 
   get currentUser() {

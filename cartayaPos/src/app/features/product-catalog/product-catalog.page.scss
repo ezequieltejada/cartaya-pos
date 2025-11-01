@@ -36,3 +36,11 @@ ion-grid {
 ion-col {
   padding: 0.5rem;
 }
+
+.virtual-scroll-viewport {
+  height: 100%;
+
+  ion-grid {
+    padding: 0;
+  }
+}

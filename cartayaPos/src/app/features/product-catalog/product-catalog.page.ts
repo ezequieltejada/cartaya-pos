@@ -1,3 +1,4 @@
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -20,6 +21,7 @@ import { Product } from '../../core/models/product.model';
 import { PosService } from '../../core/services/pos.service';
 import { ProductService } from '../../core/services/product.service';
 import { TenantService } from '../../core/services/tenant.service';
+import { ProductCardComponent } from './components/product-card/product-card.component';
 
 /**
  * ProductCatalogPage Component
@@ -45,6 +47,7 @@ import { TenantService } from '../../core/services/tenant.service';
   imports: [
     CommonModule,
     FormsModule,
+    ScrollingModule,
     IonContent,
     IonHeader,
     IonTitle,
@@ -56,6 +59,7 @@ import { TenantService } from '../../core/services/tenant.service';
     IonSearchbar,
     IonButton,
     IonIcon,
+    ProductCardComponent,
   ],
   templateUrl: './product-catalog.page.html',
   styleUrls: ['./product-catalog.page.scss'],
@@ -74,9 +78,10 @@ export class ProductCatalogPage implements OnInit {
 
   /**
    * Fetch products for the current tenant
+   * Clears cache when PoS changes to force fresh data
    * Products will be displayed once loading is complete
    */
-  private loadProducts(): void {
+  private async loadProducts(): Promise<void> {
     const tenantId = this.tenantService.getCurrentTenantId();
 
     if (!tenantId) {
@@ -85,6 +90,9 @@ export class ProductCatalogPage implements OnInit {
       return;
     }
 
+    // Clear cache to force fresh data on PoS switch
+    await this.productService.clearCache(tenantId);
+    
     this.productService.fetchProducts(tenantId).subscribe({
       next: () => {
         // Products are updated in the signal

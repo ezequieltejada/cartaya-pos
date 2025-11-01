@@ -1,9 +1,16 @@
+:host {
+  display: block;
+  height: 220px;
+}
+
 ion-card {
   cursor: pointer;
   transition: transform 0.2s ease-in-out;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   overflow: hidden;
+  height: 100%;
+  margin: 8px;
 
   &:hover {
     transform: scale(0.98);

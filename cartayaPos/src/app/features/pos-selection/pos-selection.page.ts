@@ -8,7 +8,6 @@ import {
     IonHeader,
     IonItem,
     IonLabel,
-    IonList,
     IonRadio,
     IonRadioGroup,
     IonSpinner,
@@ -30,7 +29,6 @@ import { PosService } from '../../core/services/pos.service';
     IonHeader,
     IonTitle,
     IonToolbar,
-    IonList,
     IonItem,
     IonLabel,
     IonRadio,
@@ -82,7 +80,7 @@ export class PosSelectionPage implements OnInit {
 
     if (selected) {
       await this.posService.selectPos(selected);
-      this.router.navigate(['/dashboard']);
+      this.router.navigate(['/products']);
     }
   }
 

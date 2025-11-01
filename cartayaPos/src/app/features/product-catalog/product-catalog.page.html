@@ -18,25 +18,56 @@
     <ion-spinner></ion-spinner>
   </div>
 
-  <!-- Product grid -->
-  <ion-grid *ngIf="!isLoading && products.length > 0">
+  <!-- Virtual scroll for large catalogs (>50 products) -->
+  <cdk-virtual-scroll-viewport
+    *ngIf="!isLoading && products.length > 50"
+    itemSize="220"
+    class="virtual-scroll-viewport"
+  >
+    <ion-grid>
+      <ion-row>
+        <ion-col
+          *cdkVirtualFor="let product of products"
+          size="6"
+          sizeMd="4"
+          sizeLg="3"
+        >
+          <app-product-card
+            [product]="product"
+            (productTapped)="onProductTap($event)"
+          ></app-product-card>
+        </ion-col>
+      </ion-row>
+    </ion-grid>
+  </cdk-virtual-scroll-viewport>
+
+  <!-- Standard grid for small catalogs (≤50 products) -->
+  <ion-grid
+    *ngIf="!isLoading && products.length <= 50 && products.length > 0"
+  >
     <ion-row>
       <ion-col *ngFor="let product of products" size="6" sizeMd="4" sizeLg="3">
         <app-product-card
           [product]="product"
-          (click)="onProductTap(product)"
+          (productTapped)="onProductTap($event)"
         ></app-product-card>
       </ion-col>
     </ion-row>
   </ion-grid>
 
   <!-- Empty state for no products -->
-  <div *ngIf="!isLoading && products.length === 0 && !searchQuery" class="empty-state">
+  <div
+    *ngIf="!isLoading && products.length === 0 && !searchQuery"
+    class="empty-state"
+  >
     <p>No products available</p>
   </div>
 
   <!-- Empty state for no search results -->
-  <div *ngIf="!isLoading && products.length === 0 && searchQuery" class="empty-state">
+  <div
+    *ngIf="!isLoading && products.length === 0 && searchQuery"
+    class="empty-state"
+  >
     <ion-icon name="search-outline" size="large"></ion-icon>
     <p>No products found for "{{ searchQuery }}"</p>
     <ion-button (click)="clearSearch()">Clear Search</ion-button>

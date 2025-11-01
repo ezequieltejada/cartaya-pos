@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, catchError, map, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { User } from '../models/user.model';
+import { ProductService } from './product.service';
 import { StorageService } from './storage.service';
 import { TenantService } from './tenant.service';
 
@@ -20,6 +21,7 @@ export class AuthService {
   private router = inject(Router);
   private storageService = inject(StorageService);
   private tenantService = inject(TenantService);
+  private productService = inject(ProductService);
 
   private readonly API_URL = `${environment.apiUrl}/api`;
 
@@ -75,11 +77,14 @@ export class AuthService {
 
   /**
    * Log out user and clear session
+   * Clears all product caches as part of logout process
    */
   logout(): Observable<void> {
     this.isLoading.set(true);
     return this.httpClient.post<void>(`${this.API_URL}/auth/sign-out`, {}).pipe(
       tap(async () => {
+        // Clear all product caches on logout
+        await this.productService.clearCache();
         this.clearSession();
         this.isLoading.set(false);
         this.router.navigate(['/auth/login']);
