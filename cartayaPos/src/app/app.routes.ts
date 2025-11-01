@@ -38,8 +38,8 @@ export const routes: Routes = [
     path: 'products/:productId/modifiers',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./features/modifiers/modifiers-placeholder.page').then(
-        (m) => m.ModifiersPlaceholderPage
+      import('./features/modifiers/modifiers.page').then(
+        (m) => m.ModifiersPage
       ),
   },
   {
