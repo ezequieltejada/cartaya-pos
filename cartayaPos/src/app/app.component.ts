@@ -39,8 +39,8 @@ export class AppComponent implements OnInit {
     this.authService.checkSession().subscribe({
       next: (user) => {
         if (user) {
-          // User has valid session, navigate to dashboard
-          this.router.navigate(['/dashboard']);
+          // User has valid session, navigate to products
+          this.router.navigate(['/products']);
         } else {
           // No session, navigate to login
           this.router.navigate(['/auth/login']);
