@@ -1,0 +1,91 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>{{ selectedPos?.name }}</ion-title>
+  </ion-toolbar>
+  <ion-toolbar>
+    <ion-searchbar 
+      [(ngModel)]="searchQuery"
+      (ionInput)="onSearchInput($event)"
+      placeholder="Search products..."
+      debounce="300">
+    </ion-searchbar>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <!-- Error banner -->
+  <ion-card *ngIf="errorMessage" color="danger" class="error-card">
+    <ion-card-content>
+      <div class="error-content">
+        <ion-icon name="alert-circle-outline"></ion-icon>
+        <div>
+          <p class="error-message">{{ errorMessage }}</p>
+          <ion-button size="small" fill="outline" (click)="retry()">
+            <ion-icon slot="start" name="refresh-outline"></ion-icon>
+            Retry
+          </ion-button>
+        </div>
+      </div>
+    </ion-card-content>
+  </ion-card>
+
+  <!-- Loading state -->
+  <div *ngIf="isLoading" class="loading-container">
+    <ion-spinner></ion-spinner>
+  </div>
+
+  <!-- Virtual scroll for large catalogs (>50 products) -->
+  <cdk-virtual-scroll-viewport
+    *ngIf="!isLoading && products.length > 50"
+    itemSize="220"
+    class="virtual-scroll-viewport"
+  >
+    <ion-grid>
+      <ion-row>
+        <ion-col
+          *cdkVirtualFor="let product of products"
+          size="6"
+          sizeMd="4"
+          sizeLg="3"
+        >
+          <app-product-card
+            [product]="product"
+            (productTapped)="onProductTap($event)"
+          ></app-product-card>
+        </ion-col>
+      </ion-row>
+    </ion-grid>
+  </cdk-virtual-scroll-viewport>
+
+  <!-- Standard grid for small catalogs (≤50 products) -->
+  <ion-grid
+    *ngIf="!isLoading && products.length <= 50 && products.length > 0"
+  >
+    <ion-row>
+      <ion-col *ngFor="let product of products" size="6" sizeMd="4" sizeLg="3">
+        <app-product-card
+          [product]="product"
+          (productTapped)="onProductTap($event)"
+        ></app-product-card>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+
+  <!-- Empty state for no products -->
+  <div
+    *ngIf="!isLoading && products.length === 0 && !searchQuery"
+    class="empty-state"
+  >
+    <p>No products available</p>
+  </div>
+
+  <!-- Empty state for no search results -->
+  <div
+    *ngIf="!isLoading && products.length === 0 && searchQuery"
+    class="empty-state"
+  >
+    <ion-icon name="search-outline" size="large"></ion-icon>
+    <p>No products found for "{{ searchQuery }}"</p>
+    <ion-button (click)="clearSearch()">Clear Search</ion-button>
+  </div>
+</ion-content>

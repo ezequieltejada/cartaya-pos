@@ -435,6 +435,8 @@ Retrieves the role of a specific user within the tenant.
 - GET /api/tenants/:tenantId/products/:productId/prices (Member)
   - Query: limit?: number (default 25), offset?: number (default 0)
   - 200: { data: Array<{ id, amount: number, currency: string, validFrom: string | null, validTo: string | null }>, pagination: { total, limit, offset, hasMore } }
+- GET /api/tenants/:tenantId/products/:productId/prices/:priceId (Member)
+  - 200: { id, productId, tenantId, amount: number, currency: string, validFrom: string | null, validTo: string | null }
 - PATCH /api/tenants/:tenantId/products/:productId/prices/:priceId (Owner)
   - Body: { amount?: number, currency?: string (must match existing), validFrom?: string | null, validTo?: string | null }
   - 200: { id, amount: number, currency: string, validFrom: string | null, validTo: string | null }
@@ -840,45 +842,179 @@ Soft-deletes a product (sets active=false and closes all prices).
 
 ## Prices
 
-### POST /tenants/:tenantId/products/:productId/prices
-**Description:** Create a price for a product
+### POST /api/tenants/:tenantId/products/:productId/prices
 
-**Parameters:**
-- `amount` (number, required): Price amount
-- `currency` (string, required): Currency code
-- `effectiveDate` (string, optional): When price becomes effective
+Creates a new price for a product.
 
-**Response:** Price object with ID and metadata
+**Authorization:** Owner only
 
-### GET /tenants/:tenantId/products/:productId/prices
-**Description:** List prices for a product
+**Purpose:** Allows Owners to set prices for products with optional validity date ranges. This enables sophisticated pricing strategies such as temporary discounts, time-based pricing, or seasonal rates. Each product can have multiple prices that are active at different times.
+
+**Request Body:**
+- `amount` (number, required): Price amount in decimal format (e.g., 12.99)
+- `currency` (string, required): ISO 4217 currency code (e.g., "USD", "EUR")
+- `validFrom` (string, optional): ISO 8601 timestamp when price becomes effective (default: now)
+- `validTo` (string | null, optional): ISO 8601 timestamp when price expires (null = no expiration)
+
+**Response (201):**
+```json
+{
+  "id": "uuid",
+  "amount": 12.99,
+  "currency": "USD",
+  "validFrom": "2024-01-01T00:00:00.000Z",
+  "validTo": "2024-12-31T23:59:59.000Z"
+}
+```
+
+**Error Responses:**
+- `400`: Validation error or missing required fields
+- `401`: Not authenticated
+- `403`: User is not an Owner
+- `404`: Product not found
+- `422`: Currency mismatch with tenant settings or invalid date range (validTo before validFrom)
+
+---
+
+### GET /api/tenants/:tenantId/products/:productId/prices
+
+Lists all prices for a specific product with pagination.
+
+**Authorization:** Any tenant member
+
+**Purpose:** Retrieves the price history for a product, including current and future pricing. Used for price management, displaying available pricing options, and historical price tracking. Employees can view this to understand pricing for orders.
 
 **Query Parameters:**
-- `limit` (number, optional): Number of results per page
-- `offset` (number, optional): Pagination offset
+- `limit` (number, optional): Results per page (default: 25, max: 100)
+- `offset` (number, optional): Pagination offset (default: 0)
 
-**Response:** Paginated list of price objects
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "amount": 12.99,
+      "currency": "USD",
+      "validFrom": "2024-01-01T00:00:00.000Z",
+      "validTo": "2024-12-31T23:59:59.000Z"
+    }
+  ],
+  "pagination": {
+    "total": 5,
+    "limit": 25,
+    "offset": 0,
+    "hasMore": false
+  }
+}
+```
 
-### GET /tenants/:tenantId/products/:productId/prices/:priceId
-**Description:** Get price details
+**Error Responses:**
+- `401`: Not authenticated
+- `403`: User is not a tenant member
+- `404`: Product not found
 
-**Parameters:** None
+---
 
-**Response:** Complete price object
+### GET /api/tenants/:tenantId/products/:productId/prices/:priceId
 
-### PUT /tenants/:tenantId/products/:productId/prices/:priceId
-**Description:** Update a price
+Retrieves detailed information about a specific price.
 
-**Parameters:** Same as POST, all optional
+**Authorization:** Any tenant member
 
-**Response:** Updated price object
+**Purpose:** Provides complete details for a specific price associated with a product. Used when you need to view or retrieve price information for display, editing, or order creation. Any tenant member can access this endpoint - Employees can view prices for creating orders, while Owners use it for price management and reporting.
 
-### DELETE /tenants/:tenantId/products/:productId/prices/:priceId
-**Description:** Delete a price
+**URL Parameters:**
+- `tenantId` (string, required): The tenant ID
+- `productId` (string, required): The product ID
+- `priceId` (string, required): The price ID to retrieve
 
-**Parameters:** None
+**Response (200):**
+```json
+{
+  "id": "5afcc722-49b2-4c57-9120-4883486259b8",
+  "productId": "76552fb0-75c5-4102-92a8-299600c150b1",
+  "tenantId": "4bbcd705-5500-4f6e-9924-9f108b0a097e",
+  "amount": 3.50,
+  "currency": "USD",
+  "validFrom": "2024-01-01T00:00:00.000Z",
+  "validTo": "2024-12-31T23:59:59.000Z"
+}
+```
 
-**Response:** Success confirmation
+**Response Fields:**
+- `id` (string): Unique price identifier
+- `productId` (string): The product this price belongs to
+- `tenantId` (string): The tenant this price belongs to
+- `amount` (number): Price amount in decimal format (e.g., 3.50 for $3.50)
+- `currency` (string): ISO 4217 currency code (e.g., "USD", "EUR")
+- `validFrom` (string | null): ISO 8601 timestamp when this price becomes effective
+- `validTo` (string | null): ISO 8601 timestamp when this price expires (null = no expiration)
+
+**Why it exists:** Price information is needed for various operations - displaying prices in the UI, creating orders with specific prices, or managing price history. This endpoint provides a single, authoritative source for price details that can be used by any tenant member.
+
+**Error Responses:**
+- `401`: User is not authenticated. Provide a valid session cookie.
+- `403`: User is not a member of the tenant. Only tenant members can access prices.
+- `404`: Price not found. The price ID may not exist, belong to a different product, or the product doesn't exist.
+
+**Example Usage:**
+
+```bash
+curl 'http://localhost:3000/api/tenants/4bbcd705-5500-4f6e-9924-9f108b0a097e/products/76552fb0-75c5-4102-92a8-299600c150b1/prices/5afcc722-49b2-4c57-9120-4883486259b8' \
+  -H 'Cookie: better-auth.session_token=YOUR_SESSION_TOKEN'
+```
+
+---
+
+### PATCH /api/tenants/:tenantId/products/:productId/prices/:priceId
+
+Updates an existing price.
+
+**Authorization:** Owner only
+
+**Purpose:** Allows Owners to modify price details such as amount or validity dates. All fields are optional - only provided fields are updated. This enables flexible pricing management without requiring full price object replacement.
+
+**Request Body:** (all fields optional)
+- `amount` (number): Updated price amount
+- `currency` (string): Must match existing currency (cannot change)
+- `validFrom` (string | null): When price becomes effective
+- `validTo` (string | null): When price expires
+
+**Response (200):**
+```json
+{
+  "id": "uuid",
+  "amount": 14.99,
+  "currency": "USD",
+  "validFrom": "2024-02-01T00:00:00.000Z",
+  "validTo": "2024-11-30T23:59:59.000Z"
+}
+```
+
+**Error Responses:**
+- `400`: Validation error or cannot change currency
+- `401`: Not authenticated
+- `403`: User is not an Owner
+- `404`: Price not found
+- `422`: Invalid date range (validTo before validFrom)
+
+---
+
+### DELETE /api/tenants/:tenantId/products/:productId/prices/:priceId
+
+Deletes a price.
+
+**Authorization:** Owner only
+
+**Purpose:** Removes a price from a product. This is useful for cleaning up incorrect or outdated pricing. After deletion, this price cannot be used for new orders.
+
+**Response (204):** No content
+
+**Error Responses:**
+- `401`: Not authenticated
+- `403`: User is not an Owner
+- `404`: Price not found
 
 ## POS (Point of Sale)
 

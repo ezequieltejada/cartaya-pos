@@ -1,0 +1,66 @@
+.error-card {
+  margin: 16px;
+
+  .error-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+
+    ion-icon {
+      font-size: 24px;
+      margin-top: 4px;
+    }
+
+    .error-message {
+      margin: 0 0 8px 0;
+      font-weight: 500;
+    }
+  }
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  text-align: center;
+
+  ion-icon {
+    opacity: 0.5;
+    margin-bottom: 16px;
+  }
+
+  p {
+    color: var(--ion-color-medium);
+    margin-bottom: 16px;
+    font-size: 16px;
+  }
+
+  ion-button {
+    margin-top: 8px;
+  }
+}
+
+ion-grid {
+  padding: 1rem;
+}
+
+ion-col {
+  padding: 0.5rem;
+}
+
+.virtual-scroll-viewport {
+  height: 100%;
+
+  ion-grid {
+    padding: 0;
+  }
+}
