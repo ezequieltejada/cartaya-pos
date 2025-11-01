@@ -1,0 +1,246 @@
+<!-- Bottom Sheet Modal (Mobile) -->
+<ion-modal
+  #orderModal
+  [isOpen]="hasItems()"
+  [initialBreakpoint]="0.25"
+  [breakpoints]="[0, 0.25, 0.75]"
+  (didDismiss)="onDismiss()"
+  class="order-modal"
+>
+  <!-- Summary Bar (Collapsed) -->
+  <ng-container *ngIf="!isExpanded()">
+    <div class="summary-bar" (click)="toggleExpanded()">
+      <div class="summary-content">
+        <span class="item-count">{{ itemCount() }} item{{ itemCount() !== 1 ? 's' : '' }}</span>
+        <span class="total">Total: ${{ orderTotal().toFixed(2) }}</span>
+      </div>
+      <ion-icon name="chevron-up" class="expand-icon"></ion-icon>
+    </div>
+  </ng-container>
+
+  <!-- Full Order Content (Expanded) -->
+  <ion-content *ngIf="isExpanded()" class="order-content">
+    <ion-header class="ion-no-border">
+      <ion-toolbar>
+        <ion-title>Order Summary</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="toggleExpanded()">
+            <ion-icon name="chevron-down" slot="icon-only"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <!-- Order Items List -->
+    <div class="order-items-container" *ngIf="hasItems(); else emptyState">
+      <ion-list>
+        <ng-container *ngFor="let item of orderItems(); trackBy: trackByItemId">
+          <ion-item-divider class="item-divider">
+            <ion-label>
+              <h2>{{ item.productName }}</h2>
+            </ion-label>
+          </ion-item-divider>
+
+          <ion-item class="order-item">
+            <ion-label>
+              <p class="modifier-label" *ngIf="item.modifiers.length > 0">
+                <strong>Modifiers:</strong>
+              </p>
+              <div *ngFor="let mod of item.modifiers" class="modifier-detail">
+                <span>{{ mod.name }}</span>
+                <span *ngIf="mod.quantity > 1" class="quantity">× {{ mod.quantity }}</span>
+                <span class="price" *ngIf="mod.priceDelta !== 0">
+                  {{ mod.priceDelta > 0 ? '+' : '' }}${{ Math.abs(mod.priceDelta).toFixed(2) }}
+                </span>
+              </div>
+              <p class="no-modifiers" *ngIf="item.modifiers.length === 0">
+                <em>No modifiers</em>
+              </p>
+            </ion-label>
+
+            <ion-note slot="end" class="item-subtotal">
+              ${{ item.subtotal.toFixed(2) }}
+            </ion-note>
+
+            <ion-button
+              slot="start"
+              fill="clear"
+              color="primary"
+              size="small"
+              (click)="editItem(item.id)"
+              title="Edit item"
+            >
+              <ion-icon name="pencil" slot="icon-only"></ion-icon>
+            </ion-button>
+
+            <ion-button
+              slot="start"
+              fill="clear"
+              color="danger"
+              size="small"
+              (click)="removeItem(item.id)"
+              title="Remove item"
+            >
+              <ion-icon name="trash" slot="icon-only"></ion-icon>
+            </ion-button>
+          </ion-item>
+        </ng-container>
+      </ion-list>
+
+      <!-- Order Total Section -->
+      <ion-card class="total-section">
+        <ion-card-content>
+          <ion-grid>
+            <ion-row class="subtotal-row">
+              <ion-col>
+                <span class="label">Subtotal:</span>
+              </ion-col>
+              <ion-col class="text-end">
+                <span>${{ orderTotal().toFixed(2) }}</span>
+              </ion-col>
+            </ion-row>
+            <ion-row class="total-row">
+              <ion-col>
+                <h3 class="label">Total:</h3>
+              </ion-col>
+              <ion-col class="text-end">
+                <h3 class="total-amount">${{ orderTotal().toFixed(2) }}</h3>
+              </ion-col>
+            </ion-row>
+          </ion-grid>
+        </ion-card-content>
+      </ion-card>
+
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        <ion-button expand="block" fill="outline" color="danger" (click)="showCancelConfirmation()">
+          Cancel Order
+        </ion-button>
+        <ion-button
+          expand="block"
+          color="success"
+          (click)="showCashConfirmation()"
+          [disabled]="isSubmitting()"
+        >
+          <ion-spinner *ngIf="isSubmitting()" name="crescent" slot="start"></ion-spinner>
+          {{ isSubmitting() ? 'Processing...' : 'Cash Order' }}
+        </ion-button>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <ng-template #emptyState>
+      <div class="empty-state">
+        <ion-text color="medium">
+          <p>No items in order</p>
+        </ion-text>
+      </div>
+    </ng-template>
+  </ion-content>
+</ion-modal>
+
+<!-- Side Panel (Desktop/Tablet) -->
+<div class="side-panel" *ngIf="hasItems()">
+  <div class="panel-header">
+    <h2>Order Summary</h2>
+  </div>
+
+  <div class="panel-content">
+    <!-- Order Items List -->
+    <div class="order-items-container">
+      <ion-list>
+        <ng-container *ngFor="let item of orderItems(); trackBy: trackByItemId">
+          <ion-item-divider class="item-divider">
+            <ion-label>
+              <h2>{{ item.productName }}</h2>
+            </ion-label>
+          </ion-item-divider>
+
+          <ion-item class="order-item">
+            <ion-label>
+              <p class="modifier-label" *ngIf="item.modifiers.length > 0">
+                <strong>Modifiers:</strong>
+              </p>
+              <div *ngFor="let mod of item.modifiers" class="modifier-detail">
+                <span>{{ mod.name }}</span>
+                <span *ngIf="mod.quantity > 1" class="quantity">× {{ mod.quantity }}</span>
+                <span class="price" *ngIf="mod.priceDelta !== 0">
+                  {{ mod.priceDelta > 0 ? '+' : '' }}${{ Math.abs(mod.priceDelta).toFixed(2) }}
+                </span>
+              </div>
+              <p class="no-modifiers" *ngIf="item.modifiers.length === 0">
+                <em>No modifiers</em>
+              </p>
+            </ion-label>
+
+            <ion-note slot="end" class="item-subtotal">
+              ${{ item.subtotal.toFixed(2) }}
+            </ion-note>
+
+            <ion-button
+              slot="start"
+              fill="clear"
+              color="primary"
+              size="small"
+              (click)="editItem(item.id)"
+              title="Edit item"
+            >
+              <ion-icon name="pencil" slot="icon-only"></ion-icon>
+            </ion-button>
+
+            <ion-button
+              slot="start"
+              fill="clear"
+              color="danger"
+              size="small"
+              (click)="removeItem(item.id)"
+              title="Remove item"
+            >
+              <ion-icon name="trash" slot="icon-only"></ion-icon>
+            </ion-button>
+          </ion-item>
+        </ng-container>
+      </ion-list>
+    </div>
+
+    <!-- Order Total Section -->
+    <ion-card class="total-section">
+      <ion-card-content>
+        <ion-grid>
+          <ion-row class="subtotal-row">
+            <ion-col>
+              <span class="label">Subtotal:</span>
+            </ion-col>
+            <ion-col class="text-end">
+              <span>${{ orderTotal().toFixed(2) }}</span>
+            </ion-col>
+          </ion-row>
+          <ion-row class="total-row">
+            <ion-col>
+              <h3 class="label">Total:</h3>
+            </ion-col>
+            <ion-col class="text-end">
+              <h3 class="total-amount">${{ orderTotal().toFixed(2) }}</h3>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+      <ion-button expand="block" fill="outline" color="danger" (click)="showCancelConfirmation()">
+        Cancel Order
+      </ion-button>
+      <ion-button
+        expand="block"
+        color="success"
+        (click)="showCashConfirmation()"
+        [disabled]="isSubmitting()"
+      >
+        <ion-spinner *ngIf="isSubmitting()" name="crescent" slot="start"></ion-spinner>
+        {{ isSubmitting() ? 'Processing...' : 'Cash Order' }}
+      </ion-button>
+    </div>
+  </div>
+</div>

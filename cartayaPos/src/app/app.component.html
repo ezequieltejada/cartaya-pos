@@ -9,5 +9,11 @@
       {{ 'SPANISH' | translate }}
     </button>
   </div>
-  <ion-router-outlet></ion-router-outlet>
+
+  <!-- Main Router Outlet with Order Summary -->
+  <div style="display: flex; height: calc(100vh - 40px);">
+    <ion-router-outlet style="flex: 1;"></ion-router-outlet>
+    <!-- Order Summary Component (side panel on desktop, bottom sheet on mobile) -->
+    <app-order-summary></app-order-summary>
+  </div>
 </ion-app>

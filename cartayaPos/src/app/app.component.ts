@@ -7,11 +7,12 @@ import { AuthService } from './core/services/auth.service';
 import { PosService } from './core/services/pos.service';
 import { StorageService } from './core/services/storage.service';
 import { TenantService } from './core/services/tenant.service';
+import { OrderSummaryComponent } from './features/order-summary/order-summary.component';
 
 @Component({
   selector: 'app-root',
   templateUrl: 'app.component.html',
-  imports: [IonApp, IonRouterOutlet, TranslateModule],
+  imports: [IonApp, IonRouterOutlet, TranslateModule, OrderSummaryComponent],
 })
 export class AppComponent implements OnInit {
   private storageService = inject(StorageService);
