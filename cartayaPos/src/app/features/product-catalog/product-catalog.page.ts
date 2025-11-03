@@ -10,6 +10,8 @@ import {
   IonCardContent,
   IonCol,
   IonContent,
+  IonFab,
+  IonFabButton,
   IonGrid,
   IonHeader,
   IonIcon,
@@ -23,6 +25,7 @@ import {
   IonSpinner,
   IonTitle,
   IonToolbar,
+  MenuController,
   ToastController
 } from '@ionic/angular/standalone';
 import { Pos } from '../../core/models/pos.model';
@@ -32,6 +35,7 @@ import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
 import { ProductService } from '../../core/services/product.service';
 import { TenantService } from '../../core/services/tenant.service';
+import { OrderSummaryComponent } from '../order-summary/order-summary.component';
 import { ProductCardComponent } from './components/product-card/product-card.component';
 
 /**
@@ -76,7 +80,10 @@ import { ProductCardComponent } from './components/product-card/product-card.com
     IonCard,
     IonCardContent,
     IonMenu,
+    IonFab,
+    IonFabButton,
     ProductCardComponent,
+    OrderSummaryComponent,
   ],
   templateUrl: './product-catalog.page.html',
   styleUrls: ['./product-catalog.page.scss'],
@@ -88,7 +95,8 @@ export class ProductCatalogPage implements OnInit {
   private router = inject(Router);
   private toastController = inject(ToastController);
   private modifierService = inject(ModifierService);
-  private orderService = inject(OrderService);
+  orderService = inject(OrderService);
+  private menuController = inject(MenuController);
 
   searchQuery = '';
   private modifierCheckCache = new Map<string, boolean>();
@@ -267,5 +275,12 @@ export class ProductCatalogPage implements OnInit {
       icon: 'checkmark-circle-outline',
     });
     await toast.present();
+  }
+
+  /**
+   * Toggle the order summary menu from the right side
+   */
+  toggleOrderMenu(): void {
+    this.menuController.toggle('order-summary-menu');
   }
 }

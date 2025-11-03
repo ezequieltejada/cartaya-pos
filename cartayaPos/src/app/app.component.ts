@@ -4,17 +4,16 @@ import { Device } from '@capacitor/device';
 import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
-import { imageOutline, menu } from 'ionicons/icons';
+import { cartOutline, checkmarkCircleOutline, imageOutline, menu } from 'ionicons/icons';
 import { AuthService } from './core/services/auth.service';
 import { PosService } from './core/services/pos.service';
 import { StorageService } from './core/services/storage.service';
 import { TenantService } from './core/services/tenant.service';
-import { OrderSummaryComponent } from './features/order-summary/order-summary.component';
 
 @Component({
   selector: 'app-root',
   templateUrl: 'app.component.html',
-  imports: [IonApp, IonRouterOutlet, TranslateModule, OrderSummaryComponent],
+  imports: [IonApp, IonRouterOutlet, TranslateModule],
 })
 export class AppComponent implements OnInit {
   private storageService = inject(StorageService);
@@ -26,7 +25,7 @@ export class AppComponent implements OnInit {
   currentLanguage = 'en';
 
   constructor() {
-    addIcons({ menu, imageOutline });
+    addIcons({ menu, imageOutline, cartOutline, checkmarkCircleOutline });
   }
 
   async ngOnInit() {

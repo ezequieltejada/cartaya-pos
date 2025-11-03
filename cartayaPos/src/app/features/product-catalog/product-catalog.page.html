@@ -23,6 +23,11 @@
   </ion-content>
 </ion-menu>
 
+<!-- Order Summary Menu (Right Side) -->
+<ion-menu side="end" contentId="product-catalog-content" menuId="order-summary-menu">
+  <app-order-summary></app-order-summary>
+</ion-menu>
+
 <ion-header id="product-catalog-content">
   <ion-toolbar>
     <ion-buttons slot="start">
@@ -120,5 +125,12 @@
     <p>No products found for "{{ searchQuery }}"</p>
     <ion-button (click)="clearSearch()">Clear Search</ion-button>
   </div>
+
+  <!-- FAB Button for Order Summary (Fixed at end/bottom) -->
+  <ion-fab *ngIf="orderService.hasItems()" vertical="bottom" horizontal="end" slot="fixed">
+    <ion-fab-button (click)="toggleOrderMenu()">
+      <ion-icon name="cart-outline"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
   
 </ion-content>

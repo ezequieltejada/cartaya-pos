@@ -1,28 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { AlertController, ToastController } from '@ionic/angular';
+import { AlertController, MenuController, ToastController } from '@ionic/angular';
 import {
-    IonButton,
-    IonButtons,
-    IonCard,
-    IonCardContent,
-    IonCol,
-    IonContent,
-    IonGrid,
-    IonHeader,
-    IonIcon,
-    IonItem,
-    IonItemDivider,
-    IonLabel,
-    IonList,
-    IonModal,
-    IonNote,
-    IonRow,
-    IonSpinner,
-    IonText,
-    IonTitle,
-    IonToolbar,
+  IonButton,
+  IonIcon,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonSpinner,
+  IonText,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { checkmark, chevronDown, chevronUp, close, pencil, trash } from 'ionicons/icons';
@@ -43,26 +30,13 @@ import { Printer } from '../../services/printer';
   standalone: true,
   imports: [
     CommonModule,
-    IonModal,
-    IonContent,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
     IonList,
     IonItem,
-    IonItemDivider,
     IonLabel,
     IonButton,
-    IonButtons,
     IonText,
     IonIcon,
     IonSpinner,
-    IonCard,
-    IonCardContent,
-    IonNote,
-    IonRow,
-    IonCol,
-    IonGrid,
   ],
 })
 export class OrderSummaryComponent implements OnInit, OnDestroy {
@@ -73,6 +47,7 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private toastController = inject(ToastController);
   private alertController = inject(AlertController);
+  private menuController = inject(MenuController);
 
   // Expose Math.abs for template use
   Math = Math;
@@ -84,11 +59,6 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
   readonly hasItems = computed(() => this.orderService.hasItems());
   readonly isSubmitting = computed(() => this.orderService.isSubmitting());
 
-  // Local state (Signals)
-  readonly isExpanded = signal<boolean>(true);
-  readonly showCancelConfirm = signal<boolean>(false);
-  readonly showCashConfirm = signal<boolean>(false);
-
   constructor() {
     addIcons({ pencil, trash, close, checkmark, chevronUp, chevronDown });
   }
@@ -99,20 +69,6 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     // Cleanup if needed
-  }
-
-  /**
-   * Toggles the bottom sheet expansion state (mobile only)
-   */
-  toggleExpanded(): void {
-    this.isExpanded.set(!this.isExpanded());
-  }
-
-  /**
-   * Handles dismissing the bottom sheet (mobile)
-   */
-  onDismiss(): void {
-    this.isExpanded.set(false);
   }
 
   /**
@@ -147,7 +103,7 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
   private cancelOrder(): void {
     this.orderService.clearOrder();
     this.showToast('Order cancelled', 'middle');
-    this.isExpanded.set(false);
+    this.menuController.close('order-summary-menu');
   }
 
   /**
@@ -200,7 +156,6 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
           // Print receipt
           await this.printReceipt(response);
           this.showToast('Order completed!', 'top');
-          this.isExpanded.set(false);
         } catch (error) {
           console.error('Error printing receipt:', error);
           this.showToast('Order saved but print failed', 'top');
@@ -277,6 +232,11 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
   removeItem(itemId: string): void {
     this.orderService.removeItem(itemId);
     this.showToast('Item removed', 'middle');
+    
+    // Close menu if this was the last item
+    if (!this.hasItems()) {
+      this.menuController.close('order-summary-menu');
+    }
   }
 
   /**
