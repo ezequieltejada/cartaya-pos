@@ -1,5 +1,37 @@
-<ion-header>
+<!-- Menu definition -->
+<ion-menu contentId="product-catalog-content">
+  <ion-header>
+    <ion-toolbar>
+      <ion-title>Menu</ion-title>
+    </ion-toolbar>
+  </ion-header>
+  <ion-content>
+    <ion-list>
+      <ion-item button>
+        <ion-label>Dashboard</ion-label>
+      </ion-item>
+      <ion-item button>
+        <ion-label>Products</ion-label>
+      </ion-item>
+      <ion-item button>
+        <ion-label>Orders</ion-label>
+      </ion-item>
+      <ion-item button>
+        <ion-label>Settings</ion-label>
+      </ion-item>
+    </ion-list>
+  </ion-content>
+</ion-menu>
+
+<ion-header id="product-catalog-content">
   <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-menu-toggle>
+        <ion-button>
+          <ion-icon name="menu"></ion-icon>
+        </ion-button>
+      </ion-menu-toggle>
+    </ion-buttons>
     <ion-title>{{ selectedPos?.name }}</ion-title>
   </ion-toolbar>
   <ion-toolbar>
@@ -12,7 +44,7 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
+<ion-content id="product-catalog-content">
   <!-- Error banner -->
   <ion-card *ngIf="errorMessage" color="danger" class="error-card">
     <ion-card-content>
@@ -88,4 +120,5 @@
     <p>No products found for "{{ searchQuery }}"</p>
     <ion-button (click)="clearSearch()">Clear Search</ion-button>
   </div>
+  
 </ion-content>

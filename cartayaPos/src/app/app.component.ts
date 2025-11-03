@@ -3,6 +3,8 @@ import { Router } from '@angular/router';
 import { Device } from '@capacitor/device';
 import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { addIcons } from 'ionicons';
+import { imageOutline, menu } from 'ionicons/icons';
 import { AuthService } from './core/services/auth.service';
 import { PosService } from './core/services/pos.service';
 import { StorageService } from './core/services/storage.service';
@@ -22,6 +24,10 @@ export class AppComponent implements OnInit {
   private router = inject(Router);
   private translate = inject(TranslateService);
   currentLanguage = 'en';
+
+  constructor() {
+    addIcons({ menu, imageOutline });
+  }
 
   async ngOnInit() {
     // Initialize storage first

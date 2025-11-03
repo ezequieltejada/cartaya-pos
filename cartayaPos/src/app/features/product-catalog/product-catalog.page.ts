@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
   IonButton,
+  IonButtons,
   IonCard,
   IonCardContent,
   IonCol,
@@ -12,12 +13,17 @@ import {
   IonGrid,
   IonHeader,
   IonIcon,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonMenu,
+  IonMenuToggle,
   IonRow,
   IonSearchbar,
   IonSpinner,
   IonTitle,
   IonToolbar,
-  ToastController,
+  ToastController
 } from '@ionic/angular/standalone';
 import { Pos } from '../../core/models/pos.model';
 import { Product } from '../../core/models/product.model';
@@ -57,15 +63,19 @@ import { ProductCardComponent } from './components/product-card/product-card.com
     IonHeader,
     IonTitle,
     IonToolbar,
+    IonButtons,
+    IonButton,
+    IonMenuToggle,
+    IonIcon,
     IonGrid,
     IonRow,
     IonCol,
+    IonItem, IonLabel, IonList,
     IonSpinner,
     IonSearchbar,
-    IonButton,
-    IonIcon,
     IonCard,
     IonCardContent,
+    IonMenu,
     ProductCardComponent,
   ],
   templateUrl: './product-catalog.page.html',
