@@ -25,6 +25,7 @@ import { Subject, takeUntil } from 'rxjs';
 import { Modifier } from '../../core/models/modifier.model';
 import { SelectedModifier } from '../../core/models/order.model';
 import { Product } from '../../core/models/product.model';
+import { MenuService } from '../../core/services/menu.service';
 import { ModifierService } from '../../core/services/modifier.service';
 import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
@@ -235,6 +236,7 @@ export class ModifiersPage implements OnInit, OnDestroy {
   private tenantService = inject(TenantService);
   private posService = inject(PosService);
   private toastController = inject(ToastController);
+  private menuService = inject(MenuService);
 
   private destroy$ = new Subject<void>();
 
@@ -380,7 +382,7 @@ export class ModifiersPage implements OnInit, OnDestroy {
    * Builds SelectedModifier[] from the selectedModifiers Map,
    * calls OrderService.addConfiguredProduct(), and navigates back
    */
-  confirmSelection(): void {
+  async confirmSelection(): Promise<void> {
     const product = this.product();
     if (!product) {
       console.error('Product not set');
@@ -409,6 +411,9 @@ export class ModifiersPage implements OnInit, OnDestroy {
     // Show success toast
     this.showSuccessToast();
 
+    // Open order summary menu before navigating back
+    await this.menuService.openMenu('order-summary-menu');
+
     // Navigate back to product catalog
     this.router.navigate(['/products']);
   }
@@ -417,7 +422,7 @@ export class ModifiersPage implements OnInit, OnDestroy {
    * Add product to order without any modifiers
    * Used when no modifiers are available or user skips modifier selection
    */
-  addWithoutModifiers(): void {
+  async addWithoutModifiers(): Promise<void> {
     const product = this.product();
     if (!product) {
       console.error('Product not set');
@@ -429,6 +434,9 @@ export class ModifiersPage implements OnInit, OnDestroy {
 
     // Show success toast
     this.showSuccessToast();
+
+    // Open order summary menu before navigating back
+    await this.menuService.openMenu('order-summary-menu');
 
     // Navigate back to product catalog
     this.router.navigate(['/products']);

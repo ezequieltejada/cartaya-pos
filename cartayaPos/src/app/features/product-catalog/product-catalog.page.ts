@@ -25,11 +25,11 @@ import {
   IonSpinner,
   IonTitle,
   IonToolbar,
-  MenuController,
   ToastController
 } from '@ionic/angular/standalone';
 import { Pos } from '../../core/models/pos.model';
 import { Product } from '../../core/models/product.model';
+import { MenuService } from '../../core/services/menu.service';
 import { ModifierService } from '../../core/services/modifier.service';
 import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
@@ -95,8 +95,8 @@ export class ProductCatalogPage implements OnInit {
   private router = inject(Router);
   private toastController = inject(ToastController);
   private modifierService = inject(ModifierService);
+  private menuService = inject(MenuService);
   orderService = inject(OrderService);
-  private menuController = inject(MenuController);
 
   searchQuery = '';
   private modifierCheckCache = new Map<string, boolean>();
@@ -213,6 +213,8 @@ export class ProductCatalogPage implements OnInit {
       // Add directly to order without modifiers
       this.orderService.addConfiguredProduct(product, []);
       await this.showSuccessToast(`"${product.name}" added to order`);
+      // Open order summary menu to show the item was added
+      await this.menuService.openMenu('order-summary-menu');
     }
   }
 
@@ -280,7 +282,7 @@ export class ProductCatalogPage implements OnInit {
   /**
    * Toggle the order summary menu from the right side
    */
-  toggleOrderMenu(): void {
-    this.menuController.toggle('order-summary-menu');
+  async toggleOrderMenu(): Promise<void> {
+    await this.menuService.toggleMenu('order-summary-menu');
   }
 }
