@@ -35,6 +35,7 @@ import { ModifierService } from '../../core/services/modifier.service';
 import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
 import { ProductService } from '../../core/services/product.service';
+import { SettingsService } from '../../core/services/settings.service';
 import { TenantService } from '../../core/services/tenant.service';
 import { OrderSummaryComponent } from '../order-summary/order-summary.component';
 import { ProductCardComponent } from './components/product-card/product-card.component';
@@ -92,6 +93,7 @@ import { ProductCardComponent } from './components/product-card/product-card.com
 export class ProductCatalogPage implements OnInit {
   private productService = inject(ProductService);
   private tenantService = inject(TenantService);
+  private settingsService = inject(SettingsService);
   private posService = inject(PosService);
   private router = inject(Router);
   private toastController = inject(ToastController);
@@ -105,7 +107,31 @@ export class ProductCatalogPage implements OnInit {
 
   ngOnInit(): void {
     this.checkPosSelection();
+    this.loadTenantSettings();
     this.loadProducts();
+  }
+
+  /**
+   * Load tenant settings (currency, timezone)
+   * This must happen early so that OrderService can use the correct currency
+   */
+  private loadTenantSettings(): void {
+    const tenantId = this.tenantService.getCurrentTenantId();
+
+    if (!tenantId) {
+      console.warn('No tenant selected when attempting to load settings');
+      return;
+    }
+
+    this.settingsService.fetchTenantSettings(tenantId).subscribe({
+      next: (settings) => {
+        console.log('Tenant settings loaded:', settings);
+      },
+      error: (error) => {
+        console.error('Failed to load tenant settings:', error);
+        // Continue anyway - OrderService will use fallback values
+      },
+    });
   }
 
   /**

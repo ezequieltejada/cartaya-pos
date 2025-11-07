@@ -3,10 +3,11 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, catchError, finalize, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
-    OrderItem,
-    SelectedModifier
+  OrderItem,
+  SelectedModifier
 } from '../models/order.model';
 import { Product } from '../models/product.model';
+import { SettingsService } from './settings.service';
 import { StorageService } from './storage.service';
 
 /**
@@ -67,6 +68,7 @@ function generateUUID(): string {
 export class OrderService {
   private httpClient = inject(HttpClient);
   private storageService = inject(StorageService);
+  private settingsService = inject(SettingsService);
 
   private readonly API_URL = `${environment.apiUrl}/api`;
   private readonly STORAGE_KEY = 'currentOrder';
@@ -79,9 +81,12 @@ export class OrderService {
   readonly orderItems = signal<OrderItem[]>([]);
 
   /**
-   * Order currency (from tenant/PoS settings)
+   * Order currency - derived from tenant settings
+   * Falls back to 'USD' if tenant currency is not available
    */
-  readonly currency = signal<string>('USD');
+  readonly currency = computed(() => {
+    return this.settingsService.getCurrentCurrency();
+  });
 
   /**
    * Loading state during order submission
@@ -307,7 +312,8 @@ export class OrderService {
       .then((state) => {
         if (state && state.items && state.items.length > 0) {
           this.orderItems.set(state.items);
-          this.currency.set(state.currency || 'USD');
+          // Note: currency is now derived from tenant settings, not from storage
+          // The currency stored in state is ignored in favor of current tenant settings
         }
       })
       .catch((error) => {
