@@ -54,6 +54,15 @@
   --padding-bottom: 16px;
 }
 
+// ===== Summary Header =====
+.summary-header {
+  padding: 16px;
+
+  h2 {
+     margin-left: 8px;
+  }
+}
+
 // ===== Order Items Container =====
 .order-items-container {
   ion-list {
@@ -181,6 +190,10 @@
   ion-button {
     margin: 0;
   }
+
+  ion-button:first-child {
+    margin-top: 16px;
+  }
 }
 
 // ===== Text Alignment Utility =====
@@ -264,6 +277,12 @@
         font-size: 13px;
       }
     }
+  }
+
+  .summary-header h2 {
+    text-align: center;
+    margin: 0;
+    font-size: 1rem;
   }
 
   .order-items-container .order-item {
