@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, computed, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, effect, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AlertController, MenuController, ToastController } from '@ionic/angular';
 import {
@@ -61,6 +61,30 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
 
   constructor() {
     addIcons({ pencil, trash, close, checkmark, chevronUp, chevronDown });
+    
+    // Watch for when the order becomes empty and close the menu
+    effect(() => {
+      if (!this.hasItems()) {
+        // Schedule the menu close on the next microtask to ensure all signals have updated
+        setTimeout(async () => {
+          try {
+            // First try using MenuController
+            const result = await this.menuController.close('order-summary-menu');
+            
+            // If close returns false, the menu might still be open
+            // Try to find the menu element and close it directly
+            if (!result) {
+              const menuEl = document.querySelector('ion-menu[menuId="order-summary-menu"]') as any;
+              if (menuEl && typeof menuEl.close === 'function') {
+                await menuEl.close();
+              }
+            }
+          } catch (error) {
+            console.error('Error closing menu:', error);
+          }
+        }, 0);
+      }
+    });
   }
 
   ngOnInit(): void {
@@ -82,28 +106,36 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
         {
           text: 'No',
           role: 'cancel',
-          handler: () => {
-            // Do nothing
-          },
         },
         {
           text: 'Yes',
-          handler: () => {
-            this.cancelOrder();
-          },
+          role: 'confirm',
         },
       ],
     });
     await alert.present();
+    
+    const { role } = await alert.onDidDismiss();
+    if (role === 'confirm') {
+      await this.cancelOrder();
+    }
   }
 
-  /**
+    /**
    * Cancels the current order and clears it
    */
-  private cancelOrder(): void {
+  private async cancelOrder(): Promise<void> {
     this.orderService.clearOrder();
     this.showToast('Order cancelled', 'middle');
-    this.menuController.close('order-summary-menu');
+    
+    // Close menu after order is cleared
+    // Use a small delay to ensure state is updated, then close the menu directly
+    setTimeout(async () => {
+      const menu = document.querySelector('ion-menu[menuId="order-summary-menu"]');
+      if (menu && typeof (menu as any).close === 'function') {
+        await (menu as any).close();
+      }
+    }, 50);
   }
 
   /**
@@ -122,19 +154,19 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
         {
           text: 'Cancel',
           role: 'cancel',
-          handler: () => {
-            // Do nothing
-          },
         },
         {
           text: 'Confirm',
-          handler: () => {
-            this.cashOrder();
-          },
+          role: 'confirm',
         },
       ],
     });
     await alert.present();
+    
+    const { role } = await alert.onDidDismiss();
+    if (role === 'confirm') {
+      await this.cashOrder();
+    }
   }
 
   /**
@@ -156,9 +188,13 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
           // Print receipt
           await this.printReceipt(response);
           this.showToast('Order completed!', 'top');
+          // Close the menu after successful order
+          await this.menuController.close('order-summary-menu');
         } catch (error) {
           console.error('Error printing receipt:', error);
           this.showToast('Order saved but print failed', 'top');
+          // Still close the menu even if printing failed
+          await this.menuController.close('order-summary-menu');
         }
       },
       error: (error) => {
@@ -229,14 +265,10 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
   /**
    * Removes an item from the order
    */
-  removeItem(itemId: string): void {
+  async removeItem(itemId: string): Promise<void> {
     this.orderService.removeItem(itemId);
     this.showToast('Item removed', 'middle');
-    
-    // Close menu if this was the last item
-    if (!this.hasItems()) {
-      this.menuController.close('order-summary-menu');
-    }
+    // Menu will be closed automatically by the effect watching hasItems
   }
 
   /**
