@@ -29,6 +29,7 @@ import {
 } from '@ionic/angular/standalone';
 import { Pos } from '../../core/models/pos.model';
 import { Product } from '../../core/models/product.model';
+import { AuthService } from '../../core/services/auth.service';
 import { MenuService } from '../../core/services/menu.service';
 import { ModifierService } from '../../core/services/modifier.service';
 import { OrderService } from '../../core/services/order.service';
@@ -97,6 +98,7 @@ export class ProductCatalogPage implements OnInit {
   private modifierService = inject(ModifierService);
   private menuService = inject(MenuService);
   orderService = inject(OrderService);
+  private authService = inject(AuthService);
 
   searchQuery = '';
   private modifierCheckCache = new Map<string, boolean>();
@@ -171,6 +173,13 @@ export class ProductCatalogPage implements OnInit {
    */
   get errorMessage(): string | null {
     return this.productService.error();
+  }
+
+  /**
+   * Get current user for menu display
+   */
+  get currentUser(): any {
+    return this.authService.getCurrentUser();
   }
 
   /**
@@ -296,5 +305,19 @@ export class ProductCatalogPage implements OnInit {
    */
   async toggleOrderMenu(): Promise<void> {
     await this.menuService.toggleMenu('order-summary-menu');
+  }
+
+  /**
+   * Handle logout
+   */
+  logout(): void {
+    this.authService.logout().subscribe();
+  }
+
+  /**
+   * Navigate to products page
+   */
+  navigateToProducts(): void {
+    this.router.navigate(['/products']);
   }
 }
