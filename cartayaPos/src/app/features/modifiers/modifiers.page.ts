@@ -2,23 +2,23 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
-    IonBackButton,
-    IonButton,
-    IonButtons,
-    IonContent,
-    IonFab,
-    IonFabButton,
-    IonHeader,
-    IonIcon,
-    IonItem,
-    IonItemDivider,
-    IonLabel,
-    IonList,
-    IonSpinner,
-    IonText,
-    IonTitle,
-    IonToolbar,
-    ToastController,
+  IonBackButton,
+  IonButton,
+  IonButtons,
+  IonContent,
+  IonFab,
+  IonFabButton,
+  IonHeader,
+  IonIcon,
+  IonItem,
+  IonItemDivider,
+  IonLabel,
+  IonList,
+  IonSpinner,
+  IonText,
+  IonTitle,
+  IonToolbar,
+  ToastController,
 } from '@ionic/angular/standalone';
 import { add, checkmark, remove } from 'ionicons/icons';
 import { Subject, takeUntil } from 'rxjs';
@@ -29,6 +29,7 @@ import { MenuService } from '../../core/services/menu.service';
 import { ModifierService } from '../../core/services/modifier.service';
 import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
+import { ProductService } from '../../core/services/product.service';
 import { TenantService } from '../../core/services/tenant.service';
 
 /**
@@ -233,6 +234,7 @@ export class ModifiersPage implements OnInit, OnDestroy {
   private router = inject(Router);
   private modifierService = inject(ModifierService);
   private orderService = inject(OrderService);
+  private productService = inject(ProductService);
   private tenantService = inject(TenantService);
   private posService = inject(PosService);
   private toastController = inject(ToastController);
@@ -246,6 +248,8 @@ export class ModifiersPage implements OnInit, OnDestroy {
   readonly product = signal<Product | null>(null);
   readonly isLoading = signal<boolean>(false);
   readonly error = signal<string | null>(null);
+  readonly isEditing = signal<boolean>(false);
+  readonly editingItemId = signal<string | null>(null);
 
   // Icons
   readonly add = add;
@@ -287,14 +291,60 @@ export class ModifiersPage implements OnInit, OnDestroy {
       this.product.set(navigationExtras['product']);
     }
 
+    // Extract editing state if present
+    if (navigationExtras?.['isEditing']) {
+      this.isEditing.set(true);
+      if (navigationExtras['itemId']) {
+        this.editingItemId.set(navigationExtras['itemId']);
+      }
+      if (navigationExtras['selectedModifiers']) {
+        // Convert SelectedModifier[] to Map<string, number>
+        const modifierMap = new Map<string, number>();
+        navigationExtras['selectedModifiers'].forEach((mod: any) => {
+          modifierMap.set(mod.modifierId, mod.quantity);
+        });
+        this.selectedModifiers.set(modifierMap);
+      }
+    }
+
+    // If editing and no product in navigation state, fetch product by ID
+    if (this.isEditing() && !this.product()) {
+      this.fetchProductForEditing(productId);
+    }
+
     // Fetch modifiers
     this.fetchModifiers(productId);
   }
 
   /**
-   * Fetch modifiers for the selected product
-   * @param productId Product ID to fetch modifiers for
+   * Fetch product by ID when editing (product not passed in navigation state)
+   * @param productId Product ID to fetch
    */
+  private fetchProductForEditing(productId: string): void {
+    // Get products from ProductService
+    const products = this.productService.filteredProducts();
+    const product = products.find(p => p.id === productId);
+
+    if (product) {
+      this.product.set(product);
+    } else {
+      // If not in filtered products, try to fetch from API
+      this.productService.fetchProducts().subscribe({
+        next: (fetchedProducts) => {
+          const foundProduct = fetchedProducts.find(p => p.id === productId);
+          if (foundProduct) {
+            this.product.set(foundProduct);
+          } else {
+            this.error.set('Product not found');
+          }
+        },
+        error: (err) => {
+          console.error('Error fetching product for editing:', err);
+          this.error.set('Failed to load product');
+        }
+      });
+    }
+  }
   private fetchModifiers(productId: string): void {
     this.isLoading.set(true);
     this.error.set(null);
@@ -334,6 +384,11 @@ export class ModifiersPage implements OnInit, OnDestroy {
    * @param modifiers List of modifiers to check for defaults
    */
   private initializeDefaultModifiers(modifiers: Modifier[]): void {
+    // Don't override existing selections when editing
+    if (this.isEditing()) {
+      return;
+    }
+
     const defaultSelections = new Map<string, number>();
 
     modifiers.forEach((modifier) => {
@@ -424,9 +479,10 @@ export class ModifiersPage implements OnInit, OnDestroy {
   }
 
   /**
-   * Confirm modifier selection and add the configured product to order
+   * Confirm modifier selection and add/update the configured product to order
    * Builds SelectedModifier[] from the selectedModifiers Map,
-   * calls OrderService.addConfiguredProduct(), and navigates back
+   * calls OrderService.addConfiguredProduct() for new items or updateItemModifiers() for editing,
+   * and navigates back
    */
   async confirmSelection(): Promise<void> {
     const product = this.product();
@@ -451,8 +507,13 @@ export class ModifiersPage implements OnInit, OnDestroy {
       }
     });
 
-    // Add configured product to order
-    this.orderService.addConfiguredProduct(product, selectedModifiers);
+    if (this.isEditing() && this.editingItemId()) {
+      // Update existing item modifiers
+      this.orderService.updateItemModifiers(this.editingItemId()!, selectedModifiers);
+    } else {
+      // Add new configured product to order
+      this.orderService.addConfiguredProduct(product, selectedModifiers);
+    }
 
     // Show success toast
     this.showSuccessToast();
@@ -460,7 +521,7 @@ export class ModifiersPage implements OnInit, OnDestroy {
     // Open order summary menu before navigating back
     await this.menuService.openMenu('order-summary-menu');
 
-    // Navigate back to product catalog
+    // Navigate back to product catalog (or stay on order summary for editing)
     this.router.navigate(['/products']);
   }
 
@@ -489,11 +550,12 @@ export class ModifiersPage implements OnInit, OnDestroy {
   }
 
   /**
-   * Show success toast notification when item is added to order
+   * Show success toast notification when item is added/updated in order
    */
   private async showSuccessToast(): Promise<void> {
+    const message = this.isEditing() ? 'Item updated' : 'Item added to order';
     const toast = await this.toastController.create({
-      message: 'Item added to order',
+      message,
       duration: 2000,
       position: 'bottom',
       color: 'success',
