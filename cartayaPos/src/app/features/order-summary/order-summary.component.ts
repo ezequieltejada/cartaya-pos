@@ -103,7 +103,7 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
    */
   private async cancelOrder(): Promise<void> {
     this.orderService.clearOrder();
-    this.showToast('Order cancelled', 'middle');
+    this.showToast('Order cancelled', 'bottom');
     
     // Close the order summary menu after order is cleared
     await this.menuService.closeMenu('order-summary-menu');
@@ -238,7 +238,7 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
    */
   async removeItem(itemId: string): Promise<void> {
     this.orderService.removeItem(itemId);
-    this.showToast('Item removed', 'middle');
+    this.showToast('Item removed', 'bottom');
     // Menu will be closed automatically by the effect watching hasItems
   }
 
