@@ -124,7 +124,7 @@ import { TenantService } from '../../core/services/tenant.service';
             <ion-button
               fill="outline"
               size="small"
-              [disabled]="(selectedModifiers().get(modifier.id) || 0) === 0"
+              [disabled]="isDecrementDisabled(modifier)"
               (click)="decrementModifier(modifier.id)"
               [attr.aria-label]="'Decrease ' + modifier.name"
             >
@@ -314,6 +314,7 @@ export class ModifiersPage implements OnInit, OnDestroy {
       .subscribe({
         next: (modifiers) => {
           this.modifiersList.set(modifiers);
+          this.initializeDefaultModifiers(modifiers);
           this.isLoading.set(false);
           if (modifiers.length === 0) {
             // No modifiers is not necessarily an error, but inform user
@@ -329,13 +330,42 @@ export class ModifiersPage implements OnInit, OnDestroy {
   }
 
   /**
-   * Retry fetching modifiers after an error
+   * Initialize default modifiers with quantity 1
+   * @param modifiers List of modifiers to check for defaults
+   */
+  private initializeDefaultModifiers(modifiers: Modifier[]): void {
+    const defaultSelections = new Map<string, number>();
+
+    modifiers.forEach((modifier) => {
+      if (modifier.default) {
+        defaultSelections.set(modifier.id, 1);
+      }
+    });
+
+    this.selectedModifiers.set(defaultSelections);
+  }
+
+  /**
+   * Retry fetching modifiers
    */
   retryFetchModifiers(): void {
     const productId = this.activatedRoute.snapshot.paramMap.get('productId');
     if (productId) {
       this.fetchModifiers(productId);
     }
+  }
+  isDecrementDisabled(modifier: Modifier): boolean {
+    const current = this.selectedModifiers().get(modifier.id) || 0;
+
+    // Always disabled if quantity is 0
+    if (current === 0) return true;
+
+    // For non-removable default modifiers, disabled if quantity is 1
+    if (modifier.default && modifier.isRemovable === false && current <= 1) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -351,12 +381,21 @@ export class ModifiersPage implements OnInit, OnDestroy {
 
   /**
    * Decrement the quantity for a specific modifier
-   * Minimum quantity is 0 (button is disabled at 0)
+   * Minimum quantity is 0 for regular modifiers, 1 for non-removable default modifiers
    * @param modifierId Modifier ID to decrement
    */
   decrementModifier(modifierId: string): void {
     const current = this.selectedModifiers().get(modifierId) || 0;
     if (current === 0) return;
+
+    // Find the modifier to check if it's a non-removable default
+    const modifier = this.modifiersList().find((m) => m.id === modifierId);
+    const isNonRemovableDefault = modifier?.default && modifier.isRemovable === false;
+
+    // Don't allow going below 1 for non-removable default modifiers
+    if (isNonRemovableDefault && current <= 1) {
+      return;
+    }
 
     const updated = new Map(this.selectedModifiers());
     updated.set(modifierId, current - 1);

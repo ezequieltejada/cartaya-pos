@@ -18,7 +18,15 @@ interface ModifierCache {
  * API Response format for modifiers endpoint
  */
 interface ModifiersApiResponse {
-  data: Modifier[];
+  data: {
+    id: string;
+    name: string;
+    priceDelta: number;
+    currency: string;
+    active: boolean;
+    isDefault?: boolean;
+    isRemovable?: boolean;
+  }[];
   pagination: {
     total: number;
     limit: number;
@@ -126,7 +134,7 @@ export class ModifierService {
     this.isLoading.set(true);
 
     return this.httpClient
-      .get<ModifiersApiResponse>(
+      .get(
         `${this.API_URL}/tenants/${tenantId}/products/${productId}/modifiers`,
         {
           params: {
@@ -135,13 +143,24 @@ export class ModifierService {
         }
       )
       .pipe(
-        map((response) => {
+        map((response: any) => {
           // Extract data array from paginated response
           if (!response.data) {
             return [];
           }
-          // Filter to only active modifiers
-          return response.data.filter((modifier) => modifier.active);
+          // Filter to only active modifiers and map to full Modifier type
+          return response.data
+            .filter((modifier: any) => modifier.active)
+            .map((modifier: any) => {
+              const mappedModifier = {
+                ...modifier,
+                default: modifier.isDefault,
+                isRemovable: modifier.isRemovable,
+                createdAt: '', // API doesn't provide these, set defaults
+                updatedAt: '',
+              } as Modifier;
+              return mappedModifier;
+            });
         }),
         tap(async (modifiers) => {
           // Cache modifiers for offline support

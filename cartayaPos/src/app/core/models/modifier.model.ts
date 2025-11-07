@@ -33,6 +33,20 @@ export interface Modifier {
   currency: string;
 
   /**
+   * Whether this modifier is automatically included by default
+   * Default modifiers are always added to the product price display
+   * @example true
+   */
+  default?: boolean;
+
+  /**
+   * Whether this default modifier can be removed by the user
+   * Only applies to default modifiers
+   * @example true
+   */
+  isRemovable?: boolean;
+
+  /**
    * Whether this modifier is currently available for purchase
    * Inactive modifiers should not be displayed in the UI or allowed to be selected
    * @example true
