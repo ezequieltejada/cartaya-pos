@@ -76,6 +76,37 @@
         font-size: 15px;
         font-weight: 500;
       }
+
+      // Modifiers list styling
+      .modifiers-list {
+        margin-top: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+
+        .modifier-item {
+          font-size: 13px;
+          display: flex;
+          gap: 6px;
+          align-items: baseline;
+
+          .modifier-quantity {
+            font-weight: 500;
+          }
+
+          .modifier-price {
+            font-size: 12px;
+
+            &.positive {
+              color: var(--ion-color-success);
+            }
+
+            &.negative {
+              color: var(--ion-color-danger);
+            }
+          }
+        }
+      }
     }
 
     .item-actions {

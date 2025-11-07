@@ -11,6 +11,25 @@
         <ion-item class="order-item">
           <ion-label>
             <h2>{{ item.productName }}</h2>
+            
+            <!-- Modifiers List -->
+            <div class="modifiers-list" *ngIf="item.modifiers.length > 0">
+              <ion-text 
+                *ngFor="let modifier of item.modifiers" 
+                class="modifier-item"
+                color="medium"
+              >
+                <span class="modifier-name">{{ modifier.name }}</span>
+                <span class="modifier-quantity" *ngIf="modifier.quantity > 1">
+                  x{{ modifier.quantity }}
+                </span>
+                <span class="modifier-price" 
+                  [class.positive]="modifier.priceDelta > 0"
+                  [class.negative]="modifier.priceDelta < 0">
+                  ({{ formatModifierPrice(modifier.priceDelta) }})
+                </span>
+              </ion-text>
+            </div>
           </ion-label>
 
           <div slot="end" class="item-actions">

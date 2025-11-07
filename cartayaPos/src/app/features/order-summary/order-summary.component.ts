@@ -260,4 +260,14 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
   trackByItemId(index: number, item: any): string {
     return item.id;
   }
+
+  /**
+   * Formats modifier price delta with sign and currency
+   * @param priceDelta The price change (positive for add-ons, negative for discounts)
+   * @returns Formatted string like "+$1.50" or "-$0.50"
+   */
+  formatModifierPrice(priceDelta: number): string {
+    const sign = priceDelta >= 0 ? '+' : '';
+    return `${sign}$${Math.abs(priceDelta).toFixed(2)}`;
+  }
 }
