@@ -266,6 +266,13 @@ export class ModifiersPage implements OnInit, OnDestroy {
    * and setting up component state
    */
   private initializePage(): void {
+    // Check if POS is selected
+    const selectedPos = this.posService.getSelectedPos();
+    if (!selectedPos) {
+      this.router.navigate(['/pos-selection']);
+      return;
+    }
+
     // Extract productId from route parameters
     const productId = this.activatedRoute.snapshot.paramMap.get('productId');
     if (!productId) {

@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, catchError, map, of, tap } from 'rxjs';
+import { Observable, catchError, map, of, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { User } from '../models/user.model';
 import { ProductService } from './product.service';
@@ -50,24 +50,26 @@ export class AuthService {
           // Store user for later use
           await this.storageService.set('currentUser', response.user);
         }),
-        tap(() => {
+        switchMap((response) => {
           // After successful login, fetch user's tenants
-          this.tenantService.fetchUserTenants().subscribe({
-            next: (tenants) => {
+          return this.tenantService.fetchUserTenants().pipe(
+            map((tenants) => {
               if (tenants.length === 0) {
                 console.warn('User has no assigned tenants');
               } else {
                 console.log('Tenants fetched successfully:', tenants);
               }
               this.isLoading.set(false);
-            },
-            error: (error) => {
+              return response.user;
+            }),
+            catchError((error) => {
               console.error('Failed to fetch tenants after login:', error);
               this.isLoading.set(false);
-            },
-          });
+              // Still return the user even if tenant fetch fails
+              return of(response.user);
+            })
+          );
         }),
-        map((response) => response.user),
         catchError((error) => {
           this.isLoading.set(false);
           throw error;

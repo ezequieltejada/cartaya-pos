@@ -102,7 +102,19 @@ export class ProductCatalogPage implements OnInit {
   private modifierCheckCache = new Map<string, boolean>();
 
   ngOnInit(): void {
+    this.checkPosSelection();
     this.loadProducts();
+  }
+
+  /**
+   * Check if a POS is selected, redirect to selection if not
+   */
+  private checkPosSelection(): void {
+    const selectedPos = this.posService.getSelectedPos();
+    if (!selectedPos) {
+      this.router.navigate(['/pos-selection']);
+      return;
+    }
   }
 
   /**
