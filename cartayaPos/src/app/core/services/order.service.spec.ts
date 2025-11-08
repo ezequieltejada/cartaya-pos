@@ -20,7 +20,7 @@ describe('OrderService', () => {
     defaultPrice: {
       id: 'price-1',
       amount: 12.99,
-      currency: 'USD',
+      currency: 'EUR',
     },
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
@@ -94,8 +94,8 @@ describe('OrderService', () => {
       expect(service.orderItems()).toEqual([]);
     });
 
-    it('should initialize currency signal with USD', () => {
-      expect(service.currency()).toBe('USD');
+    it('should initialize currency signal with EUR', () => {
+      expect(service.currency()).toBe('EUR');
     });
 
     it('should initialize isSubmitting signal with false', () => {
@@ -233,7 +233,7 @@ describe('OrderService', () => {
       spyOn(console, 'error');
       const invalidProduct = {
         ...mockProduct,
-        defaultPrice: { id: 'price-1', currency: 'USD' },
+        defaultPrice: { id: 'price-1', currency: 'EUR' },
       } as any;
 
       service.addConfiguredProduct(invalidProduct, []);
@@ -613,7 +613,7 @@ describe('OrderService', () => {
       const req = httpMock.expectOne((r) =>
         r.url.includes(`/tenants/${tenantId}/pos/${posId}/orders`)
       );
-      req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 17.99, currency: 'USD' });
+      req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 17.99, currency: 'EUR' });
     });
 
     it('should POST to correct API endpoint', (done) => {
@@ -628,7 +628,7 @@ describe('OrderService', () => {
         r.url.includes(`/tenants/${tenantId}/pos/${posId}/orders`)
       );
       expect(req.request.method).toBe('POST');
-      req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 17.99, currency: 'USD' });
+      req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 17.99, currency: 'EUR' });
     });
 
     it('should construct correct request payload', (done) => {
@@ -651,7 +651,7 @@ describe('OrderService', () => {
       expect(payload.totalAmount).toBe(service.orderTotal());
       expect(payload.currency).toBe(service.currency());
 
-      req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 17.99, currency: 'USD' });
+      req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 17.99, currency: 'EUR' });
     });
 
     it('should map modifiers correctly in payload', (done) => {
@@ -673,7 +673,7 @@ describe('OrderService', () => {
       expect(modifiers[1].modifierId).toBe('mod-2');
       expect(modifiers[1].quantity).toBe(2);
 
-      req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 17.99, currency: 'USD' });
+      req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 17.99, currency: 'EUR' });
     });
 
     it('should clear order on successful submission', (done) => {
@@ -691,7 +691,7 @@ describe('OrderService', () => {
       const req = httpMock.expectOne((r) =>
         r.url.includes(`/tenants/${tenantId}/pos/${posId}/orders`)
       );
-      req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 17.99, currency: 'USD' });
+      req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 17.99, currency: 'EUR' });
     });
 
     it('should set isSubmitting to false after success', (done) => {
@@ -705,7 +705,7 @@ describe('OrderService', () => {
       const req = httpMock.expectOne((r) =>
         r.url.includes(`/tenants/${tenantId}/pos/${posId}/orders`)
       );
-      req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 17.99, currency: 'USD' });
+      req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 17.99, currency: 'EUR' });
     });
 
     it('should set isSubmitting to false on error', (done) => {
@@ -789,14 +789,14 @@ describe('OrderService', () => {
         expect(response.orderId).toBe('order-1');
         expect(response.status).toBe('received');
         expect(response.totalAmount).toBe(17.99);
-        expect(response.currency).toBe('USD');
+        expect(response.currency).toBe('EUR');
         done();
       });
 
       const req = httpMock.expectOne((r) =>
         r.url.includes(`/tenants/${tenantId}/pos/${posId}/orders`)
       );
-      req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 17.99, currency: 'USD' });
+      req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 17.99, currency: 'EUR' });
     });
 
     it('should submit order with multiple items', (done) => {
@@ -818,7 +818,7 @@ describe('OrderService', () => {
 
         const payload = req.request.body;
         expect(payload.items.length).toBe(2);
-        req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 30.98, currency: 'USD' });
+        req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 30.98, currency: 'EUR' });
       }, 10);
     });
   });
@@ -1002,7 +1002,7 @@ describe('OrderService', () => {
             subtotal: 10.0,
           },
         ],
-        currency: 'USD',
+        currency: 'EUR',
         timestamp: Date.now(),
       };
 
@@ -1092,7 +1092,7 @@ describe('OrderService', () => {
   describe('Edge Cases', () => {
     it('should handle products with zero base price', (done) => {
       storageService.set.and.returnValue(Promise.resolve());
-      const freeProduct = { ...mockProduct, defaultPrice: { id: 'price-1', amount: 0, currency: 'USD' } };
+      const freeProduct = { ...mockProduct, defaultPrice: { id: 'price-1', amount: 0, currency: 'EUR' } };
 
       service.addConfiguredProduct(freeProduct, mockModifiers);
 
@@ -1106,7 +1106,7 @@ describe('OrderService', () => {
 
     it('should handle products with very large prices', (done) => {
       storageService.set.and.returnValue(Promise.resolve());
-      const expensiveProduct = { ...mockProduct, defaultPrice: { id: 'price-1', amount: 999999.99, currency: 'USD' } };
+      const expensiveProduct = { ...mockProduct, defaultPrice: { id: 'price-1', amount: 999999.99, currency: 'EUR' } };
 
       service.addConfiguredProduct(expensiveProduct, mockModifiers);
 
@@ -1132,7 +1132,7 @@ describe('OrderService', () => {
       expect(payload.items).toEqual([]);
       expect(payload.totalAmount).toBe(0);
 
-      req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 0, currency: 'USD' });
+      req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 0, currency: 'EUR' });
     });
 
     it('should handle modifiers with zero quantity', (done) => {
@@ -1220,7 +1220,7 @@ describe('OrderService', () => {
               const req = httpMock.expectOne((r) =>
                 r.url.includes(`/tenants/${tenantId}/pos/${posId}/orders`)
               );
-              req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 12.99, currency: 'USD' });
+              req.flush({ orderId: 'order-1', status: 'received', createdAt: new Date().toISOString(), items: [], totalAmount: 12.99, currency: 'EUR' });
             }, 10);
           }, 10);
         }, 10);
