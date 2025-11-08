@@ -2,16 +2,16 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import {
-    IonButton,
-    IonCard,
-    IonCardContent,
-    IonCardHeader,
-    IonCardTitle,
-    IonContent,
-    IonHeader,
-    IonIcon,
-    IonTitle,
-    IonToolbar,
+  IonButton,
+  IonCard,
+  IonCardContent,
+  IonCardHeader,
+  IonCardTitle,
+  IonContent,
+  IonHeader,
+  IonIcon,
+  IonTitle,
+  IonToolbar,
 } from '@ionic/angular/standalone';
 import { AuthService } from '../../core/services/auth.service';
 import { PosService } from '../../core/services/pos.service';
@@ -57,6 +57,10 @@ export class DashboardPage implements OnInit {
 
   navigateToProducts(): void {
     this.router.navigate(['/products']);
+  }
+
+  navigateToSettings(): void {
+    this.router.navigate(['/settings']);
   }
 
   get currentUser() {
