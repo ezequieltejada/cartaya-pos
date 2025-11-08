@@ -2,36 +2,38 @@
 .settings-container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 16px;
-  padding-bottom: 2rem;
+  padding: 16px 16px 2rem;
 }
 
-// Connection Status Card
-.status-card {
+// Card styles mixin replacement
+%card-base {
   margin-bottom: 1.5rem;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
   border: 1px solid var(--ion-color-light);
   overflow: hidden;
   
   ion-card-header {
     padding: 1.25rem;
-    background: linear-gradient(135deg, var(--ion-color-light) 0%, var(--ion-color-light) 100%);
+    background: linear-gradient(135deg,var(--ion-color-light) 0%,var(--ion-color-light) 100%);
     border-bottom: 1px solid var(--ion-border-color);
   }
 
   ion-card-title {
-    font-size: 1.25rem;
-    font-weight: 700;
+    font: 700 1.25rem/1.2 inherit;
     color: var(--ion-color-dark);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: .5px;
   }
 
   ion-card-content {
     padding: 1.5rem;
-    background: white;
   }
+}
+
+// Connection Status Card
+.status-card {
+  @extend %card-base;
 }
 
 .status-indicator {
@@ -44,10 +46,9 @@
   ion-badge {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.875rem 1.5rem;
-    font-size: 1rem;
-    font-weight: 600;
+    gap: .75rem;
+    padding: .875rem 1.5rem;
+    font: 600 1rem/1.2 inherit;
     border-radius: 24px;
     min-width: 160px;
     justify-content: center;
@@ -63,15 +64,15 @@
   padding: 1.25rem;
   border-radius: 12px;
   border: 2px solid var(--ion-color-primary);
-  border-left: 4px solid var(--ion-color-primary);
+  border-left-width: 4px;
   
   .info-item {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: .5rem;
     margin-bottom: 1rem;
     padding-bottom: 1rem;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    border-bottom: 1px solid rgba(0,0,0,.08);
 
     &:last-child {
       margin-bottom: 0;
@@ -81,26 +82,22 @@
   }
 
   .info-label {
-    font-weight: 700;
+    font: 700 .85rem/1.2 inherit;
     color: var(--ion-color-medium);
-    font-size: 0.85rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: .5px;
   }
 
   .info-value {
     font-weight: 600;
     color: var(--ion-color-dark);
     word-break: break-all;
-    font-size: 1rem;
     
-    // Monospace font for address
     &:last-of-type {
-      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
-      font-size: 0.95rem;
-      letter-spacing: 0.5px;
-      background: rgba(0, 0, 0, 0.03);
-      padding: 0.5rem 0.75rem;
+      font: .95rem/1.4 'Monaco','Menlo','Ubuntu Mono','Courier New',monospace;
+      letter-spacing: .5px;
+      background: rgba(0,0,0,.03);
+      padding: .5rem .75rem;
       border-radius: 4px;
       overflow: auto;
     }
@@ -113,108 +110,74 @@
   border-radius: 12px;
   text-align: center;
   color: var(--ion-color-medium);
-  font-size: 1rem;
   border: 2px dashed var(--ion-color-medium);
   
   p {
     margin: 0;
-    font-weight: 500;
   }
 }
 
 // Scan Card
 .scan-card {
-  margin-bottom: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  border: 1px solid var(--ion-color-light);
-  overflow: hidden;
-
-  ion-card-header {
-    padding: 1.25rem;
-    background: linear-gradient(135deg, var(--ion-color-light) 0%, var(--ion-color-light) 100%);
-    border-bottom: 1px solid var(--ion-border-color);
-  }
-
-  ion-card-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--ion-color-dark);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  ion-card-content {
-    padding: 1.5rem;
-    background: white;
-  }
+  @extend %card-base;
 }
 
 .printers-list {
-  margin-top: 1.5rem;
-  margin-left: -1.5rem;
-  margin-right: -1.5rem;
-  margin-bottom: -1.5rem;
+  margin: 1.5rem -1.5rem -1.5rem;
 
   ion-item {
     --padding-start: 1rem;
     --padding-end: 1rem;
-    --padding-top: 0.875rem;
-    --padding-bottom: 0.875rem;
     --min-height: 68px;
-    margin-bottom: 0.75rem;
+    margin: .75rem .5rem;
     border-radius: 12px;
     border: 2px solid var(--ion-color-light);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background: white;
-    margin-left: 0.5rem;
-    margin-right: 0.5rem;
+    transition: all .3s cubic-bezier(.4,0,.2,1);
+    background: #fff;
 
     &.selected {
-      background: var(--ion-color-primary-tint, rgba(88, 80, 223, 0.1));
+      background: var(--ion-color-primary-tint,rgba(88,80,223,.1));
       border-color: var(--ion-color-primary);
-      box-shadow: 0 4px 12px rgba(88, 80, 223, 0.15);
+      box-shadow: 0 4px 12px rgba(88,80,223,.15);
     }
 
     &:hover {
       background: var(--ion-color-light);
       border-color: var(--ion-color-medium);
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 4px 12px rgba(0,0,0,.08);
     }
 
     &:active {
-      transform: translateY(0);
+      transform: none;
     }
 
     .radio-icon {
       font-size: 1.5rem;
-      margin-right: 0.75rem;
+      margin-right: .75rem;
       color: var(--ion-color-primary);
     }
 
     ion-label {
-      margin-left: 0.5rem;
+      margin-left: .5rem;
 
       h3 {
-        font-weight: 700;
-        margin-bottom: 0.375rem;
+        font: 700 1rem/1.2 inherit;
+        margin-bottom: .375rem;
         color: var(--ion-color-dark);
-        font-size: 1rem;
       }
 
       .printer-address {
-        font-size: 0.8rem;
+        font: .8rem/1.4 'Monaco','Menlo','Ubuntu Mono','Courier New',monospace;
         color: var(--ion-color-medium);
-        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
-        letter-spacing: 0.5px;
-        margin-bottom: 0;
+        letter-spacing: .5px;
+        margin: 0;
       }
     }
 
     ion-icon[slot="end"] {
       font-size: 1.5rem;
-      margin-left: 0.5rem;
+      margin-left: .5rem;
     }
   }
 }
@@ -225,8 +188,6 @@
   border-radius: 12px;
   text-align: center;
   color: var(--ion-color-medium);
-  font-size: 0.975rem;
-  line-height: 1.6;
   border: 2px dashed var(--ion-color-medium);
   min-height: 120px;
   display: flex;
@@ -246,51 +207,46 @@
   gap: 1.25rem;
   margin-top: 2.5rem;
   padding: 1.5rem;
-  background: linear-gradient(135deg, rgba(88, 80, 223, 0.05) 0%, rgba(88, 80, 223, 0.02) 100%);
+  background: linear-gradient(135deg,rgba(88,80,223,.05) 0%,rgba(88,80,223,.02) 100%);
   border-radius: 12px;
-  border: 1px solid rgba(88, 80, 223, 0.1);
+  border: 1px solid rgba(88,80,223,.1);
 
   ion-button {
     --padding-top: 1rem;
     --padding-bottom: 1rem;
     --border-radius: 10px;
-    font-weight: 700;
-    font-size: 1rem;
-    letter-spacing: 0.5px;
+    font: 700 1rem/1.2 inherit;
+    letter-spacing: .5px;
     text-transform: uppercase;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all .3s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 4px 12px rgba(0,0,0,.1);
 
     ion-icon {
       font-size: 1.25rem;
-      margin-right: 0.5rem;
+      margin-right: .5rem;
     }
 
     &:active {
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 2px 6px rgba(0,0,0,.15);
     }
 
     &:disabled {
-      opacity: 0.6;
+      opacity: .6;
       cursor: not-allowed;
     }
   }
 }
 
-// Responsive Design
 @media (max-width: 640px) {
   .settings-container {
-    padding: 12px;
-    padding-bottom: 1.5rem;
+    padding: 12px 12px 1.5rem;
   }
 
   .status-card,
   .scan-card {
-    margin-left: 0;
-    margin-right: 0;
-    margin-bottom: 1.25rem;
+    margin: 1.25rem 0;
     border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
 
     ion-card-header {
       padding: 1rem;
@@ -307,11 +263,11 @@
 
   .status-indicator {
     margin-bottom: 1.5rem;
-    padding-bottom: 0.875rem;
+    padding-bottom: .875rem;
 
     ion-badge {
-      padding: 0.75rem 1.25rem;
-      font-size: 0.95rem;
+      padding: .75rem 1.25rem;
+      font-size: .95rem;
       min-width: 140px;
     }
   }
@@ -320,28 +276,23 @@
   .no-printer-selected,
   .empty-state {
     padding: 1rem;
-    font-size: 0.95rem;
   }
 
   .printer-info {
-    border-left: 3px solid var(--ion-color-primary);
+    border-left-width: 3px;
 
     .info-item {
-      margin-bottom: 0.875rem;
-      padding-bottom: 0.875rem;
+      margin-bottom: .875rem;
+      padding-bottom: .875rem;
     }
 
     .info-label {
-      font-size: 0.8rem;
+      font-size: .8rem;
     }
 
-    .info-value {
-      font-size: 0.95rem;
-
-      &:last-of-type {
-        font-size: 0.9rem;
-        padding: 0.375rem 0.625rem;
-      }
+    .info-value:last-of-type {
+      font-size: .9rem;
+      padding: .375rem .625rem;
     }
   }
 
@@ -351,34 +302,24 @@
     margin-bottom: 0;
 
     ion-item {
-      --padding-start: 0.875rem;
-      --padding-end: 0.875rem;
-      --padding-top: 0.75rem;
-      --padding-bottom: 0.75rem;
+      --padding-start: .875rem;
+      --padding-end: .875rem;
       --min-height: 64px;
-      margin-bottom: 0.625rem;
+      margin-bottom: .625rem;
       border-radius: 8px;
-      margin-left: 0.25rem;
-      margin-right: 0.25rem;
+      margin-left: .25rem;
+      margin-right: .25rem;
 
       .radio-icon {
         font-size: 1.25rem;
-        margin-right: 0.5rem;
       }
 
-      ion-label {
-        h3 {
-          font-size: 0.95rem;
-          margin-bottom: 0.25rem;
-        }
-
-        .printer-address {
-          font-size: 0.75rem;
-        }
+      ion-label h3 {
+        font-size: .95rem;
       }
 
-      ion-icon[slot="end"] {
-        font-size: 1.25rem;
+      ion-label .printer-address {
+        font-size: .75rem;
       }
     }
   }
@@ -389,284 +330,31 @@
     padding: 1rem;
 
     ion-button {
-      --padding-top: 0.875rem;
-      --padding-bottom: 0.875rem;
-      font-size: 0.95rem;
-
-      ion-icon {
-        font-size: 1.1rem;
-      }
-    }
-  }
-}
-
-@media (max-width: 480px) {
-  .settings-container {
-    padding: 8px;
-  }
-
-  .status-card,
-  .scan-card {
-    border-radius: 6px;
-    margin-bottom: 1rem;
-
-    ion-card-header {
-      padding: 0.875rem;
-    }
-
-    ion-card-title {
-      font-size: 1rem;
-      letter-spacing: 0;
-    }
-
-    ion-card-content {
-      padding: 0.875rem;
-    }
-  }
-
-  .status-indicator {
-    margin-bottom: 1.25rem;
-    padding-bottom: 0.75rem;
-
-    ion-badge {
-      padding: 0.625rem 1rem;
-      font-size: 0.9rem;
-      min-width: auto;
-      flex-shrink: 0;
-    }
-  }
-
-  .status-icon {
-    font-size: 1.25rem;
-  }
-
-  .printer-info,
-  .no-printer-selected,
-  .empty-state {
-    padding: 0.875rem;
-    font-size: 0.9rem;
-    border-radius: 8px;
-  }
-
-  .printer-info {
-    border-left: 3px solid var(--ion-color-primary);
-
-    .info-item {
-      margin-bottom: 0.75rem;
-      padding-bottom: 0.75rem;
-      gap: 0.375rem;
-    }
-
-    .info-label {
-      font-size: 0.75rem;
-    }
-
-    .info-value {
-      font-size: 0.9rem;
-
-      &:last-of-type {
-        font-size: 0.85rem;
-        padding: 0.25rem 0.5rem;
-      }
-    }
-  }
-
-  .printers-list {
-    margin-left: -0.875rem;
-    margin-right: -0.875rem;
-
-    ion-item {
-      --padding-start: 0.75rem;
-      --padding-end: 0.75rem;
-      --padding-top: 0.625rem;
-      --padding-bottom: 0.625rem;
-      --min-height: 60px;
-      margin-bottom: 0.5rem;
-      margin-left: 0;
-      margin-right: 0;
-
-      .radio-icon {
-        font-size: 1.1rem;
-        margin-right: 0.375rem;
-      }
-
-      ion-label {
-        margin-left: 0.25rem;
-
-        h3 {
-          font-size: 0.9rem;
-          margin-bottom: 0.2rem;
-        }
-
-        .printer-address {
-          font-size: 0.7rem;
-        }
-      }
-
-      ion-icon[slot="end"] {
-        font-size: 1.1rem;
-      }
-    }
-  }
-
-  .empty-state {
-    padding: 1rem;
-    min-height: 100px;
-  }
-
-  .action-buttons {
-    gap: 0.875rem;
-    margin-top: 1.5rem;
-    padding: 0.875rem;
-    border-radius: 8px;
-
-    ion-button {
-      --padding-top: 0.75rem;
-      --padding-bottom: 0.75rem;
-      --border-radius: 8px;
-      font-size: 0.9rem;
-      letter-spacing: 0;
-
-      ion-icon {
-        font-size: 1rem;
-        margin-right: 0.375rem;
-      }
-    }
-  }
-}
-
-// Tablet styles
-@media (min-width: 641px) and (max-width: 1024px) {
-  .settings-container {
-    padding: 20px;
-  }
-
-  .status-card,
-  .scan-card {
-    margin-bottom: 1.75rem;
-  }
-
-  .action-buttons {
-    flex-direction: row;
-    gap: 1.5rem;
-
-    ion-button {
-      flex: 1;
-    }
-  }
-}
-
-// Large screens
-@media (min-width: 1025px) {
-  .action-buttons {
-    flex-direction: row;
-    gap: 2rem;
-    justify-content: flex-start;
-
-    ion-button {
-      max-width: 280px;
+      --padding-top: .875rem;
+      --padding-bottom: .875rem;
+      font-size: .95rem;
     }
   }
 }
 
 // Dark Mode Support
 @media (prefers-color-scheme: dark) {
-  .settings-container {
-    background: var(--ion-background-color);
-  }
-
   .status-card,
   .scan-card {
     background: var(--ion-color-step-150);
     border-color: var(--ion-color-step-200);
-
-    ion-card-header {
-      background: linear-gradient(135deg, var(--ion-color-step-200) 0%, var(--ion-color-step-150) 100%);
-      border-bottom-color: var(--ion-color-step-300);
-    }
-
-    ion-card-title {
-      color: var(--ion-color-light);
-    }
-
-    ion-card-content {
-      background: transparent;
-    }
-  }
-
-  .status-indicator {
-    border-bottom-color: var(--ion-color-step-200);
-
-    ion-badge {
-      background: rgba(88, 80, 223, 0.2);
-      color: var(--ion-color-light);
-    }
   }
 
   .printer-info {
     background: var(--ion-color-step-200);
     border-color: var(--ion-color-primary);
-    color: var(--ion-color-light);
-
-    .info-label {
-      color: var(--ion-color-medium);
-    }
-
-    .info-value {
-      color: var(--ion-color-light);
-
-      &:last-of-type {
-        background: rgba(0, 0, 0, 0.2);
-      }
-    }
-
-    .info-item {
-      border-bottom-color: var(--ion-color-step-300);
-    }
-  }
-
-  .no-printer-selected,
-  .empty-state {
-    background: var(--ion-color-step-200);
-    color: var(--ion-color-medium);
-    border-color: var(--ion-color-step-300);
   }
 
   .printers-list ion-item {
     background: var(--ion-color-step-100);
-    border-color: var(--ion-color-step-200);
-    --ion-item-background: var(--ion-color-step-100);
 
     &.selected {
-      background: rgba(88, 80, 223, 0.2);
-      border-color: var(--ion-color-primary);
-      box-shadow: 0 4px 12px rgba(88, 80, 223, 0.25);
+      background: rgba(88,80,223,.2);
     }
-
-    &:hover {
-      background: var(--ion-color-step-200);
-      border-color: var(--ion-color-medium);
-    }
-
-    .radio-icon {
-      color: var(--ion-color-primary);
-    }
-
-    ion-label {
-      color: var(--ion-color-light);
-
-      h3 {
-        color: var(--ion-color-light);
-      }
-
-      .printer-address {
-        color: var(--ion-color-medium);
-      }
-    }
-  }
-
-  .action-buttons {
-    background: rgba(88, 80, 223, 0.1);
-    border-color: rgba(88, 80, 223, 0.2);
   }
 }
