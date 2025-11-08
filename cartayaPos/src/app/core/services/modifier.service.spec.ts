@@ -627,8 +627,6 @@ describe('ModifierService', () => {
     it('should handle multiple concurrent fetch requests', (done) => {
       storageService.set.and.returnValue(Promise.resolve());
 
-      const requests: any[] = [];
-
       // Make multiple concurrent requests
       service.fetchProductModifiers(tenantId, 'prod-1', posId).subscribe((modifiers) => {
         expect(modifiers).toEqual(mockModifiers.filter((m) => m.active));
