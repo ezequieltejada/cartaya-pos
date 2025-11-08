@@ -3,6 +3,8 @@ import { Router } from '@angular/router';
 import { Device } from '@capacitor/device';
 import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { addIcons } from 'ionicons';
+import { cartOutline, checkmarkCircleOutline, imageOutline, logOutOutline, menu } from 'ionicons/icons';
 import { AuthService } from './core/services/auth.service';
 import { PosService } from './core/services/pos.service';
 import { StorageService } from './core/services/storage.service';
@@ -22,6 +24,10 @@ export class AppComponent implements OnInit {
   private translate = inject(TranslateService);
   currentLanguage = 'en';
 
+  constructor() {
+    addIcons({ menu, imageOutline, cartOutline, checkmarkCircleOutline, logOutOutline });
+  }
+
   async ngOnInit() {
     // Initialize storage first
     try {
@@ -38,8 +44,8 @@ export class AppComponent implements OnInit {
     this.authService.checkSession().subscribe({
       next: (user) => {
         if (user) {
-          // User has valid session, navigate to dashboard
-          this.router.navigate(['/dashboard']);
+          // User has valid session, navigate to products
+          this.router.navigate(['/products']);
         } else {
           // No session, navigate to login
           this.router.navigate(['/auth/login']);

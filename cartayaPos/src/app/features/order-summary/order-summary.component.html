@@ -1,0 +1,93 @@
+<div class="order-summary-container" *ngIf="hasItems(); else emptyState">
+  <!-- Header -->
+  <div class="summary-header">
+    <h2>Order Summary</h2>
+  </div>
+
+  <!-- Order Items List -->
+  <div class="order-items-container">
+    <ion-list>
+      <ng-container *ngFor="let item of orderItems(); trackBy: trackByItemId">
+        <ion-item class="order-item">
+          <ion-label>
+            <h2>{{ item.productName }}</h2>
+            
+            <!-- Modifiers List -->
+            <div class="modifiers-list" *ngIf="item.modifiers.length > 0">
+              <ion-text 
+                *ngFor="let modifier of item.modifiers" 
+                class="modifier-item"
+                color="medium"
+              >
+                <span class="modifier-name">{{ modifier.name }}</span>
+                <span class="modifier-quantity" *ngIf="modifier.quantity > 1">
+                  x{{ modifier.quantity }}
+                </span>
+                <span class="modifier-price" 
+                  [class.positive]="modifier.priceDelta > 0"
+                  [class.negative]="modifier.priceDelta < 0">
+                  ({{ formatModifierPrice(modifier.priceDelta) }})
+                </span>
+              </ion-text>
+            </div>
+          </ion-label>
+
+          <div slot="end" class="item-actions">
+            <span class="item-price">${{ item.subtotal.toFixed(2) }}</span>
+            <ion-button
+              fill="clear"
+              color="primary"
+              size="small"
+              (click)="editItem(item.id)"
+              title="Edit item"
+            >
+              <ion-icon name="pencil" slot="icon-only"></ion-icon>
+            </ion-button>
+            <ion-button
+              fill="clear"
+              color="danger"
+              size="small"
+              (click)="removeItem(item.id)"
+              title="Remove item"
+            >
+              <ion-icon name="trash" slot="icon-only"></ion-icon>
+            </ion-button>
+          </div>
+        </ion-item>
+      </ng-container>
+    </ion-list>
+  </div>
+
+  <!-- Order Total Section -->
+  <div class="total-section">
+    <div class="total-row">
+      <span class="label">Total:</span>
+      <span class="total-amount">${{ orderTotal().toFixed(2) }}</span>
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="action-buttons">
+    <ion-button expand="block" fill="outline" color="danger" (click)="showCancelConfirmation()">
+      Cancel Order
+    </ion-button>
+    <ion-button
+      expand="block"
+      color="success"
+      (click)="showCashConfirmation()"
+      [disabled]="isSubmitting()"
+    >
+      <ion-spinner *ngIf="isSubmitting()" name="crescent" slot="start"></ion-spinner>
+      {{ isSubmitting() ? 'Processing...' : 'Cash Order' }}
+    </ion-button>
+  </div>
+</div>
+
+<!-- Empty State -->
+<ng-template #emptyState>
+  <div class="empty-state">
+    <ion-text color="medium">
+      <p>No items in order</p>
+    </ion-text>
+  </div>
+</ng-template>

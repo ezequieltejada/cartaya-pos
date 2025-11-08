@@ -18,7 +18,7 @@ bootstrapApplication(AppComponent, {
     provideHttpClient(withInterceptors([authInterceptor])),
     Storage,
     provideTranslateService({
-      defaultLanguage: 'en',
+      fallbackLang: 'en',
       loader: provideTranslateHttpLoader({
         prefix: './assets/i18n/',
         suffix: '.json',

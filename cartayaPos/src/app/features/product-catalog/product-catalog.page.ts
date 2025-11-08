@@ -5,25 +5,39 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
   IonButton,
+  IonButtons,
   IonCard,
   IonCardContent,
   IonCol,
   IonContent,
+  IonFab,
+  IonFabButton,
   IonGrid,
   IonHeader,
   IonIcon,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonMenu,
+  IonMenuToggle,
   IonRow,
   IonSearchbar,
   IonSpinner,
   IonTitle,
   IonToolbar,
-  ToastController,
+  ToastController
 } from '@ionic/angular/standalone';
 import { Pos } from '../../core/models/pos.model';
 import { Product } from '../../core/models/product.model';
+import { AuthService } from '../../core/services/auth.service';
+import { MenuService } from '../../core/services/menu.service';
+import { ModifierService } from '../../core/services/modifier.service';
+import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
 import { ProductService } from '../../core/services/product.service';
+import { SettingsService } from '../../core/services/settings.service';
 import { TenantService } from '../../core/services/tenant.service';
+import { OrderSummaryComponent } from '../order-summary/order-summary.component';
 import { ProductCardComponent } from './components/product-card/product-card.component';
 
 /**
@@ -55,16 +69,23 @@ import { ProductCardComponent } from './components/product-card/product-card.com
     IonHeader,
     IonTitle,
     IonToolbar,
+    IonButtons,
+    IonButton,
+    IonMenuToggle,
+    IonIcon,
     IonGrid,
     IonRow,
     IonCol,
+    IonItem, IonLabel, IonList,
     IonSpinner,
     IonSearchbar,
-    IonButton,
-    IonIcon,
     IonCard,
     IonCardContent,
+    IonMenu,
+    IonFab,
+    IonFabButton,
     ProductCardComponent,
+    OrderSummaryComponent,
   ],
   templateUrl: './product-catalog.page.html',
   styleUrls: ['./product-catalog.page.scss'],
@@ -72,14 +93,56 @@ import { ProductCardComponent } from './components/product-card/product-card.com
 export class ProductCatalogPage implements OnInit {
   private productService = inject(ProductService);
   private tenantService = inject(TenantService);
+  private settingsService = inject(SettingsService);
   private posService = inject(PosService);
   private router = inject(Router);
   private toastController = inject(ToastController);
+  private modifierService = inject(ModifierService);
+  private menuService = inject(MenuService);
+  orderService = inject(OrderService);
+  private authService = inject(AuthService);
 
   searchQuery = '';
+  private modifierCheckCache = new Map<string, boolean>();
 
   ngOnInit(): void {
+    this.checkPosSelection();
+    this.loadTenantSettings();
     this.loadProducts();
+  }
+
+  /**
+   * Load tenant settings (currency, timezone)
+   * This must happen early so that OrderService can use the correct currency
+   */
+  private loadTenantSettings(): void {
+    const tenantId = this.tenantService.getCurrentTenantId();
+
+    if (!tenantId) {
+      console.warn('No tenant selected when attempting to load settings');
+      return;
+    }
+
+    this.settingsService.fetchTenantSettings(tenantId).subscribe({
+      next: (settings) => {
+        console.log('Tenant settings loaded:', settings);
+      },
+      error: (error) => {
+        console.error('Failed to load tenant settings:', error);
+        // Continue anyway - OrderService will use fallback values
+      },
+    });
+  }
+
+  /**
+   * Check if a POS is selected, redirect to selection if not
+   */
+  private checkPosSelection(): void {
+    const selectedPos = this.posService.getSelectedPos();
+    if (!selectedPos) {
+      this.router.navigate(['/pos-selection']);
+      return;
+    }
   }
 
   /**
@@ -139,6 +202,13 @@ export class ProductCatalogPage implements OnInit {
   }
 
   /**
+   * Get current user for menu display
+   */
+  get currentUser(): any {
+    return this.authService.getCurrentUser();
+  }
+
+  /**
    * Handle search input with debouncing
    * Updates the ProductService filter text to trigger filtered products recomputation
    * @param event - The ionInput event from IonSearchbar
@@ -170,7 +240,8 @@ export class ProductCatalogPage implements OnInit {
 
   /**
    * Handle product selection
-   * Checks if product has modifiers and shows appropriate placeholder
+   * Checks if product has modifiers and either navigates to ModifiersPage
+   * or adds directly to order
    * @param product - The selected product
    */
   async onProductTap(product: Product): Promise<void> {
@@ -181,56 +252,98 @@ export class ProductCatalogPage implements OnInit {
     const hasModifiers = await this.checkProductModifiers(product);
 
     if (hasModifiers) {
-      // Navigate to modifiers screen (placeholder for now)
-      await this.showModifiersPlaceholder(product);
+      // Navigate to modifiers page with product data via route state
+      this.router.navigate(['/products', product.id, 'modifiers'], {
+        state: { product },
+      });
     } else {
-      // Add directly to order (future feature)
-      await this.showAddToOrderPlaceholder(product);
+      // Add directly to order without modifiers
+      this.orderService.addConfiguredProduct(product, []);
+      await this.showSuccessToast(`"${product.name}" added to order`);
+      // Open order summary menu to show the item was added
+      await this.menuService.openMenu('order-summary-menu');
     }
   }
 
   /**
    * Check if product has modifiers
-   * For MVP, assume all products may have modifiers
-   * In future, check product.modifiers array or query API
+   * Uses API call to fetch modifiers for the product, with caching
+   * Returns true if product has any active modifiers
+   * Returns false if no modifiers, API error, or product is invalid
    * @param product - Product to check
    * @returns true if product has modifiers
    */
   private async checkProductModifiers(product: Product): Promise<boolean> {
-    // Placeholder: In future, implement actual check
-    // Could check product.modifiers array, metadata, or API
-    return true;
+    // Check cache first to avoid repeated API calls
+    if (this.modifierCheckCache.has(product.id)) {
+      return this.modifierCheckCache.get(product.id) || false;
+    }
+
+    try {
+      const tenantId = this.tenantService.getCurrentTenantId();
+      const pos = this.posService.getSelectedPos();
+
+      if (!tenantId || !pos) {
+        console.warn('Cannot check modifiers: missing tenantId or PoS');
+        return false;
+      }
+
+      // Fetch modifiers from API
+      const modifiers = await this.modifierService
+        .fetchProductModifiers(tenantId, product.id, pos.id)
+        .toPromise();
+
+      // Determine if product has modifiers
+      const hasModifiers = (modifiers?.length ?? 0) > 0;
+
+      // Cache the result
+      this.modifierCheckCache.set(product.id, hasModifiers);
+
+      return hasModifiers;
+    } catch (error) {
+      console.error(
+        `Failed to check modifiers for product ${product.id}:`,
+        error
+      );
+      // On error, assume no modifiers to allow graceful degradation
+      this.modifierCheckCache.set(product.id, false);
+      return false;
+    }
   }
 
   /**
-   * Show toast for modifiers placeholder
-   * Displays message that modifier selection is coming soon
-   * @param product - Product with modifiers
+   * Show success toast when product is added to order
+   * @param message - Success message to display
    */
-  private async showModifiersPlaceholder(product: Product): Promise<void> {
+  private async showSuccessToast(message: string): Promise<void> {
     const toast = await this.toastController.create({
-      message: `Modifiers for "${product.name}" - Coming soon!`,
-      duration: 2000,
-      position: 'bottom',
-      color: 'medium',
-      icon: 'construct-outline',
-    });
-    await toast.present();
-  }
-
-  /**
-   * Show toast for add to order placeholder
-   * Displays message that add to order is coming soon
-   * @param product - Product to add to order
-   */
-  private async showAddToOrderPlaceholder(product: Product): Promise<void> {
-    const toast = await this.toastController.create({
-      message: `"${product.name}" added to order - Coming soon!`,
+      message,
       duration: 2000,
       position: 'bottom',
       color: 'success',
       icon: 'checkmark-circle-outline',
     });
     await toast.present();
+  }
+
+  /**
+   * Toggle the order summary menu from the right side
+   */
+  async toggleOrderMenu(): Promise<void> {
+    await this.menuService.toggleMenu('order-summary-menu');
+  }
+
+  /**
+   * Handle logout
+   */
+  logout(): void {
+    this.authService.logout().subscribe();
+  }
+
+  /**
+   * Navigate to products page
+   */
+  navigateToProducts(): void {
+    this.router.navigate(['/products']);
   }
 }

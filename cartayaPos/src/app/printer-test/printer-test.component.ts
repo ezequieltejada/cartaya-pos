@@ -1,12 +1,12 @@
 import { Component, inject } from '@angular/core';
-import { IonButton, IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonSpinner, IonTitle, IonToolbar } from '@ionic/angular/standalone';
+import { IonButton, IonIcon, IonItem, IonLabel, IonList, IonSpinner } from '@ionic/angular/standalone';
 import { Printer } from '../services/printer';
 
 @Component({
   selector: 'app-printer-test',
   templateUrl: './printer-test.component.html',
   styleUrls: ['./printer-test.component.scss'],
-  imports: [IonHeader, IonToolbar, IonTitle, IonContent, IonButton, IonList, IonItem, IonLabel, IonIcon, IonSpinner],
+  imports: [IonButton, IonList, IonItem, IonLabel, IonIcon, IonSpinner],
 })
 export class PrinterTestComponent {
   private printer = inject(Printer);
