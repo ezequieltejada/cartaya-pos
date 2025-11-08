@@ -1,10 +1,235 @@
 .settings-container {
   max-width: 800px;
   margin: 0 auto;
+  padding-bottom: 2rem;
 }
 
-h1 {
-  font-size: 2rem;
-  margin-bottom: 2rem;
-  color: var(--ion-color-primary);
+// Connection Status Card
+.status-card {
+  margin-bottom: 1.5rem;
+  border-radius: 8px;
+  
+  ion-card-header {
+    padding: 1rem;
+  }
+
+  ion-card-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  ion-card-content {
+    padding: 1rem;
+  }
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+
+  ion-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    border-radius: 24px;
+  }
+}
+
+.status-icon {
+  font-size: 1.25rem;
+}
+
+.printer-info {
+  background: var(--ion-color-light);
+  padding: 1rem;
+  border-radius: 6px;
+  
+  .info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .info-label {
+    font-weight: 600;
+    color: var(--ion-color-medium);
+    font-size: 0.9rem;
+  }
+
+  .info-value {
+    font-weight: 500;
+    color: var(--ion-color-dark);
+    word-break: break-all;
+  }
+}
+
+.no-printer-selected {
+  background: var(--ion-color-light);
+  padding: 1rem;
+  border-radius: 6px;
+  text-align: center;
+  color: var(--ion-color-medium);
+  font-size: 0.95rem;
+}
+
+// Scan Card
+.scan-card {
+  margin-bottom: 1.5rem;
+  border-radius: 8px;
+
+  ion-card-header {
+    padding: 1rem;
+  }
+
+  ion-card-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  ion-card-content {
+    padding: 1rem;
+  }
+}
+
+.printers-list {
+  margin-top: 1rem;
+  margin-left: -1rem;
+  margin-right: -1rem;
+
+  ion-item {
+    --padding-start: 1rem;
+    --padding-end: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--ion-color-light);
+    transition: all 0.2s ease;
+
+    &.selected {
+      background: var(--ion-color-primary-tint);
+      border-color: var(--ion-color-primary);
+    }
+
+    &:hover {
+      background: var(--ion-color-light);
+    }
+
+    .radio-icon {
+      font-size: 1.25rem;
+      margin-right: 0.5rem;
+    }
+
+    ion-label {
+      h3 {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+      }
+
+      .printer-address {
+        font-size: 0.8rem;
+        color: var(--ion-color-medium);
+        font-family: monospace;
+      }
+    }
+  }
+}
+
+.empty-state {
+  background: var(--ion-color-light);
+  padding: 1.5rem;
+  border-radius: 6px;
+  text-align: center;
+  color: var(--ion-color-medium);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+// Action Buttons
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 2rem;
+
+  ion-button {
+    --padding-top: 0.75rem;
+    --padding-bottom: 0.75rem;
+    --border-radius: 6px;
+    font-weight: 600;
+  }
+}
+
+// Responsive Design
+@media (max-width: 480px) {
+  .settings-container {
+    padding: 0;
+  }
+
+  .status-card,
+  .scan-card {
+    margin-left: 0;
+    margin-right: 0;
+    margin-bottom: 1rem;
+    border-radius: 0;
+
+    ion-card-header {
+      padding: 0.75rem;
+    }
+
+    ion-card-content {
+      padding: 0.75rem;
+    }
+  }
+
+  .printer-info,
+  .no-printer-selected,
+  .empty-state {
+    padding: 0.75rem;
+  }
+
+  .printers-list {
+    margin-left: -0.75rem;
+    margin-right: -0.75rem;
+
+    ion-item {
+      --padding-start: 0.75rem;
+      --padding-end: 0.75rem;
+      margin-bottom: 0.25rem;
+    }
+  }
+
+  .action-buttons {
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+}
+
+// Dark Mode Support
+@media (prefers-color-scheme: dark) {
+  .printer-info,
+  .no-printer-selected,
+  .empty-state {
+    background: var(--ion-color-step-100);
+  }
+
+  .printers-list ion-item {
+    border-color: var(--ion-color-step-200);
+
+    &.selected {
+      background: var(--ion-color-primary-shade);
+      border-color: var(--ion-color-primary);
+    }
+
+    &:hover {
+      background: var(--ion-color-step-100);
+    }
+  }
 }

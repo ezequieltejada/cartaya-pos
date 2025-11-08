@@ -1,12 +1,120 @@
 <ion-header>
   <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button (click)="goBack()" defaultHref="/dashboard"></ion-back-button>
+    </ion-buttons>
     <ion-title>Settings</ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-content class="ion-padding">
   <div class="settings-container">
-    <h1>Settings</h1>
-    <!-- Settings content will be added here -->
+    <!-- Connection Status Section -->
+    <ion-card class="status-card">
+      <ion-card-header>
+        <ion-card-title>Printer Connection</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="status-indicator">
+          <ion-badge [color]="statusColor">
+            <ion-icon 
+              [name]="isConnected ? 'checkmark-circle' : 'bluetooth-outline'"
+              class="status-icon">
+            </ion-icon>
+            {{ connectionStatus }}
+          </ion-badge>
+        </div>
+
+        <!-- Selected Printer Info -->
+        @if (selectedPrinter) {
+          <div class="printer-info">
+            <div class="info-item">
+              <span class="info-label">Printer:</span>
+              <span class="info-value">{{ selectedPrinter.name || 'Unknown Device' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Address:</span>
+              <span class="info-value">{{ selectedPrinter.address }}</span>
+            </div>
+          </div>
+        } @else {
+          <div class="no-printer-selected">
+            <p>No printer selected</p>
+          </div>
+        }
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Scan Section -->
+    <ion-card class="scan-card">
+      <ion-card-header>
+        <ion-card-title>Available Printers</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-button 
+          (click)="scanForPrinters()" 
+          [disabled]="isScanning"
+          expand="block"
+          color="primary">
+          @if (isScanning) {
+            <ion-spinner slot="start" name="crescent"></ion-spinner>
+          } @else {
+            <ion-icon slot="start" name="bluetooth-outline"></ion-icon>
+          }
+          {{ isScanning ? 'Scanning...' : 'Scan for Printers' }}
+        </ion-button>
+
+        <!-- Printers List -->
+        @if (discoveredPrinters.length > 0) {
+          <ion-list class="printers-list">
+            @for (printer of discoveredPrinters; track printer.address) {
+              <ion-item 
+                (click)="selectPrinter(printer.address)"
+                [class.selected]="selectedAddress === printer.address"
+                button>
+                <ion-icon 
+                  slot="start"
+                  [name]="selectedAddress === printer.address ? 'radio-button-on' : 'radio-button-off'"
+                  class="radio-icon">
+                </ion-icon>
+                <ion-label>
+                  <h3>{{ printer.name || 'Unknown Device' }}</h3>
+                  <p class="printer-address">{{ printer.address }}</p>
+                </ion-label>
+                @if (isConnected && selectedAddress === printer.address) {
+                  <ion-icon slot="end" name="checkmark-circle" color="success"></ion-icon>
+                }
+              </ion-item>
+            }
+          </ion-list>
+        } @else if (!isScanning) {
+          <div class="empty-state">
+            <p>No printers found. Click "Scan for Printers" to search for available Bluetooth devices.</p>
+          </div>
+        }
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+      @if (selectedPrinter && !isConnected) {
+        <ion-button 
+          (click)="connectToPrinter()"
+          expand="block"
+          color="primary">
+          <ion-icon slot="start" name="bluetooth-outline"></ion-icon>
+          Connect
+        </ion-button>
+      }
+      @if (isConnected) {
+        <ion-button 
+          (click)="disconnectFromPrinter()"
+          expand="block"
+          color="danger">
+          <ion-icon slot="start" name="close-circle-outline"></ion-icon>
+          Disconnect
+        </ion-button>
+      }
+    </div>
   </div>
 </ion-content>
