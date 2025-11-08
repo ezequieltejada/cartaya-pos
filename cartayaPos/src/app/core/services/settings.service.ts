@@ -53,7 +53,7 @@ export class SettingsService {
 
   /**
    * Get the current tenant currency
-   * Returns cached value or 'USD' as fallback
+   * Returns cached value or 'EUR' as fallback
    */
   getCurrentCurrency(): string {
     return this.currency();
