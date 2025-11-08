@@ -346,4 +346,11 @@ export class ProductCatalogPage implements OnInit {
   navigateToProducts(): void {
     this.router.navigate(['/products']);
   }
+
+  /**
+   * Navigate to settings page
+   */
+  navigateToSettings(): void {
+    this.router.navigate(['/settings']);
+  }
 }

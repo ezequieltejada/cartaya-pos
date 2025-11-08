@@ -43,6 +43,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'settings',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/settings/settings.page').then(
+        (m) => m.SettingsPage
+      ),
+  },
+  {
     path: 'home',
     loadComponent: () => import('./home/home.page').then((m) => m.HomePage),
   },
