@@ -20,6 +20,13 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import {
+  bluetoothOutline,
+  checkmarkCircle,
+  radioButtonOff,
+  radioButtonOn,
+} from 'ionicons/icons';
 import { Printer } from '../../services/printer';
 
 @Component({
@@ -51,6 +58,16 @@ import { Printer } from '../../services/printer';
 export class SettingsPage implements OnInit, OnDestroy {
   private router = inject(Router);
   protected printerService = inject(Printer);
+
+  constructor() {
+    // Register ionicons
+    addIcons({
+      bluetoothOutline,
+      radioButtonOn,
+      radioButtonOff,
+      checkmarkCircle,
+    });
+  }
 
   ngOnInit(): void {
     // Load persisted printer on component init
@@ -84,10 +101,12 @@ export class SettingsPage implements OnInit, OnDestroy {
   }
 
   get connectionStatus(): string {
-    if (!this.selectedPrinter) {
-      return 'Not Selected';
+    if (this.isConnected && this.selectedPrinter) {
+      return 'Connected';
+    } else if (this.selectedPrinter && !this.isConnected) {
+      return 'Selected (Not Connected)';
     }
-    return this.isConnected ? 'Connected' : 'Disconnected';
+    return 'No printer selected';
   }
 
   get statusColor(): string {
