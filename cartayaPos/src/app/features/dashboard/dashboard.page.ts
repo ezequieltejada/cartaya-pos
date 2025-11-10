@@ -2,16 +2,18 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import {
-  IonButton,
-  IonCard,
-  IonCardContent,
-  IonCardHeader,
-  IonCardTitle,
-  IonContent,
-  IonHeader,
-  IonIcon,
-  IonTitle,
-  IonToolbar,
+    IonButton,
+    IonButtons,
+    IonCard,
+    IonCardContent,
+    IonCardHeader,
+    IonCardTitle,
+    IonContent,
+    IonHeader,
+    IonIcon,
+    IonMenuButton,
+    IonTitle,
+    IonToolbar,
 } from '@ionic/angular/standalone';
 import { AuthService } from '../../core/services/auth.service';
 import { PosService } from '../../core/services/pos.service';
@@ -31,6 +33,8 @@ import { PosService } from '../../core/services/pos.service';
     IonCardContent,
     IonButton,
     IonIcon,
+    IonMenuButton,
+    IonButtons,
   ],
   templateUrl: './dashboard.page.html',
   styleUrls: ['./dashboard.page.scss'],

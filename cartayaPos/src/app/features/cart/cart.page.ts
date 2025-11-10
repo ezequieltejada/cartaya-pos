@@ -2,12 +2,12 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import {
-  IonBackButton,
-  IonButtons,
-  IonContent,
-  IonHeader,
-  IonTitle,
-  IonToolbar,
+    IonBackButton,
+    IonButtons,
+    IonContent,
+    IonHeader,
+    IonTitle,
+    IonToolbar,
 } from '@ionic/angular/standalone';
 import { OrderService } from '../../core/services/order.service';
 import { OrderSummaryComponent } from '../order-summary/order-summary.component';
