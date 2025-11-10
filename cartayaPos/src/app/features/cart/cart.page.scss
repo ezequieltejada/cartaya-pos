@@ -1,0 +1,175 @@
+// Full-page layout host
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+ion-content {
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --padding-top: 16px;
+  --padding-bottom: 16px;
+}
+
+// Cart container - full height flex layout
+.cart-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+
+  // Scrollable items section
+  .order-items-section {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  // Totals section with border separator
+  .totals-section {
+    border-top: 2px solid var(--ion-border-color);
+    padding: 16px;
+    background: var(--ion-background-color);
+    flex-shrink: 0;
+  }
+
+  // Fixed footer actions
+  .actions-section {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex-shrink: 0;
+    background: var(--ion-background-color);
+
+    ion-button {
+      margin: 0;
+    }
+  }
+}
+
+// Empty cart state design
+.empty-cart-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  text-align: center;
+  padding: 32px;
+
+  .empty-cart-icon {
+    font-size: 80px;
+    color: var(--ion-color-medium);
+    opacity: 0.5;
+    margin-bottom: 24px;
+  }
+
+  h2 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--ion-text-color);
+  }
+
+  p {
+    color: var(--ion-color-medium);
+    margin-bottom: 24px;
+    font-size: 16px;
+  }
+
+  ion-button {
+    margin-top: 8px;
+  }
+}
+
+// Legacy empty state support (Phase 2)
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  font-size: 1.1rem;
+  color: var(--ion-color-medium, #989aa2);
+}
+
+// Responsive breakpoints
+@media (min-width: 768px) {
+  .cart-container {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .empty-cart-state {
+    height: 70vh;
+    padding: 48px 32px;
+
+    .empty-cart-icon {
+      font-size: 96px;
+      margin-bottom: 32px;
+    }
+
+    h2 {
+      font-size: 28px;
+      margin-bottom: 12px;
+    }
+
+    p {
+      font-size: 18px;
+      margin-bottom: 32px;
+    }
+  }
+}
+
+@media (min-width: 1024px) {
+  .cart-container {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+}
+
+// Dark mode support
+@media (prefers-color-scheme: dark) {
+  .empty-cart-state {
+    .empty-cart-icon {
+      opacity: 0.4;
+    }
+  }
+
+  .cart-container {
+    .totals-section,
+    .actions-section {
+      background: var(--ion-background-color);
+    }
+  }
+}
+
+// High contrast mode support
+@media (prefers-contrast: more) {
+  .cart-container {
+    .totals-section {
+      border-top: 3px solid var(--ion-border-color);
+    }
+
+    .actions-section ion-button {
+      font-weight: 600;
+    }
+  }
+
+  .empty-cart-state {
+    h2 {
+      font-weight: 700;
+    }
+
+    p {
+      font-weight: 500;
+    }
+  }
+}
+
+// Accessibility - ensure focus indicators visible
+ion-button {
+  &:focus-visible {
+    outline: 2px solid var(--ion-color-primary);
+    outline-offset: 2px;
+  }
+}
