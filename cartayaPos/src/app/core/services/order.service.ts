@@ -243,6 +243,7 @@ export class OrderService {
         quantity: 1, // For MVP, each item is quantity 1
         modifiers: item.modifiers.map((m) => ({
           modifierId: m.modifierId,
+          quantity: m.quantity,
         })),
       })),
       totalAmount: this.orderTotal(),
