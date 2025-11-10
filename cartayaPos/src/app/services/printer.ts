@@ -197,4 +197,34 @@ export class Printer {
       console.error('Error printing:', error);
     }
   }
+
+  /**
+   * Print a receipt with the given content
+   * @param receiptContent - The formatted receipt content to print
+   */
+  async printReceipt(receiptContent: string): Promise<void> {
+    if (!this.selectedPrinter) {
+      throw new Error('No printer selected');
+    }
+
+    try {
+      const connected = await this.connect();
+      
+      if (!connected) {
+        throw new Error('Failed to connect to printer');
+      }
+
+      console.log('Printing receipt');
+      
+      await CapacitorThermalPrinter.begin()
+        .text(receiptContent)
+        .cutPaper()
+        .write();
+        
+      console.log('Receipt printed successfully');
+    } catch (error) {
+      console.error('Error printing receipt:', error);
+      throw error;
+    }
+  }
 }

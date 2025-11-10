@@ -210,11 +210,12 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
     // Format receipt content
     const receiptContent = this.formatReceipt(response);
 
-    // For now, just log the receipt (actual printing depends on PrinterService implementation)
-    console.log('Receipt to print:', receiptContent);
-
-    // In a real implementation, you would call:
-    // await this.printer.printReceipt(receiptContent);
+    try {
+      await this.printer.printReceipt(receiptContent);
+    } catch (error) {
+      console.error('Error printing receipt:', error);
+      this.showToast('Order saved but print failed', 'top');
+    }
   }
 
   /**
