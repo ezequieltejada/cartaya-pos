@@ -226,8 +226,9 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
 
     if (response.items && response.items.length > 0) {
       response.items.forEach((item: any) => {
-        receipt += `\n${item.productId}\n`;
-        receipt += `Qty: 1\n`;
+        receipt += `\n${item.name}\n`;
+        receipt += `Qty: ${item.quantity}\n`;
+        receipt += `Base Price: $${item.basePrice.toFixed(2)}\n`;
         receipt += `Total: $${item.lineTotal.toFixed(2)}\n`;
         if (item.appliedModifiers) {
           item.appliedModifiers.forEach((mod: any) => {

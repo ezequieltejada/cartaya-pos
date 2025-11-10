@@ -54,13 +54,17 @@ describe('OrderSummaryComponent', () => {
     items: [
       {
         productId: 'prod-1',
+        name: 'Burger',
         quantity: 1,
+        basePrice: 10.0,
         appliedModifiers: [{ modifierId: 'mod-1', name: 'Extra Cheese', priceDelta: 1.5 }],
         lineTotal: 13.0,
       },
       {
         productId: 'prod-2',
+        name: 'Fries',
         quantity: 1,
+        basePrice: 3.5,
         lineTotal: 3.5,
       },
     ],

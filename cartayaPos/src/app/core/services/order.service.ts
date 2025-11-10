@@ -19,7 +19,9 @@ interface SubmitOrderResponse {
   createdAt: string;
   items: Array<{
     productId: string;
+    name: string;
     quantity: number;
+    basePrice: number;
     appliedModifiers?: Array<{
       modifierId: string;
       name: string;
@@ -241,7 +243,6 @@ export class OrderService {
         quantity: 1, // For MVP, each item is quantity 1
         modifiers: item.modifiers.map((m) => ({
           modifierId: m.modifierId,
-          quantity: m.quantity,
         })),
       })),
       totalAmount: this.orderTotal(),
