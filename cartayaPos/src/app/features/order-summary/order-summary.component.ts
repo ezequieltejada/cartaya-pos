@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Dialog } from '@capacitor/dialog';
-import { ToastController } from '@ionic/angular';
+import { AlertController, ToastController } from '@ionic/angular';
 import {
   IonButton,
   IonIcon,
@@ -47,6 +47,7 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
   private printer = inject(Printer);
   private router = inject(Router);
   private toastController = inject(ToastController);
+  private alertController = inject(AlertController);
 
   // Expose Math.abs for template use
   Math = Math;
@@ -72,17 +73,42 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
 
   /**
    * Shows cancel order confirmation modal
+   * Uses native Dialog plugin on iOS/Android, falls back to Ionic AlertController on web
    */
   async showCancelConfirmation(): Promise<void> {
-    const { value } = await Dialog.confirm({
-      title: 'Cancel Order',
-      message: 'Are you sure? This will clear all items.',
-      okButtonTitle: 'Yes',
-      cancelButtonTitle: 'No',
-    });
-    
-    if (value) {
-      await this.cancelOrder();
+    try {
+      const { value } = await Dialog.confirm({
+        title: 'Cancel Order',
+        message: 'Are you sure? This will clear all items.',
+        okButtonTitle: 'Yes',
+        cancelButtonTitle: 'No',
+      });
+
+      if (value) {
+        await this.cancelOrder();
+      }
+    } catch (error) {
+      // Fallback to Ionic AlertController if Dialog is not available
+      console.warn('Dialog plugin not available, using Ionic AlertController:', error);
+      const alert = await this.alertController.create({
+        header: 'Cancel Order',
+        message: 'Are you sure? This will clear all items.',
+        buttons: [
+          {
+            text: 'No',
+            role: 'cancel',
+          },
+          {
+            text: 'Yes',
+            role: 'destructive',
+            handler: async () => {
+              await this.cancelOrder();
+            },
+          },
+        ],
+      });
+
+      await alert.present();
     }
   }
 
@@ -99,6 +125,7 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
 
   /**
    * Shows cash order confirmation modal with order summary
+   * Uses native Dialog plugin on iOS/Android, falls back to Ionic AlertController on web
    */
   async showCashConfirmation(): Promise<void> {
     const total = this.orderTotal().toFixed(2);
@@ -106,15 +133,38 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
       .map((item) => `${item.productName} - $${item.subtotal.toFixed(2)}`)
       .join('\n');
 
-    const { value } = await Dialog.confirm({
-      title: 'Complete Order',
-      message: `Items:\n${itemsText}\n\nTotal: $${total}`,
-      okButtonTitle: 'Confirm',
-      cancelButtonTitle: 'Cancel',
-    });
-    
-    if (value) {
-      await this.cashOrder();
+    try {
+      const { value } = await Dialog.confirm({
+        title: 'Complete Order',
+        message: `Items:\n${itemsText}\n\nTotal: $${total}`,
+        okButtonTitle: 'Confirm',
+        cancelButtonTitle: 'Cancel',
+      });
+
+      if (value) {
+        await this.cashOrder();
+      }
+    } catch (error) {
+      // Fallback to Ionic AlertController if Dialog is not available
+      console.warn('Dialog plugin not available, using Ionic AlertController:', error);
+      const alert = await this.alertController.create({
+        header: 'Complete Order',
+        message: `Items:\n${itemsText}\n\nTotal: $${total}`,
+        buttons: [
+          {
+            text: 'Cancel',
+            role: 'cancel',
+          },
+          {
+            text: 'Confirm',
+            handler: async () => {
+              await this.cashOrder();
+            },
+          },
+        ],
+      });
+
+      await alert.present();
     }
   }
 
