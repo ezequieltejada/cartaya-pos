@@ -13,7 +13,6 @@ import {
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { checkmark, chevronDown, chevronUp, close, pencil, trash } from 'ionicons/icons';
-import { MenuService } from '../../core/services/menu.service';
 import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
 import { TenantService } from '../../core/services/tenant.service';
@@ -48,7 +47,6 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private toastController = inject(ToastController);
   private alertController = inject(AlertController);
-  private menuService = inject(MenuService);
 
   // Expose Math.abs for template use
   Math = Math;
@@ -105,8 +103,8 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
     this.orderService.clearOrder();
     this.showToast('Order cancelled', 'bottom');
     
-    // Close the order summary menu after order is cleared
-    await this.menuService.closeMenu('order-summary-menu');
+    // Navigate back to products page
+    await this.router.navigate(['/products']);
   }
 
   /**
@@ -159,13 +157,13 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
           // Print receipt
           await this.printReceipt(response);
           this.showToast('Order completed!', 'top');
-          // Close the menu after successful order
-          await this.menuService.closeMenu('order-summary-menu');
+          // Navigate to products page after successful order
+          await this.router.navigate(['/products']);
         } catch (error) {
           console.error('Error printing receipt:', error);
           this.showToast('Order saved but print failed', 'top');
-          // Still close the menu even if printing failed
-          await this.menuService.closeMenu('order-summary-menu');
+          // Navigate to products even if printing failed
+          await this.router.navigate(['/products']);
         }
       },
       error: (error) => {
