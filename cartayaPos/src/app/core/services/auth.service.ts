@@ -109,26 +109,45 @@ export class AuthService {
 
   /**
    * Log in user with email and password
-   * Receives Bearer tokens from server and stores them securely
+   * Receives Bearer token from server in the response body
    * Then fetches user's tenants to establish tenant context
    */
   login(email: string, password: string): Observable<User> {
     this.isLoading.set(true);
     return this.httpClient
-      .post<{ user: User; tokens: AuthTokens }>(`${this.API_URL}/auth/sign-in/email`, {
-        email,
-        password,
-      })
+      .post<{ user: User; token: string; redirect: boolean }>(
+        `${this.API_URL}/auth/sign-in/email`,
+        { email, password }
+      )
       .pipe(
-        tap(async (response) => {
-          this.currentUser.set(response.user);
-          // Store tokens securely
-          await this.setTokens(response.tokens);
+        switchMap(async (response) => {
+          const user = response.user;
+          const token = response.token;
+          
+          if (!user) {
+            throw new Error('No user in response');
+          }
+          
+          if (!token) {
+            throw new Error('No authentication token received');
+          }
+
+          this.currentUser.set(user);
+
+          // Store both access and refresh tokens
+          // BetterAuth returns a single token that serves both purposes
+          await this.setTokens({
+            accessToken: token,
+            refreshToken: token,
+          });
+          
           // Store user for later use
-          await this.storageService.set('currentUser', response.user);
+          await this.storageService.set('currentUser', user);
+          
+          return user;
         }),
-        switchMap((response) => {
-          // After successful login, fetch user's tenants
+        switchMap((user) => {
+          // After successful login and token storage, fetch user's tenants
           return this.tenantService.fetchUserTenants().pipe(
             map((tenants) => {
               if (tenants.length === 0) {
@@ -137,13 +156,13 @@ export class AuthService {
                 console.log('Tenants fetched successfully:', tenants);
               }
               this.isLoading.set(false);
-              return response.user;
+              return user;
             }),
             catchError((error) => {
               console.error('Failed to fetch tenants after login:', error);
               this.isLoading.set(false);
               // Still return the user even if tenant fetch fails
-              return of(response.user);
+              return of(user);
             })
           );
         }),
@@ -184,7 +203,7 @@ export class AuthService {
   /**
    * Refresh access token using refresh token
    * Called when access token expires (401 error)
-   * Returns new tokens and updates storage
+   * Returns new tokens from response header and updates storage
    */
   refreshAccessToken(): Observable<AuthTokens> {
     const currentRefreshToken = this.refreshToken();
@@ -194,14 +213,32 @@ export class AuthService {
     }
 
     return this.httpClient
-      .post<{ tokens: AuthTokens }>(`${this.API_URL}/auth/refresh-token`, {
-        refreshToken: currentRefreshToken,
-      })
+      .post<void>(
+        `${this.API_URL}/auth/refresh-token`,
+        { refreshToken: currentRefreshToken },
+        { observe: 'response' } // Need full response to access headers
+      )
       .pipe(
         tap(async (response) => {
-          await this.setTokens(response.tokens);
+          // Extract Bearer token from response header
+          const bearerToken = response.headers.get('set-auth-token');
+          
+          if (!bearerToken) {
+            throw new Error('No authentication token in refresh response');
+          }
+
+          await this.setTokens({
+            accessToken: bearerToken,
+            refreshToken: bearerToken,
+          });
         }),
-        map((response) => response.tokens),
+        map((response) => {
+          const bearerToken = response.headers.get('set-auth-token')!;
+          return {
+            accessToken: bearerToken,
+            refreshToken: bearerToken,
+          };
+        }),
         catchError((error) => {
           console.error('Failed to refresh token:', error);
           // If refresh fails, clear session and redirect to login
