@@ -222,26 +222,22 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
    * Formats order response for receipt printing
    */
   private formatReceipt(response: any): string {
-    let receipt = '========== RECEIPT ==========\n';
+    let receipt = '';
 
     if (response.items && response.items.length > 0) {
       response.items.forEach((item: any) => {
-        receipt += `\n${item.name}\n`;
-        receipt += `Qty: ${item.quantity}\n`;
-        receipt += `Base Price: $${item.basePrice.toFixed(2)}\n`;
-        receipt += `Total: $${item.lineTotal.toFixed(2)}\n`;
+        receipt += `${item.name} ($${item.basePrice.toFixed(2)})\n`;
         if (item.appliedModifiers) {
           item.appliedModifiers.forEach((mod: any) => {
-            receipt += `  - ${mod.name}: +$${mod.priceDelta.toFixed(2)}\n`;
+            receipt += ` - ${mod.name}: +$${mod.priceDelta.toFixed(2)}\n`;
           });
         }
+        receipt += `Subtotal ------------ $${item.lineTotal.toFixed(2)}\n\n`;
       });
     }
 
-    receipt += `\n=============================\n`;
-    receipt += `Total: $${response.totalAmount.toFixed(2)}\n`;
+    receipt += `------  Total: $${response.totalAmount.toFixed(2)} ------\n`;
     receipt += `Date: ${new Date().toLocaleString()}\n`;
-    receipt += `=============================\n`;
 
     return receipt;
   }
