@@ -90,13 +90,13 @@
   </div>
 
   <!-- FAB Button for Cart (Fixed at end/bottom) -->
-  <ion-fab *ngIf="itemCount() > 0" vertical="bottom" horizontal="end" slot="fixed">
+  <ion-fab *ngIf="itemCount() > 0" vertical="bottom" horizontal="end" slot="fixed" class="cart-fab-container">
     <ion-fab-button (click)="navigateToCart()" class="cart-fab">
       <ion-icon name="cart-outline"></ion-icon>
-      <ion-badge class="cart-badge" color="danger">
-        {{ itemCount() }}
-      </ion-badge>
     </ion-fab-button>
+    <ion-badge class="cart-badge" color="danger">
+      {{ itemCount() }}
+    </ion-badge>
   </ion-fab>
   
 </ion-content>
