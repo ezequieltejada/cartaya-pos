@@ -136,6 +136,6 @@ export class SettingsPage implements OnInit, OnDestroy {
   }
 
   goBack(): void {
-    this.router.navigate(['/dashboard']);
+    this.router.navigate(['/products']);
   }
 }
