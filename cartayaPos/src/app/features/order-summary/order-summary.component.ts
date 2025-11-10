@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { AlertController, ToastController } from '@ionic/angular';
+import { Dialog } from '@capacitor/dialog';
+import { ToastController } from '@ionic/angular';
 import {
   IonButton,
   IonIcon,
@@ -46,7 +47,6 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
   private printer = inject(Printer);
   private router = inject(Router);
   private toastController = inject(ToastController);
-  private alertController = inject(AlertController);
 
   // Expose Math.abs for template use
   Math = Math;
@@ -74,24 +74,14 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
    * Shows cancel order confirmation modal
    */
   async showCancelConfirmation(): Promise<void> {
-    const alert = await this.alertController.create({
-      header: 'Cancel Order',
+    const { value } = await Dialog.confirm({
+      title: 'Cancel Order',
       message: 'Are you sure? This will clear all items.',
-      buttons: [
-        {
-          text: 'No',
-          role: 'cancel',
-        },
-        {
-          text: 'Yes',
-          role: 'confirm',
-        },
-      ],
+      okButtonTitle: 'Yes',
+      cancelButtonTitle: 'No',
     });
-    await alert.present();
     
-    const { role } = await alert.onDidDismiss();
-    if (role === 'confirm') {
+    if (value) {
       await this.cancelOrder();
     }
   }
@@ -116,24 +106,14 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
       .map((item) => `${item.productName} - $${item.subtotal.toFixed(2)}`)
       .join('\n');
 
-    const alert = await this.alertController.create({
-      header: 'Complete Order',
+    const { value } = await Dialog.confirm({
+      title: 'Complete Order',
       message: `Items:\n${itemsText}\n\nTotal: $${total}`,
-      buttons: [
-        {
-          text: 'Cancel',
-          role: 'cancel',
-        },
-        {
-          text: 'Confirm',
-          role: 'confirm',
-        },
-      ],
+      okButtonTitle: 'Confirm',
+      cancelButtonTitle: 'Cancel',
     });
-    await alert.present();
     
-    const { role } = await alert.onDidDismiss();
-    if (role === 'confirm') {
+    if (value) {
       await this.cashOrder();
     }
   }
