@@ -2,31 +2,32 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import {
-    IonBackButton,
-    IonBadge,
-    IonButton,
-    IonButtons,
-    IonCard,
-    IonCardContent,
-    IonCardHeader,
-    IonCardTitle,
-    IonContent,
-    IonHeader,
-    IonIcon,
-    IonItem,
-    IonLabel,
-    IonList,
-    IonMenuButton,
-    IonSpinner,
-    IonTitle,
-    IonToolbar,
+  IonBackButton,
+  IonBadge,
+  IonButton,
+  IonButtons,
+  IonCard,
+  IonCardContent,
+  IonCardHeader,
+  IonCardTitle,
+  IonContent,
+  IonHeader,
+  IonIcon,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonMenuButton,
+  IonSpinner,
+  IonTitle,
+  IonToolbar,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
-    bluetoothOutline,
-    checkmarkCircle,
-    radioButtonOff,
-    radioButtonOn,
+  bluetoothOutline,
+  checkmarkCircle,
+  closeCircleOutline,
+  radioButtonOff,
+  radioButtonOn
 } from 'ionicons/icons';
 import { Printer } from '../../services/printer';
 
@@ -63,12 +64,7 @@ export class SettingsPage implements OnInit, OnDestroy {
 
   constructor() {
     // Register ionicons
-    addIcons({
-      bluetoothOutline,
-      radioButtonOn,
-      radioButtonOff,
-      checkmarkCircle,
-    });
+    addIcons({bluetoothOutline,checkmarkCircle,closeCircleOutline,radioButtonOn,radioButtonOff,});
   }
 
   ngOnInit(): void {
