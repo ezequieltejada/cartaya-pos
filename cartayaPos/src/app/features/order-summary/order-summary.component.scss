@@ -1,62 +1,29 @@
-// ===== Mobile Bottom Sheet =====
-.order-modal {
-  --height: auto;
-  --border-radius: 16px 16px 0 0;
-}
-
-.summary-bar {
+// ===== Full-Page Container =====
+.order-summary-container {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
+  flex-direction: column;
+  height: 100%;
   background: var(--ion-background-color);
-  border-bottom: 1px solid var(--ion-border-color);
-  cursor: pointer;
-  user-select: none;
-
-  .summary-content {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-
-    .item-count {
-      font: 500 14px/1.2 inherit;
-      color: var(--ion-color-medium);
-    }
-
-    .total {
-      font: 600 16px/1.2 inherit;
-      color: var(--ion-text-color);
-    }
-  }
-
-  .expand-icon {
-    font-size: 24px;
-    color: var(--ion-color-primary);
-  }
-
-  &:active {
-    background: var(--ion-color-light);
-  }
-}
-
-.order-content {
-  --padding-start: 0;
-  --padding-end: 0;
-  --padding-top: 0;
-  --padding-bottom: 16px;
 }
 
 // ===== Summary Header =====
 .summary-header {
   padding: 16px;
+  border-bottom: 1px solid var(--ion-border-color);
+  background: var(--ion-color-light);
+
   h2 {
-     margin-left: 8px;
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
   }
 }
 
 // ===== Order Items Container =====
 .order-items-container {
+  flex: 1;
+  overflow-y: auto;
+  
   ion-list {
     --padding-start: 0;
     --padding-end: 0;
@@ -133,7 +100,7 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  height: 200px;
+  height: 100%;
   text-align: center;
 
   ion-text {
@@ -146,6 +113,7 @@
   padding: 16px;
   border-top: 2px solid var(--ion-border-color);
   background: var(--ion-color-light);
+  flex-shrink: 0;
 
   .total-row {
     display: flex;
@@ -170,14 +138,12 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 0 12px 12px 12px;
+  padding: 12px;
+  flex-shrink: 0;
+  background: var(--ion-background-color);
 
   ion-button {
     margin: 0;
-
-    &:first-child {
-      margin-top: 16px;
-    }
   }
 }
 
@@ -442,79 +408,17 @@
   }
 }
 
-// ===== Side Panel (Desktop/Tablet) =====
-.side-panel {
-  display: none;
-  position: fixed;
-  right: 0;
-  top: 0;
-  height: 100vh;
-  width: 320px;
-  background: var(--ion-background-color);
-  border-left: 1px solid var(--ion-border-color);
-  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
-  flex-direction: column;
-  z-index: 999;
+// ===== Responsive Breakpoints =====
 
-  .panel-header {
-    padding: 16px;
-    border-bottom: 1px solid var(--ion-border-color);
-    background: var(--ion-color-light);
+// Small devices (< 576px) - optimize for small screens
+@media (max-width: 575.98px) {
+  .summary-header {
+    padding: 12px;
 
     h2 {
-      margin: 0;
-      font: 600 18px/1.2 inherit;
+      font-size: 18px;
+      text-align: center;
     }
-  }
-
-  .panel-content {
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    flex: 1;
-
-    .order-items-container {
-      flex: 1;
-      overflow-y: auto;
-    }
-
-    .total-section {
-      flex-shrink: 0;
-    }
-
-    .action-buttons {
-      flex-shrink: 0;
-    }
-  }
-}
-
-// ===== Responsive Breakpoints =====
-@media (min-width: 768px) {
-  .order-modal {
-    display: none !important;
-  }
-
-  .side-panel {
-    display: flex;
-  }
-}
-
-@media (max-width: 575.98px) {
-  .summary-bar {
-    padding: 8px 12px;
-
-    .summary-content {
-      .item-count,
-      .total {
-        font-size: 13px;
-      }
-    }
-  }
-
-  .summary-header h2 {
-    text-align: center;
-    margin: 0;
-    font-size: 1rem;
   }
 
   .order-items-container .order-item {
@@ -552,24 +456,58 @@
   }
 
   .action-buttons {
-    padding: 0 8px 8px 8px;
+    padding: 8px;
     gap: 8px;
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  .summary-bar {
-    background: var(--ion-background-color);
+// Medium devices (576px - 767px)
+@media (min-width: 576px) and (max-width: 767.98px) {
+  .order-items-container .order-item {
+    --padding-start: 14px;
+  }
 
-    &:active {
-      background: var(--ion-color-light);
+  .summary-header h2 {
+    font-size: 19px;
+  }
+}
+
+// Large devices (≥ 768px)
+@media (min-width: 768px) {
+  .order-summary-container {
+    max-width: 100%;
+  }
+
+  .summary-header {
+    padding: 20px;
+
+    h2 {
+      font-size: 22px;
     }
   }
 
-  .side-panel {
+  .order-items-container .order-item {
+    --padding-start: 20px;
+  }
+
+  .total-section {
+    padding: 20px;
+  }
+
+  .action-buttons {
+    padding: 16px;
+  }
+}
+
+// Dark mode support
+@media (prefers-color-scheme: dark) {
+  .summary-header,
+  .total-section {
+    background: var(--ion-color-step-100);
+  }
+
+  .order-summary-container {
     background: var(--ion-background-color);
-    border-left: 1px solid var(--ion-color-step-150);
-    box-shadow: -2px 0 12px rgba(0, 0, 0, 0.3);
   }
 }
 
@@ -580,5 +518,13 @@
 
   .action-buttons ion-button {
     font-weight: 600;
+  }
+
+  .summary-header {
+    border-bottom: 2px solid var(--ion-border-color);
+  }
+
+  .total-section {
+    border-top: 2px solid var(--ion-border-color);
   }
 }

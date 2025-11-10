@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
-import { AlertController, ModalController, ToastController } from '@ionic/angular';
+import { AlertController, ToastController } from '@ionic/angular';
 import { of, throwError } from 'rxjs';
 import { OrderItem } from '../../core/models/order.model';
 import { OrderService } from '../../core/services/order.service';
@@ -19,7 +19,6 @@ describe('OrderSummaryComponent', () => {
   let mockRouter: jasmine.SpyObj<Router>;
   let mockToastController: jasmine.SpyObj<ToastController>;
   let mockAlertController: jasmine.SpyObj<AlertController>;
-  let mockModalController: jasmine.SpyObj<ModalController>;
 
   // Test data
   const mockOrderItems: OrderItem[] = [
@@ -116,16 +115,15 @@ describe('OrderSummaryComponent', () => {
     mockPrinter = jasmine.createSpyObj('Printer', ['scanForPrinters', 'selectPrinter', 'printSample']);
 
     mockRouter = jasmine.createSpyObj('Router', ['navigate']);
+    mockRouter.navigate.and.returnValue(Promise.resolve(true));
 
     mockToastController = jasmine.createSpyObj('ToastController', ['create']);
     const mockToast = jasmine.createSpyObj('Toast', ['present']);
     mockToastController.create.and.returnValue(Promise.resolve(mockToast));
 
     mockAlertController = jasmine.createSpyObj('AlertController', ['create']);
-    const mockAlert = jasmine.createSpyObj('Alert', ['present']);
+    const mockAlert = jasmine.createSpyObj('Alert', ['present', 'onDidDismiss']);
     mockAlertController.create.and.returnValue(Promise.resolve(mockAlert));
-
-    mockModalController = jasmine.createSpyObj('ModalController', ['create']);
 
     await TestBed.configureTestingModule({
       imports: [OrderSummaryComponent],
@@ -137,7 +135,6 @@ describe('OrderSummaryComponent', () => {
         { provide: Router, useValue: mockRouter },
         { provide: ToastController, useValue: mockToastController },
         { provide: AlertController, useValue: mockAlertController },
-        { provide: ModalController, useValue: mockModalController },
       ],
     }).compileComponents();
 
@@ -208,40 +205,6 @@ describe('OrderSummaryComponent', () => {
     });
   });
 
-  describe('Local State Signals', () => {
-    it('should initialize isExpanded as true', () => {
-      expect(component.isExpanded()).toBe(true);
-    });
-
-    it('should toggle isExpanded', () => {
-      // Setup
-      component.isExpanded.set(true);
-
-      // Act
-      component.toggleExpanded();
-
-      // Assert
-      expect(component.isExpanded()).toBe(false);
-
-      // Act again
-      component.toggleExpanded();
-
-      // Assert
-      expect(component.isExpanded()).toBe(true);
-    });
-
-    it('should collapse on dismiss', () => {
-      // Setup
-      component.isExpanded.set(true);
-
-      // Act
-      component.onDismiss();
-
-      // Assert
-      expect(component.isExpanded()).toBe(false);
-    });
-  });
-
   describe('Cancel Order', () => {
     it('should show cancel confirmation alert', async () => {
       // Act
@@ -267,18 +230,20 @@ describe('OrderSummaryComponent', () => {
       expect(mockOrderService.clearOrder).toHaveBeenCalled();
     });
 
-    it('should collapse bottom sheet after cancel', async () => {
+    it('should navigate to /products after cancel confirmation', async () => {
       // Setup
-      component.isExpanded.set(true);
       await component.showCancelConfirmation();
       const alertConfig = (mockAlertController.create as jasmine.Spy).calls.mostRecent().args[0];
       const confirmButton = alertConfig.buttons.find((btn: any) => btn.text === 'Yes');
 
       // Act
-      confirmButton.handler();
+      await confirmButton.handler();
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Assert
-      expect(component.isExpanded()).toBe(false);
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/products']);
     });
   });
 
@@ -316,6 +281,46 @@ describe('OrderSummaryComponent', () => {
 
       // Assert
       expect(mockOrderService.submitOrder).toHaveBeenCalledWith('pos-1', 'tenant-1');
+    });
+
+    it('should navigate to /products on successful order submission', async () => {
+      // Setup
+      mockOrderService.submitOrder.and.returnValue(of(mockSubmitOrderResponse));
+      (mockOrderService.orderTotal as jasmine.Spy).and.returnValue(16.5);
+      (mockOrderService.orderItems as jasmine.Spy).and.returnValue(mockOrderItems);
+
+      await component.showCashConfirmation();
+      const alertConfig = (mockAlertController.create as jasmine.Spy).calls.mostRecent().args[0];
+      const confirmButton = alertConfig.buttons.find((btn: any) => btn.text === 'Confirm');
+
+      // Act
+      confirmButton.handler();
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Assert
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/products']);
+    });
+
+    it('should navigate to /products even if receipt printing fails', async () => {
+      // Setup
+      mockOrderService.submitOrder.and.returnValue(of(mockSubmitOrderResponse));
+      (mockOrderService.orderTotal as jasmine.Spy).and.returnValue(16.5);
+      (mockOrderService.orderItems as jasmine.Spy).and.returnValue(mockOrderItems);
+
+      await component.showCashConfirmation();
+      const alertConfig = (mockAlertController.create as jasmine.Spy).calls.mostRecent().args[0];
+      const confirmButton = alertConfig.buttons.find((btn: any) => btn.text === 'Confirm');
+
+      // Act
+      confirmButton.handler();
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Assert - should navigate even if printing fails
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/products']);
     });
 
     it('should show error toast on submission failure', async () => {
@@ -423,80 +428,15 @@ describe('OrderSummaryComponent', () => {
     });
   });
 
-  describe('Responsive Layout', () => {
-    it('should show bottom sheet on mobile when hasItems is true', () => {
-      // Setup
-      (mockOrderService.hasItems as jasmine.Spy).and.returnValue(true);
-      fixture.detectChanges();
-
-      // Act
-      const modal = fixture.nativeElement.querySelector('ion-modal');
-
-      // Assert
-      expect(modal).toBeTruthy();
-    });
-
-    it('should show side panel on desktop when hasItems is true', () => {
-      // Setup
-      (mockOrderService.hasItems as jasmine.Spy).and.returnValue(true);
-      fixture.detectChanges();
-
-      // Act
-      const sidePanel = fixture.nativeElement.querySelector('.side-panel');
-
-      // Assert
-      expect(sidePanel).toBeTruthy();
-    });
-
-    it('should hide components when no items', () => {
-      // Setup
-      (mockOrderService.hasItems as jasmine.Spy).and.returnValue(false);
-      fixture.detectChanges();
-
-      // Act
-      const modal = fixture.nativeElement.querySelector('ion-modal');
-      const sidePanel = fixture.nativeElement.querySelector('.side-panel');
-
-      // Assert
-      expect(modal).toBeFalsy();
-      expect(sidePanel).toBeFalsy();
-    });
-  });
-
   describe('Component Lifecycle', () => {
     it('should initialize correctly', () => {
       // Assert
       expect(component).toBeTruthy();
-      expect(component.isExpanded()).toBe(true);
     });
 
     it('should handle ngOnDestroy', () => {
       // Act & Assert - should not throw
       expect(() => component.ngOnDestroy()).not.toThrow();
-    });
-  });
-
-  describe('Summary Bar', () => {
-    it('should show item count in summary', () => {
-      // Setup
-      (mockOrderService.itemCount as jasmine.Spy).and.returnValue(2);
-      fixture.detectChanges();
-
-      // Act
-      const summaryContent = fixture.nativeElement.querySelector('.summary-content');
-
-      // Assert
-      expect(summaryContent).toBeTruthy();
-    });
-
-    it('should display correct singular/plural item text', () => {
-      // Setup
-      (mockOrderService.itemCount as jasmine.Spy).and.returnValue(1);
-      fixture.detectChanges();
-
-      // The component uses: item{{ itemCount() !== 1 ? 's' : '' }}
-      // This is tested via template rendering
-      expect(component.itemCount()).toBe(1);
     });
   });
 });

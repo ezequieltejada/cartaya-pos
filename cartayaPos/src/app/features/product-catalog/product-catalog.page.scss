@@ -64,3 +64,86 @@ ion-col {
     padding: 0;
   }
 }
+
+// FAB positioning (thumb-friendly zone) with badge support
+ion-fab.cart-fab-container {
+  margin-right: 16px;
+  margin-bottom: 16px;
+
+  // iOS safe area support for notch and home indicator
+  @supports (margin-bottom: env(safe-area-inset-bottom)) {
+    margin-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  ion-fab-button {
+    --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    --border-radius: 50%;
+    width: 56px;
+    height: 56px;
+    overflow: visible !important;
+    position: relative;
+
+    // Active state scaling
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+
+  .cart-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    z-index: 10;
+    font-size: 12px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    border: 2px solid var(--ion-background-color);
+    animation: badge-pop 0.3s ease-out;
+    pointer-events: auto;
+    margin: 0;
+  }
+}
+
+// Badge pop animation
+@keyframes badge-pop {
+  0% {
+    transform: translate(0, 0) scale(0.8);
+  }
+  50% {
+    transform: translate(0, 0) scale(1.1);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+// Dark mode support
+@media (prefers-color-scheme: dark) {
+  .cart-badge {
+    border-color: var(--ion-background-color);
+  }
+
+  .empty-state {
+    ion-icon {
+      opacity: 0.4;
+    }
+  }
+}
+
+// High contrast mode support
+@media (prefers-contrast: more) {
+  .cart-badge {
+    border-width: 2px;
+    font-weight: 800;
+  }
+
+  ion-fab-button {
+    --box-shadow: 0 0 0 2px var(--ion-color-primary-contrast);
+  }
+}

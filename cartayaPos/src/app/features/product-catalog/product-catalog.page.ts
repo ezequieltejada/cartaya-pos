@@ -1,43 +1,40 @@
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
-  IonButton,
-  IonButtons,
-  IonCard,
-  IonCardContent,
-  IonCol,
-  IonContent,
-  IonFab,
-  IonFabButton,
-  IonGrid,
-  IonHeader,
-  IonIcon,
-  IonItem,
-  IonLabel,
-  IonList,
-  IonMenu,
-  IonMenuToggle,
-  IonRow,
-  IonSearchbar,
-  IonSpinner,
-  IonTitle,
-  IonToolbar,
-  ToastController
+    IonBadge,
+    IonButton,
+    IonButtons,
+    IonCard,
+    IonCardContent,
+    IonCol,
+    IonContent,
+    IonFab,
+    IonFabButton,
+    IonGrid,
+    IonHeader,
+    IonIcon,
+    IonItem,
+    IonLabel,
+    IonList,
+    IonRow,
+    IonSearchbar,
+    IonSpinner,
+    IonTitle,
+    IonToolbar,
+    ToastController
 } from '@ionic/angular/standalone';
 import { Pos } from '../../core/models/pos.model';
 import { Product } from '../../core/models/product.model';
 import { AuthService } from '../../core/services/auth.service';
-import { MenuService } from '../../core/services/menu.service';
 import { ModifierService } from '../../core/services/modifier.service';
 import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
 import { ProductService } from '../../core/services/product.service';
 import { SettingsService } from '../../core/services/settings.service';
 import { TenantService } from '../../core/services/tenant.service';
-import { OrderSummaryComponent } from '../order-summary/order-summary.component';
 import { ProductCardComponent } from './components/product-card/product-card.component';
 
 /**
@@ -71,8 +68,8 @@ import { ProductCardComponent } from './components/product-card/product-card.com
     IonToolbar,
     IonButtons,
     IonButton,
-    IonMenuToggle,
     IonIcon,
+    IonBadge,
     IonGrid,
     IonRow,
     IonCol,
@@ -81,11 +78,9 @@ import { ProductCardComponent } from './components/product-card/product-card.com
     IonSearchbar,
     IonCard,
     IonCardContent,
-    IonMenu,
     IonFab,
     IonFabButton,
     ProductCardComponent,
-    OrderSummaryComponent,
   ],
   templateUrl: './product-catalog.page.html',
   styleUrls: ['./product-catalog.page.scss'],
@@ -98,9 +93,13 @@ export class ProductCatalogPage implements OnInit {
   private router = inject(Router);
   private toastController = inject(ToastController);
   private modifierService = inject(ModifierService);
-  private menuService = inject(MenuService);
   orderService = inject(OrderService);
   private authService = inject(AuthService);
+
+  /**
+   * Computed signal for reactive cart item count
+   */
+  itemCount = computed(() => this.orderService.itemCount());
 
   searchQuery = '';
   private modifierCheckCache = new Map<string, boolean>();
@@ -260,8 +259,6 @@ export class ProductCatalogPage implements OnInit {
       // Add directly to order without modifiers
       this.orderService.addConfiguredProduct(product, []);
       await this.showSuccessToast(`"${product.name}" added to order`);
-      // Open order summary menu to show the item was added
-      await this.menuService.openMenu('order-summary-menu');
     }
   }
 
@@ -327,10 +324,10 @@ export class ProductCatalogPage implements OnInit {
   }
 
   /**
-   * Toggle the order summary menu from the right side
+   * Navigate to the cart page
    */
-  async toggleOrderMenu(): Promise<void> {
-    await this.menuService.toggleMenu('order-summary-menu');
+  navigateToCart(): void {
+    this.router.navigate(['/cart']);
   }
 
   /**

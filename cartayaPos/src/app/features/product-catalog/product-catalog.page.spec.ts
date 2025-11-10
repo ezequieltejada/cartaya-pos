@@ -1,15 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import {
-  IonCol,
-  IonContent,
-  IonGrid,
-  IonHeader,
-  IonRow,
-  IonSpinner,
-  IonTitle,
-  IonToolbar,
-  ToastController,
+    IonCol,
+    IonContent,
+    IonGrid,
+    IonHeader,
+    IonRow,
+    IonSpinner,
+    IonTitle,
+    IonToolbar,
+    ToastController,
 } from '@ionic/angular/standalone';
 import { of, throwError } from 'rxjs';
 import { Modifier } from '../../core/models/modifier.model';
@@ -95,7 +95,9 @@ describe('ProductCatalogPage', () => {
     ]);
     const orderServiceSpy = jasmine.createSpyObj('OrderService', [
       'addConfiguredProduct',
-    ]);
+    ], {
+      itemCount: jasmine.createSpy().and.returnValue(0),
+    });
     toastControllerSpy.create.and.returnValue(Promise.resolve(toastSpy));
 
     await TestBed.configureTestingModule({
@@ -585,6 +587,56 @@ describe('ProductCatalogPage', () => {
       component.onSearchInput(event);
 
       expect(productService.setFilterText).toHaveBeenCalledWith('');
+    });
+  });
+
+  describe('Cart Navigation', () => {
+    it('should navigate to cart when navigateToCart is called', () => {
+      component.navigateToCart();
+
+      expect(router.navigate).toHaveBeenCalledWith(['/cart']);
+    });
+
+    it('should have itemCount computed signal', () => {
+      expect(component.itemCount).toBeDefined();
+    });
+
+    it('should return correct item count from itemCount signal', () => {
+      (orderService.itemCount as jasmine.Spy).and.returnValue(3);
+
+      const count = component.itemCount();
+
+      expect(count).toBe(3);
+    });
+
+    it('should update itemCount reactively when items change', () => {
+      const itemCountSpy = orderService.itemCount as jasmine.Spy;
+      
+      // First check - empty cart
+      itemCountSpy.and.returnValue(0);
+      let count = component.itemCount();
+      expect(count).toBe(0);
+
+      // Simulate cart update
+      itemCountSpy.and.returnValue(5);
+      count = component.itemCount();
+      expect(count).toBe(5);
+    });
+
+    it('should display FAB when items exist in cart', () => {
+      (orderService.itemCount as jasmine.Spy).and.returnValue(2);
+
+      const count = component.itemCount();
+
+      expect(count).toBeGreaterThan(0);
+    });
+
+    it('should hide FAB when cart is empty', () => {
+      (orderService.itemCount as jasmine.Spy).and.returnValue(0);
+
+      const count = component.itemCount();
+
+      expect(count).toBe(0);
     });
   });
 
