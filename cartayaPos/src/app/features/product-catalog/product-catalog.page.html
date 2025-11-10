@@ -1,47 +1,14 @@
-<!-- Menu definition -->
-<ion-menu contentId="product-catalog-content" menuId="main-menu">
-  <ion-header>
-    <ion-toolbar>
-      <ion-title>{{ currentUser?.name || currentUser?.email }}</ion-title>
-    </ion-toolbar>
-  </ion-header>
-  <ion-content>
-    <ion-list>
-      <ion-item button disabled>
-        <ion-label>Dashboard</ion-label>
-      </ion-item>
-      <ion-item button (click)="navigateToProducts()">
-        <ion-label>Products</ion-label>
-      </ion-item>
-      <ion-item button disabled>
-        <ion-label>Orders</ion-label>
-      </ion-item>
-      <ion-item button disabled>
-        <ion-label>Settings</ion-label>
-      </ion-item>
-    </ion-list>
-    <ion-item button (click)="logout()" class="logout-button">
-      <ion-icon slot="end" name="log-out-outline"></ion-icon>
-      <ion-label>Logout</ion-label>
-    </ion-item>
-  </ion-content>
-</ion-menu>
-
-<!-- Order Summary Menu (Right Side) -->
-<ion-menu side="end" contentId="product-catalog-content" menuId="order-summary-menu">
-  <app-order-summary></app-order-summary>
-</ion-menu>
-
 <ion-header id="product-catalog-content">
   <ion-toolbar>
-    <ion-buttons slot="start">
-      <ion-menu-toggle>
-        <ion-button>
-          <ion-icon name="menu"></ion-icon>
-        </ion-button>
-      </ion-menu-toggle>
-    </ion-buttons>
     <ion-title>{{ selectedPos?.name }}</ion-title>
+    <ion-buttons slot="end" *ngIf="itemCount() > 0">
+      <ion-button (click)="navigateToCart()" class="header-cart-button">
+        <ion-icon name="cart-outline"></ion-icon>
+        <ion-badge class="header-cart-badge" color="danger">
+          {{ itemCount() }}
+        </ion-badge>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
   <ion-toolbar>
     <ion-searchbar 
@@ -130,10 +97,13 @@
     <ion-button (click)="clearSearch()">Clear Search</ion-button>
   </div>
 
-  <!-- FAB Button for Order Summary (Fixed at end/bottom) -->
-  <ion-fab *ngIf="orderService.hasItems()" vertical="bottom" horizontal="end" slot="fixed">
-    <ion-fab-button (click)="toggleOrderMenu()">
+  <!-- FAB Button for Cart (Fixed at end/bottom) -->
+  <ion-fab *ngIf="itemCount() > 0" vertical="bottom" horizontal="end" slot="fixed">
+    <ion-fab-button (click)="navigateToCart()" class="cart-fab">
       <ion-icon name="cart-outline"></ion-icon>
+      <ion-badge class="cart-badge" color="danger">
+        {{ itemCount() }}
+      </ion-badge>
     </ion-fab-button>
   </ion-fab>
   

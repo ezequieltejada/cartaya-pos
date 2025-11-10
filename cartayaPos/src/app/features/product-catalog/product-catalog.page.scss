@@ -64,3 +64,43 @@ ion-col {
     padding: 0;
   }
 }
+
+// FAB positioning (thumb-friendly zone)
+ion-fab {
+  margin-right: 16px;
+  margin-bottom: 16px;
+  
+  ion-fab-button {
+    --box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    
+    .cart-badge {
+      position: absolute;
+      top: 0;
+      right: 0;
+      transform: translate(30%, -30%);
+      font-size: 11px;
+      min-width: 18px;
+      height: 18px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+    }
+  }
+}
+
+// Header cart icon and badge
+.header-cart-button {
+  position: relative;
+  
+  .header-cart-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 10px;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+  }
+}
