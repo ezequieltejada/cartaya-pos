@@ -8,8 +8,17 @@
 </ion-header>
 
 <ion-content class="ion-padding">
-  <!-- Cart content will go here in Phase 2 -->
-  <div class="empty-state">
-    <p>Cart is empty</p>
+  <!-- Empty cart state -->
+  <div class="empty-cart-state">
+    <div class="empty-cart-icon">🛒</div>
+    <h2>Your cart is empty</h2>
+    <p>Add products to get started</p>
+    <ion-button 
+      color="primary" 
+      fill="solid"
+      routerLink="/products"
+    >
+      Browse Products
+    </ion-button>
   </div>
 </ion-content>
