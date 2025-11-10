@@ -119,29 +119,9 @@ ion-fab {
   }
 }
 
-// Header cart icon and badge
-.header-cart-button {
-  position: relative;
-  
-  .header-cart-badge {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    font-size: 10px;
-    min-width: 16px;
-    height: 16px;
-    padding: 0 3px;
-    border-radius: 8px;
-    font-weight: 700;
-    border: 1px solid var(--ion-background-color);
-    animation: badge-pop 0.3s ease-out;
-  }
-}
-
 // Dark mode support
 @media (prefers-color-scheme: dark) {
-  .cart-badge,
-  .header-cart-badge {
+  .cart-badge {
     border-color: var(--ion-background-color);
   }
 
@@ -154,8 +134,7 @@ ion-fab {
 
 // High contrast mode support
 @media (prefers-contrast: more) {
-  .cart-badge,
-  .header-cart-badge {
+  .cart-badge {
     border-width: 2px;
     font-weight: 800;
   }

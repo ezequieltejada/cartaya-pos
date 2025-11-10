@@ -1,14 +1,6 @@
 <ion-header id="product-catalog-content">
   <ion-toolbar>
     <ion-title>{{ selectedPos?.name }}</ion-title>
-    <ion-buttons slot="end" *ngIf="itemCount() > 0">
-      <ion-button (click)="navigateToCart()" class="header-cart-button">
-        <ion-icon name="cart-outline"></ion-icon>
-        <ion-badge class="header-cart-badge" color="danger">
-          {{ itemCount() }}
-        </ion-badge>
-      </ion-button>
-    </ion-buttons>
   </ion-toolbar>
   <ion-toolbar>
     <ion-searchbar 
