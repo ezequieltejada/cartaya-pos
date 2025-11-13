@@ -16,6 +16,7 @@ def capacitor_pods
   pod 'CapacitorDialog', :path => '../../node_modules/@capacitor/dialog'
   pod 'CapacitorHaptics', :path => '../../node_modules/@capacitor/haptics'
   pod 'CapacitorKeyboard', :path => '../../node_modules/@capacitor/keyboard'
+  pod 'CapacitorNetwork', :path => '../../node_modules/@capacitor/network'
   pod 'CapacitorStatusBar', :path => '../../node_modules/@capacitor/status-bar'
   pod 'CapacitorThermalPrinter', :path => '../../node_modules/capacitor-thermal-printer'
 end
