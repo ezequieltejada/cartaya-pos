@@ -4,34 +4,12 @@ import { Observable, catchError, finalize, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   OrderItem,
-  SelectedModifier
-} from '../models/order.model';
+  SelectedModifier,
+  SubmitOrderResponse
+} from '../../models/order.model';
 import { Product } from '../models/product.model';
 import { SettingsService } from './settings.service';
 import { StorageService } from './storage.service';
-
-/**
- * Response from order submission API
- */
-interface SubmitOrderResponse {
-  orderId: string;
-  status: string;
-  createdAt: string;
-  items: Array<{
-    productId: string;
-    name: string;
-    quantity: number;
-    basePrice: number;
-    appliedModifiers?: Array<{
-      modifierId: string;
-      name: string;
-      priceDelta: number;
-    }>;
-    lineTotal: number;
-  }>;
-  totalAmount: number;
-  currency: string;
-}
 
 /**
  * Stored order state in local storage
@@ -103,7 +81,7 @@ export class OrderService {
    */
   readonly orderTotal = computed(() => {
     return this.orderItems().reduce(
-      (sum, item) => sum + item.subtotal,
+      (sum, item) => sum + (item.subtotal ?? 0),
       0
     );
   });
@@ -151,12 +129,13 @@ export class OrderService {
     const basePrice = product.defaultPrice.amount;
     const subtotal = this.calculateSubtotal(basePrice, modifiers);
 
-    // Create new order item
+    // Create new order item - quantity is 1 for each line item in MVP
     const orderItem: OrderItem = {
       id: generateUUID(),
       productId: product.id,
       productName: product.name,
       basePrice,
+      quantity: 1,
       modifiers,
       subtotal,
     };
@@ -199,7 +178,7 @@ export class OrderService {
     }
 
     const item = items[itemIndex];
-    const updatedSubtotal = this.calculateSubtotal(item.basePrice, modifiers);
+    const updatedSubtotal = this.calculateSubtotal(item.basePrice ?? 0, modifiers);
 
     // Create new array with updated item
     const updatedItems = [

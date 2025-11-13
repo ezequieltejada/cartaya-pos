@@ -4,13 +4,13 @@ import { Router } from '@angular/router';
 import { Dialog } from '@capacitor/dialog';
 import { AlertController, ToastController } from '@ionic/angular';
 import {
-    IonButton,
-    IonIcon,
-    IonItem,
-    IonLabel,
-    IonList,
-    IonSpinner,
-    IonText,
+  IonButton,
+  IonIcon,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonSpinner,
+  IonText,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { checkmark, chevronDown, chevronUp, close, pencil, trash } from 'ionicons/icons';
@@ -130,7 +130,7 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
   async showCashConfirmation(): Promise<void> {
     const total = this.orderTotal().toFixed(2);
     const itemsText = this.orderItems()
-      .map((item) => `${item.productName} - $${item.subtotal.toFixed(2)}`)
+      .map((item) => `${item.productName} - $${(item.subtotal ?? 0).toFixed(2)}`)
       .join('\n');
 
     try {

@@ -4,7 +4,7 @@ import { Device } from '@capacitor/device';
 import { IonApp, IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonMenu, IonMenuToggle, IonRouterOutlet, IonTitle, IonToolbar } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
-import { cartOutline, checkmarkCircleOutline, closeCircleOutline, gridOutline, homeOutline, imageOutline, logOutOutline, menu, settingsOutline } from 'ionicons/icons';
+import { cartOutline, checkmarkCircleOutline, closeCircleOutline, gridOutline, homeOutline, imageOutline, logOutOutline, menu, receiptOutline, settingsOutline } from 'ionicons/icons';
 import { AuthService } from './core/services/auth.service';
 import { PosService } from './core/services/pos.service';
 import { StorageService } from './core/services/storage.service';
@@ -25,7 +25,7 @@ export class AppComponent implements OnInit {
   currentLanguage = 'en';
 
   constructor() {
-    addIcons({ menu, imageOutline, cartOutline, checkmarkCircleOutline, logOutOutline, homeOutline, gridOutline, settingsOutline, closeCircleOutline });
+    addIcons({ menu, imageOutline, cartOutline, checkmarkCircleOutline, logOutOutline, homeOutline, gridOutline, settingsOutline, closeCircleOutline, receiptOutline });
   }
 
   async ngOnInit() {

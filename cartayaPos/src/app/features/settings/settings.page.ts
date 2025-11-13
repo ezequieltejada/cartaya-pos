@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import {
-  IonBackButton,
   IonBadge,
   IonButton,
   IonButtons,
@@ -19,7 +18,7 @@ import {
   IonMenuButton,
   IonSpinner,
   IonTitle,
-  IonToolbar,
+  IonToolbar
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -29,6 +28,7 @@ import {
   radioButtonOff,
   radioButtonOn
 } from 'ionicons/icons';
+import { OrderHistoryService } from '../../services/order-history.service';
 import { Printer } from '../../services/printer';
 
 @Component({
@@ -40,7 +40,6 @@ import { Printer } from '../../services/printer';
     IonHeader,
     IonTitle,
     IonToolbar,
-    IonBackButton,
     IonButtons,
     IonMenuButton,
     IonCard,
@@ -61,6 +60,12 @@ import { Printer } from '../../services/printer';
 export class SettingsPage implements OnInit, OnDestroy {
   private router = inject(Router);
   protected printerService = inject(Printer);
+  protected orderHistoryService = inject(OrderHistoryService);
+
+  // Properties for testing order history service
+  orderHistory: any[] = [];
+  isLoadingOrders = false;
+  orderHistoryError: string | null = null;
 
   constructor() {
     // Register ionicons
@@ -139,5 +144,38 @@ export class SettingsPage implements OnInit, OnDestroy {
 
   goBack(): void {
     this.router.navigate(['/products']);
+  }
+
+  /**
+   * Test method to fetch order history
+   * This is temporary for testing purposes - can be removed once integrated into real components
+   */
+  async testFetchOrderHistory(): Promise<void> {
+    this.isLoadingOrders = true;
+    this.orderHistoryError = null;
+    this.orderHistory = [];
+
+    try {
+      // TODO: Replace these test values with actual tenant and POS IDs from user context
+      const tenantId = 'test-tenant-id';
+      const posId = 'test-pos-id';
+
+      this.orderHistoryService.getOrderHistory(tenantId, posId, 24).subscribe(
+        (orders) => {
+          console.log('Order history fetched successfully:', orders);
+          this.orderHistory = orders;
+          this.isLoadingOrders = false;
+        },
+        (error) => {
+          console.error('Error fetching order history:', error);
+          this.orderHistoryError = error.message;
+          this.isLoadingOrders = false;
+        }
+      );
+    } catch (error: any) {
+      console.error('Exception while fetching order history:', error);
+      this.orderHistoryError = error.message;
+      this.isLoadingOrders = false;
+    }
   }
 }
