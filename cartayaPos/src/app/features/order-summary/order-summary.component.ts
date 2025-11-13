@@ -1,15 +1,16 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { Dialog } from '@capacitor/dialog';
 import { AlertController, ToastController } from '@ionic/angular';
 import {
-  IonButton,
-  IonIcon,
-  IonItem,
-  IonLabel,
-  IonList,
-  IonSpinner,
-  IonText,
+    IonButton,
+    IonIcon,
+    IonItem,
+    IonLabel,
+    IonList,
+    IonSpinner,
+    IonText,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { checkmark, chevronDown, chevronUp, close, pencil, trash } from 'ionicons/icons';
@@ -72,27 +73,42 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
 
   /**
    * Shows cancel order confirmation modal
+   * Uses native Dialog plugin on iOS/Android, falls back to Ionic AlertController on web
    */
   async showCancelConfirmation(): Promise<void> {
-    const alert = await this.alertController.create({
-      header: 'Cancel Order',
-      message: 'Are you sure? This will clear all items.',
-      buttons: [
-        {
-          text: 'No',
-          role: 'cancel',
-        },
-        {
-          text: 'Yes',
-          role: 'confirm',
-        },
-      ],
-    });
-    await alert.present();
-    
-    const { role } = await alert.onDidDismiss();
-    if (role === 'confirm') {
-      await this.cancelOrder();
+    try {
+      const { value } = await Dialog.confirm({
+        title: 'Cancel Order',
+        message: 'Are you sure? This will clear all items.',
+        okButtonTitle: 'Yes',
+        cancelButtonTitle: 'No',
+      });
+
+      if (value) {
+        await this.cancelOrder();
+      }
+    } catch (error) {
+      // Fallback to Ionic AlertController if Dialog is not available
+      console.warn('Dialog plugin not available, using Ionic AlertController:', error);
+      const alert = await this.alertController.create({
+        header: 'Cancel Order',
+        message: 'Are you sure? This will clear all items.',
+        buttons: [
+          {
+            text: 'No',
+            role: 'cancel',
+          },
+          {
+            text: 'Yes',
+            role: 'destructive',
+            handler: async () => {
+              await this.cancelOrder();
+            },
+          },
+        ],
+      });
+
+      await alert.present();
     }
   }
 
@@ -109,6 +125,7 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
 
   /**
    * Shows cash order confirmation modal with order summary
+   * Uses native Dialog plugin on iOS/Android, falls back to Ionic AlertController on web
    */
   async showCashConfirmation(): Promise<void> {
     const total = this.orderTotal().toFixed(2);
@@ -116,30 +133,47 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
       .map((item) => `${item.productName} - $${item.subtotal.toFixed(2)}`)
       .join('\n');
 
-    const alert = await this.alertController.create({
-      header: 'Complete Order',
-      message: `Items:\n${itemsText}\n\nTotal: $${total}`,
-      buttons: [
-        {
-          text: 'Cancel',
-          role: 'cancel',
-        },
-        {
-          text: 'Confirm',
-          role: 'confirm',
-        },
-      ],
-    });
-    await alert.present();
-    
-    const { role } = await alert.onDidDismiss();
-    if (role === 'confirm') {
-      await this.cashOrder();
+    try {
+      const { value } = await Dialog.confirm({
+        title: 'Complete Order',
+        message: `Items:\n${itemsText}\n\nTotal: $${total}`,
+        okButtonTitle: 'Confirm',
+        cancelButtonTitle: 'Cancel',
+      });
+
+      if (value) {
+        await this.cashOrder();
+      }
+    } catch (error) {
+      // Fallback to Ionic AlertController if Dialog is not available
+      console.warn('Dialog plugin not available, using Ionic AlertController:', error);
+      const alert = await this.alertController.create({
+        header: 'Complete Order',
+        message: `Items:\n${itemsText}\n\nTotal: $${total}`,
+        buttons: [
+          {
+            text: 'Cancel',
+            role: 'cancel',
+          },
+          {
+            text: 'Confirm',
+            handler: async () => {
+              await this.cashOrder();
+            },
+          },
+        ],
+      });
+
+      await alert.present();
     }
   }
 
   /**
    * Submits the order and prints receipt
+   * Handles three scenarios:
+   * 1. No printer selected: notify user and don't attempt to print
+   * 2. Printer selected but manually disconnected: notify user and don't attempt to reconnect
+   * 3. Printer selected and disconnected for other reasons: attempt to reconnect and print
    */
   private async cashOrder(): Promise<void> {
     const posId = this.posService.getSelectedPos()?.id;
@@ -150,11 +184,58 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Subscribe to order submission
+    // Check if a printer is selected
+    if (!this.printer.selectedPrinter) {
+      this.showToast('No printer selected. Order will be saved without printing.', 'top');
+      // Continue with order submission even without printer
+      this.submitOrderWithoutPrinter(posId, tenantId);
+      return;
+    }
+
+    // Check if user manually disconnected from the printer
+    if (this.printer.isUserManuallyDisconnected()) {
+      this.showToast('Printer was manually disconnected. Order will be saved without printing.', 'top');
+      // Continue with order submission even without printer
+      this.submitOrderWithoutPrinter(posId, tenantId);
+      return;
+    }
+
+    // Printer is selected and was not manually disconnected
+    // Try to print if disconnected (device disconnection), or just print if already connected
+    this.submitOrderAndPrint(posId, tenantId);
+  }
+
+  /**
+   * Submits order without attempting to print
+   */
+  private submitOrderWithoutPrinter(posId: string, tenantId: string): void {
     this.orderService.submitOrder(posId, tenantId).subscribe({
       next: async (response) => {
         try {
-          // Print receipt
+          this.showToast('Order completed! (Printing skipped)', 'top');
+          // Navigate to products page after successful order
+          await this.router.navigate(['/products']);
+        } catch (error) {
+          console.error('Error after order submission:', error);
+          this.showToast('Order completed but an error occurred', 'top');
+          await this.router.navigate(['/products']);
+        }
+      },
+      error: (error) => {
+        console.error('Order submission failed:', error);
+        this.showToast('Order failed. Please try again.', 'top');
+      },
+    });
+  }
+
+  /**
+   * Submits order and attempts to print receipt
+   */
+  private submitOrderAndPrint(posId: string, tenantId: string): void {
+    this.orderService.submitOrder(posId, tenantId).subscribe({
+      next: async (response) => {
+        try {
+          // Print receipt (will attempt to reconnect if necessary)
           await this.printReceipt(response);
           this.showToast('Order completed!', 'top');
           // Navigate to products page after successful order
@@ -180,36 +261,34 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
     // Format receipt content
     const receiptContent = this.formatReceipt(response);
 
-    // For now, just log the receipt (actual printing depends on PrinterService implementation)
-    console.log('Receipt to print:', receiptContent);
-
-    // In a real implementation, you would call:
-    // await this.printer.printReceipt(receiptContent);
+    try {
+      await this.printer.printReceipt(receiptContent);
+    } catch (error) {
+      console.error('Error printing receipt:', error);
+      this.showToast('Order saved but print failed', 'top');
+    }
   }
 
   /**
    * Formats order response for receipt printing
    */
   private formatReceipt(response: any): string {
-    let receipt = '========== RECEIPT ==========\n';
+    let receipt = '';
 
     if (response.items && response.items.length > 0) {
       response.items.forEach((item: any) => {
-        receipt += `\n${item.productId}\n`;
-        receipt += `Qty: 1\n`;
-        receipt += `Total: $${item.lineTotal.toFixed(2)}\n`;
+        receipt += `${item.name}\n`;
         if (item.appliedModifiers) {
           item.appliedModifiers.forEach((mod: any) => {
-            receipt += `  - ${mod.name}: +$${mod.priceDelta.toFixed(2)}\n`;
+            receipt += ` - ${mod.name}\n`;
           });
         }
+        receipt += `Subtotal ------------ $${item.lineTotal.toFixed(2)}\n\n`;
       });
     }
 
-    receipt += `\n=============================\n`;
-    receipt += `Total: $${response.totalAmount.toFixed(2)}\n`;
+    receipt += `------  Total: $${response.totalAmount.toFixed(2)} ------\n`;
     receipt += `Date: ${new Date().toLocaleString()}\n`;
-    receipt += `=============================\n`;
 
     return receipt;
   }

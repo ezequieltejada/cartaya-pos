@@ -3,6 +3,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import {
     IonButton,
+    IonButtons,
     IonCard,
     IonCardContent,
     IonCardHeader,
@@ -10,6 +11,7 @@ import {
     IonContent,
     IonHeader,
     IonIcon,
+    IonMenuButton,
     IonTitle,
     IonToolbar,
 } from '@ionic/angular/standalone';
@@ -31,6 +33,8 @@ import { PosService } from '../../core/services/pos.service';
     IonCardContent,
     IonButton,
     IonIcon,
+    IonMenuButton,
+    IonButtons,
   ],
   templateUrl: './dashboard.page.html',
   styleUrls: ['./dashboard.page.scss'],
@@ -57,6 +61,10 @@ export class DashboardPage implements OnInit {
 
   navigateToProducts(): void {
     this.router.navigate(['/products']);
+  }
+
+  navigateToSettings(): void {
+    this.router.navigate(['/settings']);
   }
 
   get currentUser() {

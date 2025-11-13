@@ -1,10 +1,10 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Device } from '@capacitor/device';
-import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
+import { IonApp, IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonMenu, IonMenuToggle, IonRouterOutlet, IonTitle, IonToolbar } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
-import { cartOutline, checkmarkCircleOutline, imageOutline, logOutOutline, menu } from 'ionicons/icons';
+import { cartOutline, checkmarkCircleOutline, closeCircleOutline, gridOutline, homeOutline, imageOutline, logOutOutline, menu, settingsOutline } from 'ionicons/icons';
 import { AuthService } from './core/services/auth.service';
 import { PosService } from './core/services/pos.service';
 import { StorageService } from './core/services/storage.service';
@@ -13,7 +13,7 @@ import { TenantService } from './core/services/tenant.service';
 @Component({
   selector: 'app-root',
   templateUrl: 'app.component.html',
-  imports: [IonApp, IonRouterOutlet, TranslateModule],
+  imports: [IonApp, IonRouterOutlet, IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonIcon, IonLabel, IonMenuToggle, RouterLink, RouterLinkActive, TranslateModule],
 })
 export class AppComponent implements OnInit {
   private storageService = inject(StorageService);
@@ -25,7 +25,7 @@ export class AppComponent implements OnInit {
   currentLanguage = 'en';
 
   constructor() {
-    addIcons({ menu, imageOutline, cartOutline, checkmarkCircleOutline, logOutOutline });
+    addIcons({ menu, imageOutline, cartOutline, checkmarkCircleOutline, logOutOutline, homeOutline, gridOutline, settingsOutline, closeCircleOutline });
   }
 
   async ngOnInit() {
@@ -128,5 +128,13 @@ export class AppComponent implements OnInit {
   switchLanguage(language: string) {
     this.translate.use(language);
     this.currentLanguage = language;
+  }
+
+  logout() {
+    this.authService.logout().subscribe({
+      next: () => {
+        this.router.navigate(['/auth/login']);
+      },
+    });
   }
 }

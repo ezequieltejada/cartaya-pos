@@ -19,7 +19,9 @@ interface SubmitOrderResponse {
   createdAt: string;
   items: Array<{
     productId: string;
+    name: string;
     quantity: number;
+    basePrice: number;
     appliedModifiers?: Array<{
       modifierId: string;
       name: string;

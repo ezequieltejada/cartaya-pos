@@ -40,12 +40,9 @@
       margin: 0;
 
       h2 {
-        margin: 0;
-        font-size: 15px;
-        font-weight: 500;
+        font: 500 15px/1.2 inherit;
       }
 
-      // Modifiers list styling
       .modifiers-list {
         margin-top: 6px;
         display: flex;
@@ -56,7 +53,6 @@
           font-size: 13px;
           display: flex;
           gap: 6px;
-          align-items: baseline;
 
           .modifier-quantity {
             font-weight: 500;
@@ -83,8 +79,7 @@
       gap: 8px;
 
       .item-price {
-        font-weight: 600;
-        font-size: 15px;
+        font: 600 15px/1.2 inherit;
         color: var(--ion-color-success);
         min-width: 60px;
         text-align: right;
@@ -127,14 +122,12 @@
     gap: 16px;
 
     .label {
-      font-size: 16px;
-      font-weight: 600;
+      font: 600 16px/1.2 inherit;
       color: var(--ion-text-color);
     }
 
     .total-amount {
-      font-size: 18px;
-      font-weight: 700;
+      font: 700 18px/1.2 inherit;
       color: var(--ion-color-success);
     }
   }
@@ -154,9 +147,265 @@
   }
 }
 
-// ===== Text Alignment Utility =====
-.text-end {
-  text-align: right;
+// ===== Side Panel (Desktop/Tablet) =====
+.side-panel {
+  display: none;
+  position: fixed;
+  right: 0;
+  top: 0;
+  height: 100vh;
+  width: 320px;
+  background: var(--ion-background-color);
+  border-left: 1px solid var(--ion-border-color);
+  box-shadow: -2px 0 8px rgba(0,0,0,.1);
+  flex-direction: column;
+  z-index: 999;
+
+  .panel-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--ion-border-color);
+    background: var(--ion-color-light);
+
+    h2 {
+      margin: 0;
+      font: 600 18px/1.2 inherit;
+    }
+  }
+
+  .panel-content {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex: 1;
+
+    .order-items-container {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .total-section,
+    .action-buttons {
+      flex-shrink: 0;
+    }
+  }
+}
+
+// Responsive
+@media (min-width: 768px) {
+  .order-modal {
+    display: none !important;
+  }
+
+  .side-panel {
+    display: flex;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .summary-bar {
+    padding: 8px 12px;
+
+    .summary-content .item-count,
+    .summary-content .total {
+      font-size: 13px;
+    }
+  }
+
+  .summary-header h2 {
+    text-align: center;
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .order-items-container .order-item {
+    --padding-start: 12px;
+
+    ion-label h2 {
+      font-size: 14px;
+    }
+
+    .item-actions {
+      gap: 6px;
+
+      .item-price {
+        font-size: 14px;
+      }
+
+      ion-button {
+        --icon-font-size: 18px;
+      }
+    }
+  }
+
+  .total-section {
+    padding: 12px;
+
+    .total-row .label {
+      font-size: 15px;
+    }
+
+    .total-row .total-amount {
+      font-size: 16px;
+    }
+  }
+
+  .action-buttons {
+    padding: 0 8px 8px 8px;
+    gap: 8px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .side-panel {
+    border-left: 1px solid var(--ion-color-step-150);
+    box-shadow: -2px 0 12px rgba(0,0,0,.3);
+  }
+}
+
+@media (prefers-contrast: more) {
+  .order-item {
+    border-bottom: 1px solid var(--ion-border-color);
+  }
+
+  .action-buttons ion-button {
+    font-weight: 600;
+  }
+}
+
+// ===== Summary Header =====
+.summary-header {
+  padding: 16px;
+
+  h2 {
+     margin-left: 8px;
+  }
+}
+
+// ===== Order Items Container =====
+.order-items-container {
+  ion-list {
+    --padding-start: 0;
+    --padding-end: 0;
+    margin: 0;
+  }
+
+  .order-item {
+    --padding-start: 16px;
+    --padding-end: 12px;
+    --min-height: 60px;
+    --inner-padding-end: 0;
+
+    ion-label {
+      margin: 0;
+
+      h2 {
+        font: 500 15px/1.2 inherit;
+      }
+
+      .modifiers-list {
+        margin-top: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+
+        .modifier-item {
+          font-size: 13px;
+          display: flex;
+          gap: 6px;
+          align-items: baseline;
+
+          .modifier-quantity {
+            font-weight: 500;
+          }
+
+          .modifier-price {
+            font-size: 12px;
+
+            &.positive {
+              color: var(--ion-color-success);
+            }
+
+            &.negative {
+              color: var(--ion-color-danger);
+            }
+          }
+        }
+      }
+    }
+
+    .item-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .item-price {
+        font: 600 15px/1.2 inherit;
+        color: var(--ion-color-success);
+        min-width: 60px;
+        text-align: right;
+      }
+
+      ion-button {
+        margin: 0;
+        --padding-start: 6px;
+        --padding-end: 6px;
+      }
+    }
+  }
+}
+
+// ===== Empty State =====
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  text-align: center;
+
+  ion-text {
+    font-size: 16px;
+  }
+}
+
+// ===== Order Total Section =====
+.total-section {
+  padding: 16px;
+  border-top: 2px solid var(--ion-border-color);
+  background: var(--ion-color-light);
+
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+
+    .label {
+      font: 600 16px/1.2 inherit;
+      color: var(--ion-text-color);
+    }
+
+    .total-amount {
+      font: 700 18px/1.2 inherit;
+      color: var(--ion-color-success);
+    }
+  }
+}
+
+// ===== Action Buttons =====
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 12px 12px 12px;
+
+  ion-button {
+    margin: 0;
+
+    &:first-child {
+      margin-top: 16px;
+    }
+  }
 }
 
 // ===== Responsive Breakpoints =====
@@ -262,7 +511,6 @@
   }
 }
 
-// Accessibility - high contrast mode
 @media (prefers-contrast: more) {
   .order-item {
     border-bottom: 1px solid var(--ion-border-color);

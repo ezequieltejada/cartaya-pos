@@ -43,6 +43,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'settings',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/settings/settings.page').then(
+        (m) => m.SettingsPage
+      ),
+  },
+  {
     path: 'cart',
     canActivate: [authGuard],
     loadComponent: () =>
