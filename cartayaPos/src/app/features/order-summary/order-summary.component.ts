@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, computed, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Dialog } from '@capacitor/dialog';
 import { AlertController, ToastController } from '@ionic/angular';
@@ -40,7 +40,7 @@ import { Printer } from '../../services/printer';
     IonSpinner,
   ],
 })
-export class OrderSummaryComponent implements OnInit, OnDestroy {
+export class OrderSummaryComponent {
   private orderService = inject(OrderService);
   private posService = inject(PosService);
   private tenantService = inject(TenantService);
@@ -61,14 +61,6 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
 
   constructor() {
     addIcons({ pencil, trash, close, checkmark, chevronUp, chevronDown });
-  }
-
-  ngOnInit(): void {
-    // Component initialization if needed
-  }
-
-  ngOnDestroy(): void {
-    // Cleanup if needed
   }
 
   /**
