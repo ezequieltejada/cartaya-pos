@@ -4,13 +4,13 @@ import { Router } from '@angular/router';
 import { Dialog } from '@capacitor/dialog';
 import { AlertController, ToastController } from '@ionic/angular';
 import {
-  IonButton,
-  IonIcon,
-  IonItem,
-  IonLabel,
-  IonList,
-  IonSpinner,
-  IonText,
+    IonButton,
+    IonIcon,
+    IonItem,
+    IonLabel,
+    IonList,
+    IonSpinner,
+    IonText,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { checkmark, chevronDown, chevronUp, close, pencil, trash } from 'ionicons/icons';
@@ -170,6 +170,10 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
 
   /**
    * Submits the order and prints receipt
+   * Handles three scenarios:
+   * 1. No printer selected: notify user and don't attempt to print
+   * 2. Printer selected but manually disconnected: notify user and don't attempt to reconnect
+   * 3. Printer selected and disconnected for other reasons: attempt to reconnect and print
    */
   private async cashOrder(): Promise<void> {
     const posId = this.posService.getSelectedPos()?.id;
@@ -180,11 +184,58 @@ export class OrderSummaryComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Subscribe to order submission
+    // Check if a printer is selected
+    if (!this.printer.selectedPrinter) {
+      this.showToast('No printer selected. Order will be saved without printing.', 'top');
+      // Continue with order submission even without printer
+      this.submitOrderWithoutPrinter(posId, tenantId);
+      return;
+    }
+
+    // Check if user manually disconnected from the printer
+    if (this.printer.isUserManuallyDisconnected()) {
+      this.showToast('Printer was manually disconnected. Order will be saved without printing.', 'top');
+      // Continue with order submission even without printer
+      this.submitOrderWithoutPrinter(posId, tenantId);
+      return;
+    }
+
+    // Printer is selected and was not manually disconnected
+    // Try to print if disconnected (device disconnection), or just print if already connected
+    this.submitOrderAndPrint(posId, tenantId);
+  }
+
+  /**
+   * Submits order without attempting to print
+   */
+  private submitOrderWithoutPrinter(posId: string, tenantId: string): void {
     this.orderService.submitOrder(posId, tenantId).subscribe({
       next: async (response) => {
         try {
-          // Print receipt
+          this.showToast('Order completed! (Printing skipped)', 'top');
+          // Navigate to products page after successful order
+          await this.router.navigate(['/products']);
+        } catch (error) {
+          console.error('Error after order submission:', error);
+          this.showToast('Order completed but an error occurred', 'top');
+          await this.router.navigate(['/products']);
+        }
+      },
+      error: (error) => {
+        console.error('Order submission failed:', error);
+        this.showToast('Order failed. Please try again.', 'top');
+      },
+    });
+  }
+
+  /**
+   * Submits order and attempts to print receipt
+   */
+  private submitOrderAndPrint(posId: string, tenantId: string): void {
+    this.orderService.submitOrder(posId, tenantId).subscribe({
+      next: async (response) => {
+        try {
+          // Print receipt (will attempt to reconnect if necessary)
           await this.printReceipt(response);
           this.showToast('Order completed!', 'top');
           // Navigate to products page after successful order

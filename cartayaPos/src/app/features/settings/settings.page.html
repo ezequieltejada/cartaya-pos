@@ -32,16 +32,44 @@
               <span class="info-label">Printer:</span>
               <span class="info-value">{{ selectedPrinter.name || 'Unknown Device' }}</span>
             </div>
-            <div class="info-item">
-              <span class="info-label">Address:</span>
-              <span class="info-value">{{ selectedPrinter.address }}</span>
-            </div>
           </div>
         } @else {
           <div class="no-printer-selected">
             <p>No printer selected</p>
           </div>
         }
+
+        <!-- Action Buttons inside Connection Card -->
+        <div class="connection-actions">
+          @if (selectedPrinter && !isConnected) {
+            <ion-button 
+              (click)="connectToPrinter()"
+              expand="block"
+              color="primary">
+              <ion-icon slot="start" name="bluetooth-outline"></ion-icon>
+              Connect
+            </ion-button>
+          }
+          @if (isConnected) {
+            <ion-button 
+              (click)="disconnectFromPrinter()"
+              expand="block"
+              color="danger">
+              <ion-icon slot="start" name="close-circle-outline"></ion-icon>
+              Disconnect
+            </ion-button>
+          }
+          @if (selectedPrinter) {
+            <ion-button 
+              (click)="clearPrinterSelection()"
+              expand="block"
+              color="medium"
+              fill="outline">
+              <ion-icon slot="start" name="close-circle-outline"></ion-icon>
+              Clear Selection
+            </ion-button>
+          }
+        </div>
       </ion-card-content>
     </ion-card>
 
@@ -79,7 +107,6 @@
                 </ion-icon>
                 <ion-label>
                   <h3>{{ printer.name || 'Unknown Device' }}</h3>
-                  <p class="printer-address">{{ printer.address }}</p>
                 </ion-label>
                 @if (isConnected && selectedAddress === printer.address) {
                   <ion-icon slot="end" name="checkmark-circle" color="success"></ion-icon>
@@ -94,27 +121,5 @@
         }
       </ion-card-content>
     </ion-card>
-
-    <!-- Action Buttons -->
-    <div class="action-buttons">
-      @if (selectedPrinter && !isConnected) {
-        <ion-button 
-          (click)="connectToPrinter()"
-          expand="block"
-          color="primary">
-          <ion-icon slot="start" name="bluetooth-outline"></ion-icon>
-          Connect
-        </ion-button>
-      }
-      @if (isConnected) {
-        <ion-button 
-          (click)="disconnectFromPrinter()"
-          expand="block"
-          color="danger">
-          <ion-icon slot="start" name="close-circle-outline"></ion-icon>
-          Disconnect
-        </ion-button>
-      }
-    </div>
   </div>
 </ion-content>

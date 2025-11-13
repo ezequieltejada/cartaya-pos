@@ -24,6 +24,8 @@ import {
     IonToolbar,
     ToastController
 } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import { alertCircleOutline, cartOutline, refreshOutline, searchOutline, settingsOutline } from 'ionicons/icons';
 import { Pos } from '../../core/models/pos.model';
 import { Product } from '../../core/models/product.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -33,6 +35,7 @@ import { PosService } from '../../core/services/pos.service';
 import { ProductService } from '../../core/services/product.service';
 import { SettingsService } from '../../core/services/settings.service';
 import { TenantService } from '../../core/services/tenant.service';
+import { Printer } from '../../services/printer';
 import { ProductCardComponent } from './components/product-card/product-card.component';
 
 /**
@@ -91,8 +94,14 @@ export class ProductCatalogPage implements OnInit {
   private router = inject(Router);
   private toastController = inject(ToastController);
   private modifierService = inject(ModifierService);
+  protected printerService = inject(Printer);
   orderService = inject(OrderService);
   private authService = inject(AuthService);
+
+  constructor() {
+    // Register ionicons for printer unavailable message
+    addIcons({alertCircleOutline,refreshOutline,settingsOutline,searchOutline,cartOutline});
+  }
 
   /**
    * Computed signal for reactive cart item count
@@ -203,6 +212,14 @@ export class ProductCatalogPage implements OnInit {
    */
   get currentUser(): any {
     return this.authService.getCurrentUser();
+  }
+
+  /**
+   * Get printer availability status
+   * Returns true if printer is available, false if unavailable/disconnected
+   */
+  get isPrinterUnavailable(): boolean {
+    return this.printerService.isConnected && !this.printerService.printerAvailable();
   }
 
   /**

@@ -32,6 +32,22 @@
     </ion-card-content>
   </ion-card>
 
+  <!-- Printer Unavailable Banner -->
+  <ion-card *ngIf="isPrinterUnavailable" color="warning" class="printer-unavailable-card">
+    <ion-card-content>
+      <div class="printer-unavailable-content">
+        <ion-icon name="alert-circle-outline"></ion-icon>
+        <div>
+          <p class="printer-message">Printer is unavailable. Please check the connection.</p>
+          <ion-button size="small" fill="outline" (click)="navigateToSettings()">
+            <ion-icon slot="start" name="settings-outline"></ion-icon>
+            Go to Settings
+          </ion-button>
+        </div>
+      </div>
+    </ion-card-content>
+  </ion-card>
+
   <!-- Loading state -->
   <div *ngIf="isLoading" class="loading-container">
     <ion-spinner></ion-spinner>

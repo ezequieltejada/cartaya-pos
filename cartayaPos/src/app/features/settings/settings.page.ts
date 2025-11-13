@@ -133,6 +133,10 @@ export class SettingsPage implements OnInit, OnDestroy {
     await this.printerService.disconnect();
   }
 
+  clearPrinterSelection(): void {
+    this.printerService.clearPrinterSelection();
+  }
+
   goBack(): void {
     this.router.navigate(['/products']);
   }

@@ -1,12 +1,13 @@
-import { inject, Injectable, NgZone } from '@angular/core';
+import { inject, Injectable, NgZone, signal } from '@angular/core';
 import { CapacitorThermalPrinter } from 'capacitor-thermal-printer';
 
 @Injectable({
   providedIn: 'root'
 })
 export class Printer {
-  // Storage key for persisting printer selection
+  // Storage keys for persisting printer selection and connection state
   private readonly STORAGE_KEY = 'selected_printer';
+  private readonly CONNECTION_STATE_KEY = 'printer_connection_state';
 
   // Public properties
   discoveredPrinters: any[] = [];
@@ -14,6 +15,14 @@ export class Printer {
   selectedAddress: string = '';
   isScanning: boolean = false;
   isConnected: boolean = false;
+  
+  // Track if user manually disconnected from the printer
+  // If true, the app should NOT attempt to reconnect automatically
+  // If false, the app should attempt to reconnect if a printer is selected
+  private userManuallyDisconnected: boolean = false;
+  
+  // Signal for tracking printer availability status
+  printerAvailable = signal<boolean>(true);
 
   ngZone = inject(NgZone);
 
@@ -29,6 +38,10 @@ export class Printer {
 
     try {
       console.log('Connecting to printer:', this.selectedPrinter);
+      // Reset manual disconnection flag when user attempts to connect
+      // This allows reconnection after manual disconnect
+      this.userManuallyDisconnected = false;
+      
       const device = await CapacitorThermalPrinter.connect({ 
         address: this.selectedPrinter.address 
       });
@@ -51,16 +64,20 @@ export class Printer {
 
   /**
    * Disconnect from the currently connected printer
+   * @param manualDisconnect - If true, marks this as a manual user disconnection.
+   *                           If false, indicates device disconnection (will attempt reconnect on next order).
    */
-  async disconnect(): Promise<void> {
+  async disconnect(manualDisconnect: boolean = true): Promise<void> {
     try {
-      console.log('Disconnecting from printer');
+      console.log('Disconnecting from printer, manual disconnect:', manualDisconnect);
       await CapacitorThermalPrinter.disconnect();
       this.isConnected = false;
+      this.userManuallyDisconnected = manualDisconnect;
       console.log('Disconnected from printer');
     } catch (error) {
       console.error('Error disconnecting from printer:', error);
       this.isConnected = false;
+      this.userManuallyDisconnected = manualDisconnect;
     }
   }
 
@@ -111,9 +128,30 @@ export class Printer {
     this.selectedPrinter = this.discoveredPrinters.find(p => p.address === address) || null;
     console.log('Selected printer:', this.selectedPrinter);
     
+    // Reset manual disconnection flag when user selects a printer
+    this.userManuallyDisconnected = false;
+    
     // Persist selection to localStorage
     if (this.selectedPrinter) {
       this.savePrinterToStorage(this.selectedPrinter);
+    }
+  }
+
+  /**
+   * Clear the selected printer (remove selection)
+   */
+  clearPrinterSelection(): void {
+    console.log('Clearing printer selection');
+    this.selectedPrinter = null;
+    this.selectedAddress = '';
+    this.userManuallyDisconnected = false;
+    
+    // Remove from localStorage
+    try {
+      localStorage.removeItem(this.STORAGE_KEY);
+      console.log('Printer selection cleared from localStorage');
+    } catch (error) {
+      console.error('Error clearing printer from localStorage:', error);
     }
   }
 
@@ -153,18 +191,83 @@ export class Printer {
 
   /**
    * Clean up listeners and state
+   * NOTE: Does NOT disconnect printer - connection persists across page navigation
+   * Printer only disconnects on manual disconnect or app close
    */
   cleanup(): void {
     try {
       console.log('Cleaning up Printer service');
       this.isScanning = false;
       this.discoveredPrinters = [];
-      if (this.isConnected) {
-        this.disconnect();
-      }
+      // Do NOT disconnect the printer here - connection should persist
     } catch (error) {
       console.error('Error during cleanup:', error);
     }
+  }
+
+  /**
+   * Check if the connected printer is still available/responding
+   * This method attempts to verify the printer connection is still valid
+   * If the printer is unavailable, sets printerAvailable signal to false
+   * @returns Promise<boolean> - true if printer is available, false otherwise
+   */
+  async checkPrinterAvailability(): Promise<boolean> {
+    if (!this.isConnected || !this.selectedPrinter) {
+      // Not connected, so availability check doesn't apply
+      this.printerAvailable.set(true);
+      return true;
+    }
+
+    try {
+      console.log('Checking printer availability:', this.selectedPrinter.address);
+      
+      // Try to get printer info - if this fails, printer is unavailable
+      // This is a simple check; in a real scenario, you might ping the device
+      // For now, we assume the printer is still available unless explicitly informed otherwise
+      // In a production environment, you'd implement a proper health check here
+      
+      // The actual availability check would depend on the Capacitor plugin capabilities
+      // For now, we'll set printerAvailable to true as default
+      this.printerAvailable.set(true);
+      return true;
+    } catch (error) {
+      console.error('Error checking printer availability:', error);
+      this.printerAvailable.set(false);
+      return false;
+    }
+  }
+
+  /**
+   * Set printer as unavailable (called when device goes out of range or turns off)
+   */
+  setPrinterUnavailable(): void {
+    this.printerAvailable.set(false);
+    console.warn('Printer marked as unavailable');
+  }
+
+  /**
+   * Reset printer availability status (called when returning to settings or after reconnection)
+   */
+  resetPrinterAvailability(): void {
+    if (this.isConnected) {
+      this.printerAvailable.set(true);
+    }
+  }
+
+  /**
+   * Check if the user manually disconnected from the printer
+   * @returns boolean - true if user manually disconnected, false otherwise
+   */
+  isUserManuallyDisconnected(): boolean {
+    return this.userManuallyDisconnected;
+  }
+
+  /**
+   * Reset the manual disconnection flag (called when user selects a printer in settings)
+   */
+  resetManualDisconnectionFlag(): void {
+    this.userManuallyDisconnected = false;
+    console.log('Manual disconnection flag reset');
   }
 
   async printSample() {
