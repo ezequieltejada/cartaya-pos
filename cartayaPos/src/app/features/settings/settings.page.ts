@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import {
-  IonBackButton,
   IonBadge,
   IonButton,
   IonButtons,
@@ -19,7 +18,7 @@ import {
   IonMenuButton,
   IonSpinner,
   IonTitle,
-  IonToolbar,
+  IonToolbar
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
@@ -40,7 +39,6 @@ import { Printer } from '../../services/printer';
     IonHeader,
     IonTitle,
     IonToolbar,
-    IonBackButton,
     IonButtons,
     IonMenuButton,
     IonCard,
