@@ -15,14 +15,18 @@ import {
   IonSpinner,
   IonTitle,
   IonToolbar,
+  LoadingController,
+  ToastController,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { alertCircleOutline, arrowBack, printOutline } from 'ionicons/icons';
 import { firstValueFrom } from 'rxjs';
 import { PosService } from '../../core/services/pos.service';
+import { ProductService } from '../../core/services/product.service';
 import { TenantService } from '../../core/services/tenant.service';
 import { Order, OrderItem, SelectedModifier } from '../../models/order.model';
 import { OrderHistoryService } from '../../services/order-history.service';
+import { Printer } from '../../services/printer';
 
 @Component({
   selector: 'app-order-detail',
@@ -51,12 +55,17 @@ export class OrderDetailPage implements OnInit {
   private orderHistoryService = inject(OrderHistoryService);
   private tenantService = inject(TenantService);
   private posService = inject(PosService);
+  private productService = inject(ProductService);
   private router = inject(Router);
+  private printerService = inject(Printer);
+  private loadingCtrl = inject(LoadingController);
+  private toastCtrl = inject(ToastController);
 
   // Reactive state
   order = signal<Order | null>(null);
   isLoading = signal(false);
   error = signal<string | null>(null);
+  isPrinting = signal(false);
 
   constructor() {
     addIcons({arrowBack,printOutline,alertCircleOutline});
@@ -100,7 +109,9 @@ export class OrderDetailPage implements OnInit {
         return;
       }
 
-      this.order.set(foundOrder);
+      // Enrich order with product names
+      const enrichedOrder = await this.enrichOrderWithProductNames(foundOrder, tenantId);
+      this.order.set(enrichedOrder);
     } catch (err) {
       const errorMsg =
         err instanceof Error ? err.message : 'Failed to load order details';
@@ -108,6 +119,45 @@ export class OrderDetailPage implements OnInit {
       console.error('Error loading order:', err);
     } finally {
       this.isLoading.set(false);
+    }
+  }
+
+  /**
+   * Enrich order items with product names from the product catalog
+   * The order history API doesn't include product names, so we fetch them from ProductService
+   * This ensures receipts display proper product names instead of generic fallbacks
+   *
+   * @param order The order to enrich
+   * @param tenantId The tenant ID for fetching products
+   * @returns Promise<Order> with productName populated for all items
+   */
+  private async enrichOrderWithProductNames(order: Order, tenantId: string): Promise<Order> {
+    try {
+      // Fetch all products for this tenant using ProductService
+      const products = await firstValueFrom(
+        this.productService.fetchProducts(tenantId)
+      );
+
+      // Build map of productId -> productName for quick lookup
+      const productNameMap = new Map<string, string>();
+      products.forEach(product => {
+        productNameMap.set(product.id, product.name);
+      });
+
+      // Enrich order items with product names
+      const enrichedItems = order.items.map(item => ({
+        ...item,
+        productName: productNameMap.get(item.productId) || item.productName || `Item (${item.productId.substring(0, 8)})`
+      }));
+
+      return {
+        ...order,
+        items: enrichedItems
+      };
+    } catch (error) {
+      console.warn('Failed to enrich order with product names, using fallback:', error);
+      // Return order as-is if enrichment fails - receipt will use fallback names
+      return order;
     }
   }
 
@@ -198,12 +248,153 @@ export class OrderDetailPage implements OnInit {
   }
 
   /**
-   * Placeholder for print functionality
-   * Can be implemented later with actual printer integration
+   * Trigger manual print for the historical order
+   * Checks printer connection, formats order data, sends to printer
+   * Provides user feedback through loading indicator and toast notifications
+   */
+  async printOrder(): Promise<void> {
+    // Check if order is loaded
+    if (!this.order()) {
+      await this.showError('No order loaded');
+      return;
+    }
+
+    // Check printer connection first
+    if (!this.printerService.isConnected) {
+      await this.showError(
+        'Printer not connected. Please connect printer in Settings.'
+      );
+      return;
+    }
+
+    this.isPrinting.set(true);
+    const loading = await this.loadingCtrl.create({
+      message: 'Printing...',
+      spinner: 'crescent',
+    });
+    await loading.present();
+
+    try {
+      // Format order data for receipt
+      const receiptData = this.formatOrderForReceipt(this.order()!);
+
+      // Send to printer
+      await this.printerService.printReceipt(receiptData);
+
+      await loading.dismiss();
+      await this.showSuccess('Receipt printed successfully');
+    } catch (error) {
+      await loading.dismiss();
+      const errorMsg =
+        error instanceof Error ? error.message : 'Unknown error occurred';
+      await this.showError(`Failed to print receipt: ${errorMsg}`);
+      console.error('Print error:', error);
+    } finally {
+      this.isPrinting.set(false);
+    }
+  }
+
+  /**
+   * Format order data into receipt template for printing
+   * Converts Order model to formatted receipt string with REPRINT indicator
+   *
+   * @param order The order to format
+   * @returns Formatted receipt string ready for printer
+   */
+  private formatOrderForReceipt(order: Order): string {
+    const lines: string[] = [];
+
+    // Add reprint indicator
+    lines.push('*** REPRINT ***');
+    lines.push('');
+
+    // Header
+    lines.push('================================');
+    lines.push(`Order #: ${order.orderId || order.id}`);
+    lines.push(`Date: ${order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'}`);
+    lines.push(`Status: ${(order.status || 'Received').toUpperCase()}`);
+    lines.push('================================');
+    lines.push('');
+
+    // Items section
+    lines.push('ITEMS:');
+    lines.push('');
+
+    for (const item of order.items) {
+      // Use enriched productName if available
+      const productName = item.productName && item.productName !== 'Unknown Product' 
+        ? item.productName 
+        : `Item (${item.productId.substring(0, 8)})`;
+      const basePrice = this.getItemBasePrice(item);
+      const itemTotal = this.getItemTotal(item);
+
+      lines.push(`${productName}`);
+      lines.push(`  Qty: ${item.quantity} x ${basePrice.toFixed(2)}`);
+
+      // Add modifiers if present
+      // Note: API response includes modifiers with name and priceDeltaCents
+      // Each modifier is listed once with its price delta
+      if (item.modifiers && item.modifiers.length > 0) {
+        for (const modifier of item.modifiers) {
+          const modPrice = modifier.priceDeltaCents
+            ? modifier.priceDeltaCents / 100
+            : modifier.priceDelta || 0;
+          lines.push(`  + ${modifier.name}: ${modPrice > 0 ? '+' : ''}${modPrice.toFixed(2)}`);
+        }
+      }
+
+      lines.push(`  Subtotal: ${itemTotal.toFixed(2)}`);
+      lines.push('');
+    }
+
+    // Summary section
+    lines.push('================================');
+    lines.push(`Subtotal:            ${order.totalAmount.toFixed(2)}`);
+    lines.push(`Total:               ${order.totalAmount.toFixed(2)}`);
+    lines.push(`Currency:            ${order.currency}`);
+    lines.push('================================');
+    lines.push('');
+    lines.push('Thank you for your purchase!');
+    lines.push('');
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Display success toast notification
+   */
+  private async showSuccess(message: string): Promise<void> {
+    const toast = await this.toastCtrl.create({
+      message,
+      duration: 3000,
+      color: 'success',
+      position: 'bottom',
+      icon: 'checkmark-circle-outline',
+    });
+    await toast.present();
+  }
+
+  /**
+   * Display error toast notification
+   */
+  private async showError(message: string): Promise<void> {
+    const toast = await this.toastCtrl.create({
+      message,
+      duration: 4000,
+      color: 'danger',
+      position: 'bottom',
+      icon: 'alert-circle-outline',
+      buttons: [{ text: 'Dismiss', role: 'cancel' }],
+    });
+    await toast.present();
+  }
+
+  /**
+   * Placeholder for print functionality (deprecated)
+   * Now handled by printOrder() method
    */
   onPrint(): void {
-    console.log('Print button clicked. Ready for integration with PrinterService');
-    // TODO: Integrate with PrinterService when available
+    this.printOrder();
   }
 
   /**

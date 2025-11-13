@@ -7,8 +7,16 @@
     </ion-buttons>
     <ion-title>Order #{{ order()?.orderId || order()?.id }}</ion-title>
     <ion-buttons slot="end">
-      <ion-button (click)="onPrint()">
-        <ion-icon name="print-outline"></ion-icon>
+      <ion-button
+        (click)="printOrder()"
+        [disabled]="isPrinting() || !order()"
+        [title]="!order() ? 'Order is loading' : isPrinting() ? 'Printing in progress' : 'Print receipt'"
+      >
+        @if (isPrinting()) {
+          <ion-spinner name="crescent"></ion-spinner>
+        } @else {
+          <ion-icon name="print-outline"></ion-icon>
+        }
       </ion-button>
     </ion-buttons>
   </ion-toolbar>

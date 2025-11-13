@@ -4,25 +4,25 @@ import { Component, computed, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
-    IonBadge,
-    IonButton,
-    IonButtons,
-    IonCard,
-    IonCardContent,
-    IonCol,
-    IonContent,
-    IonFab,
-    IonFabButton,
-    IonGrid,
-    IonHeader,
-    IonIcon,
-    IonMenuButton,
-    IonRow,
-    IonSearchbar,
-    IonSpinner,
-    IonTitle,
-    IonToolbar,
-    ToastController
+  IonBadge,
+  IonButton,
+  IonButtons,
+  IonCard,
+  IonCardContent,
+  IonCol,
+  IonContent,
+  IonFab,
+  IonFabButton,
+  IonGrid,
+  IonHeader,
+  IonIcon,
+  IonMenuButton,
+  IonRow,
+  IonSearchbar,
+  IonSpinner,
+  IonTitle,
+  IonToolbar,
+  ToastController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { alertCircleOutline, cartOutline, refreshOutline, searchOutline, settingsOutline } from 'ionicons/icons';
@@ -130,9 +130,6 @@ export class ProductCatalogPage implements OnInit {
     }
 
     this.settingsService.fetchTenantSettings(tenantId).subscribe({
-      next: (settings) => {
-        console.log('Tenant settings loaded:', settings);
-      },
       error: (error) => {
         console.error('Failed to load tenant settings:', error);
         // Continue anyway - OrderService will use fallback values
