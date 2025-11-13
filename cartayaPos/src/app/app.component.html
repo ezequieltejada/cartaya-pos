@@ -1,4 +1,7 @@
 <ion-app>
+  <!-- Network Status Banner -->
+  <app-network-status></app-network-status>
+
   <!-- Side Menu -->
   <ion-menu contentId="main-content" menuId="main-menu">
     <ion-header>
@@ -18,6 +21,15 @@
           <ion-item button routerLink="/order-history" routerLinkActive="selected">
             <ion-icon slot="start" name="receipt-outline"></ion-icon>
             <ion-label>Order History</ion-label>
+          </ion-item>
+        </ion-menu-toggle>
+        <ion-menu-toggle auto-hide="false">
+          <ion-item button routerLink="/order-queue" routerLinkActive="selected">
+            <ion-icon slot="start" name="cloud-upload-outline"></ion-icon>
+            <ion-label>Order Queue</ion-label>
+            @if (queueService.totalQueueSize() > 0) {
+              <ion-badge>{{ queueService.pendingCount() }}</ion-badge>
+            }
           </ion-item>
         </ion-menu-toggle>
         <ion-menu-toggle auto-hide="false">

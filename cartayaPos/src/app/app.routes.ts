@@ -84,6 +84,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'order-queue',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/order-queue/order-queue.page').then(
+        (m) => m.OrderQueuePage
+      ),
+  },
+  {
     path: '',
     redirectTo: 'products',
     pathMatch: 'full',
