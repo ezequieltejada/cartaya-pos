@@ -76,6 +76,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'order-history/:orderId',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/order-detail/order-detail.page').then(
+        (m) => m.OrderDetailPage
+      ),
+  },
+  {
     path: '',
     redirectTo: 'products',
     pathMatch: 'full',

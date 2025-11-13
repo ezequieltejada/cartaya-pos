@@ -1,0 +1,111 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="goBack()">
+        <ion-icon name="arrow-back"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>Order #{{ order()?.orderId || order()?.id }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="onPrint()">
+        <ion-icon name="print-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <!-- Loading State -->
+  @if (isLoading() && !order()) {
+    <div class="state-container loading-state">
+      <ion-spinner name="crescent"></ion-spinner>
+      <p>Loading order details...</p>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error() && !order()) {
+    <div class="state-container error-state">
+      <ion-icon name="alert-circle-outline"></ion-icon>
+      <p>{{ error() }}</p>
+      <ion-button expand="block" (click)="retryLoadOrder()">
+        Retry
+      </ion-button>
+    </div>
+  }
+
+  <!-- Order Details -->
+  @if (order()) {
+    <!-- Metadata Card -->
+    <ion-card class="order-metadata">
+      <ion-card-content>
+        <div class="metadata-item">
+          <span class="label">Date &amp; Time</span>
+          <span class="value">{{ order()!.createdAt | date: 'medium' }}</span>
+        </div>
+        <div class="metadata-item">
+          <span class="label">Status</span>
+          <ion-label
+            class="status-badge"
+            [attr.color]="getStatusBadgeColor(order()!.status)"
+          >
+            {{ order()!.status | titlecase }}
+          </ion-label>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Order Items Card -->
+    <ion-card class="order-items">
+      <ion-card-content>
+        <h2 class="section-title">Order Items</h2>
+        <ion-list class="items-list">
+          @for (item of order()!.items; track item.id || item.productId) {
+            <!-- Product Item -->
+            <ion-item class="product-item">
+              <ion-label>
+                <h2>{{ item.productName }}</h2>
+                <p>Qty: {{ item.quantity }} × {{ getItemBasePrice(item) | currency }}</p>
+              </ion-label>
+              <span class="item-price" slot="end">{{
+                getItemTotal(item) | currency
+              }}</span>
+            </ion-item>
+
+            <!-- Modifiers -->
+            @if (item.modifiers && item.modifiers.length > 0) {
+              @for (modifier of item.modifiers; track modifier.modifierId) {
+                <ion-item class="modifier-item">
+                  <ion-label>
+                    <p>+ {{ modifier.name }}</p>
+                    <p class="modifier-qty">Qty: {{ modifier.quantity }}</p>
+                  </ion-label>
+                  <span class="item-price" slot="end">{{
+                    (modifier.priceDeltaCents
+                      ? modifier.priceDeltaCents / 100
+                      : modifier.priceDelta || 0) * (modifier.quantity || 1)
+                      | currency
+                  }}</span>
+                </ion-item>
+              }
+            }
+          }
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Order Summary Card -->
+    <ion-card class="order-summary">
+      <ion-card-content>
+        <div class="summary-row">
+          <span>Subtotal</span>
+          <span>{{ order()!.totalAmount | currency }}</span>
+        </div>
+        <div class="summary-row total-row">
+          <strong>Total</strong>
+          <strong>{{ order()!.totalAmount | currency }}</strong>
+        </div>
+      </ion-card-content>
+    </ion-card>
+  }
+</ion-content>

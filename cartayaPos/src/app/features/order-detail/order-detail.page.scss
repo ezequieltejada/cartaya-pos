@@ -1,0 +1,277 @@
+ion-card {
+  margin: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+// Metadata Card Styling
+.order-metadata {
+  margin-top: 16px;
+
+  .metadata-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    .label {
+      font-size: 12px;
+      color: var(--ion-color-medium);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .value {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ion-color-dark);
+    }
+  }
+}
+
+// Order Items Card Styling
+.order-items {
+  .section-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+    color: var(--ion-color-dark);
+  }
+
+  .items-list {
+    padding: 0;
+
+    ion-item {
+      --padding-start: 0;
+      --padding-end: 0;
+      --inner-padding-end: 0;
+      --ion-item-background: transparent;
+
+      &:not(:last-child) {
+        border-bottom: 1px solid var(--ion-color-light);
+      }
+    }
+  }
+
+  .product-item {
+    --padding-start: 12px;
+    --padding-end: 12px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+
+    ion-label {
+      h2 {
+        font-size: 14px;
+        font-weight: 600;
+        margin: 0 0 4px 0;
+        color: var(--ion-color-dark);
+      }
+
+      p {
+        font-size: 12px;
+        color: var(--ion-color-medium);
+        margin: 0;
+      }
+    }
+
+    .item-price {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ion-color-dark);
+      text-align: right;
+    }
+  }
+
+  .modifier-item {
+    --padding-start: 32px;
+    --padding-end: 12px;
+    --ion-item-background: var(--ion-color-light);
+    background: var(--ion-color-light);
+    padding-top: 6px;
+    padding-bottom: 6px;
+
+    ion-label {
+      p {
+        font-size: 13px;
+        margin: 2px 0;
+        color: var(--ion-color-medium-shade);
+
+        &:first-child {
+          font-size: 13px;
+          font-weight: 500;
+        }
+
+        &.modifier-qty {
+          font-size: 12px;
+          color: var(--ion-color-medium);
+        }
+      }
+    }
+
+    .item-price {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ion-color-medium-shade);
+      text-align: right;
+    }
+  }
+}
+
+// Order Summary Card Styling
+.order-summary {
+  margin-bottom: 32px;
+
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    font-size: 14px;
+    color: var(--ion-color-dark);
+
+    &:not(:last-child) {
+      border-bottom: 1px solid var(--ion-color-light);
+      margin-bottom: 4px;
+      padding-bottom: 12px;
+    }
+
+    &.total-row {
+      font-size: 16px;
+      font-weight: 700;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 2px solid var(--ion-color-light);
+      color: var(--ion-color-dark);
+    }
+  }
+}
+
+// State Container Styling (Loading, Error, Empty)
+.state-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 60vh;
+  gap: 16px;
+
+  &.loading-state {
+    ion-spinner {
+      color: var(--ion-color-primary);
+    }
+
+    p {
+      color: var(--ion-color-medium);
+      font-size: 14px;
+    }
+  }
+
+  &.error-state {
+    ion-icon {
+      font-size: 48px;
+      color: var(--ion-color-danger);
+      margin-bottom: 8px;
+    }
+
+    p {
+      color: var(--ion-color-danger);
+      font-size: 14px;
+      text-align: center;
+      max-width: 80%;
+      margin: 0;
+    }
+
+    ion-button {
+      margin-top: 16px;
+      width: 80%;
+      max-width: 300px;
+    }
+  }
+
+  &.empty-state {
+    ion-icon {
+      font-size: 48px;
+      color: var(--ion-color-medium);
+      margin-bottom: 8px;
+    }
+
+    p {
+      color: var(--ion-color-medium);
+      font-size: 14px;
+      text-align: center;
+      margin: 0;
+    }
+  }
+}
+
+// Responsive Design
+@media (max-width: 480px) {
+  ion-card {
+    margin: 12px;
+  }
+
+  .order-metadata .metadata-item {
+    gap: 2px;
+
+    .label {
+      font-size: 11px;
+    }
+
+    .value {
+      font-size: 13px;
+    }
+  }
+
+  .order-items {
+    .section-title {
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .product-item {
+      ion-label h2 {
+        font-size: 13px;
+      }
+
+      ion-label p {
+        font-size: 11px;
+      }
+
+      .item-price {
+        font-size: 13px;
+      }
+    }
+
+    .modifier-item {
+      ion-label p {
+        font-size: 12px;
+
+        &.modifier-qty {
+          font-size: 11px;
+        }
+      }
+
+      .item-price {
+        font-size: 12px;
+      }
+    }
+  }
+
+  .order-summary .summary-row {
+    font-size: 13px;
+
+    &.total-row {
+      font-size: 14px;
+    }
+  }
+}
+
+@media (min-width: 768px) {
+  .state-container {
+    height: 70vh;
+  }
+}
