@@ -1,0 +1,74 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Order History</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <!-- Pull-to-Refresh -->
+  <ion-refresher slot="fixed" (ionRefresh)="onRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <!-- Loading State -->
+  @if (isLoading() && orders().length === 0) {
+    <div class="state-container loading-state">
+      <ion-spinner name="crescent"></ion-spinner>
+      <p>Loading orders...</p>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error() && orders().length === 0) {
+    <div class="state-container error-state">
+      <ion-icon name="alert-circle-outline"></ion-icon>
+      <p>{{ error() }}</p>
+      <ion-button expand="block" (click)="retryLoadOrders()">
+        Retry
+      </ion-button>
+    </div>
+  }
+
+  <!-- Empty State -->
+  @if (!isLoading() && !error() && orders().length === 0) {
+    <div class="state-container empty-state">
+      <ion-icon name="receipt-outline"></ion-icon>
+      <p>No orders in the last 24 hours</p>
+    </div>
+  }
+
+  <!-- Orders List -->
+  @if (orders().length > 0) {
+    <ion-list class="orders-list">
+      @for (order of orders(); track order.id || order.orderId) {
+        <ion-item
+          button
+          detail
+          (click)="openOrderDetail(order)"
+          class="order-item"
+        >
+          <div class="order-header" slot="start">
+            <h2 class="order-number">Order #{{ order.orderId || order.id }}</h2>
+            <p class="order-date">
+              {{ order.createdAt | date: 'short' }}
+            </p>
+          </div>
+
+          <div class="order-footer" slot="end">
+            <span class="order-total">
+              {{ order.totalAmount | currency }}
+            </span>
+            @if (order.status) {
+              <ion-label class="status-badge" [attr.color]="getStatusBadgeColor(order.status)">
+                {{ order.status | titlecase }}
+              </ion-label>
+            }
+          </div>
+        </ion-item>
+      }
+    </ion-list>
+  }
+</ion-content>
