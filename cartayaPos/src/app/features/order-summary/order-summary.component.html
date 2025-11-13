@@ -3,52 +3,58 @@
   <div class="order-items-container">
     <ion-list>
       <ng-container *ngFor="let item of orderItems(); trackBy: trackByItemId">
-        <ion-item class="order-item">
-          <ion-label>
-            <h2>{{ item.productName }}</h2>
-            
-            <!-- Modifiers List -->
-            <div class="modifiers-list" *ngIf="item.modifiers.length > 0">
-              <ion-text 
-                *ngFor="let modifier of item.modifiers" 
-                class="modifier-item"
-                color="medium"
-              >
-                <span class="modifier-name">{{ modifier.name }}</span>
-                <span class="modifier-quantity" *ngIf="modifier.quantity > 1">
-                  x{{ modifier.quantity }}
-                </span>
-                <span class="modifier-price" 
-                  [class.positive]="modifier.priceDelta > 0"
-                  [class.negative]="modifier.priceDelta < 0">
-                  ({{ formatModifierPrice(modifier.priceDelta) }})
-                </span>
-              </ion-text>
-            </div>
-          </ion-label>
+        @if (item.id) {
+          <ion-item class="order-item">
+            <ion-label>
+              <h2>{{ item.productName }}</h2>
+              
+              <!-- Modifiers List -->
+              <div class="modifiers-list" *ngIf="item.modifiers.length > 0">
+                <ion-text 
+                  *ngFor="let modifier of item.modifiers" 
+                  class="modifier-item"
+                  color="medium"
+                >
+                  <span class="modifier-name">{{ modifier.name }}</span>
+                  <span class="modifier-quantity" *ngIf="modifier.quantity > 1">
+                    x{{ modifier.quantity }}
+                  </span>
+                  <span class="modifier-price" 
+                    [class.positive]="modifier.priceDelta > 0"
+                    [class.negative]="modifier.priceDelta < 0">
+                    ({{ formatModifierPrice(modifier.priceDelta) }})
+                  </span>
+                </ion-text>
+              </div>
+            </ion-label>
 
-          <div slot="end" class="item-actions">
-            <span class="item-price">${{ item.subtotal.toFixed(2) }}</span>
-            <ion-button
-              fill="clear"
-              color="primary"
-              size="small"
-              (click)="editItem(item.id)"
-              title="Edit item"
-            >
-              <ion-icon name="pencil" slot="icon-only"></ion-icon>
-            </ion-button>
-            <ion-button
-              fill="clear"
-              color="danger"
-              size="small"
-              (click)="removeItem(item.id)"
-              title="Remove item"
-            >
-              <ion-icon name="trash" slot="icon-only"></ion-icon>
-            </ion-button>
-          </div>
-        </ion-item>
+            <div slot="end" class="item-actions">
+              @if (item.subtotal !== undefined) {
+                <span class="item-price">${{ item.subtotal.toFixed(2) }}</span>
+              } @else {
+                <span class="item-price">N/A</span>
+              }
+              <ion-button
+                fill="clear"
+                color="primary"
+                size="small"
+                (click)="editItem(item.id)"
+                title="Edit item"
+              >
+                <ion-icon name="pencil" slot="icon-only"></ion-icon>
+              </ion-button>
+              <ion-button
+                fill="clear"
+                color="danger"
+                size="small"
+                (click)="removeItem(item.id)"
+                title="Remove item"
+              >
+                <ion-icon name="trash" slot="icon-only"></ion-icon>
+              </ion-button>
+            </div>
+          </ion-item>
+        }
       </ng-container>
     </ion-list>
   </div>
