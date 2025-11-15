@@ -160,7 +160,15 @@ Allow business employees to log in, select their assigned Point of Sale (PoS), a
 
 ---
 
-## 9. Future Enhancements (Post-MVP)
+## 9. Pull-to-Refresh Pattern
+
+For pages that display data fetched from the backend (such as Order History and Order Queue), we implement a consistent pull-to-refresh pattern using Ionic's `IonRefresher` and `IonRefresherContent` components. This allows users to manually refresh data when needed, particularly in offline or slow-connection scenarios. When a user pulls down on the page content, a chevron-down-circle icon appears with "Pull to refresh" text, and upon release, the page displays a loading spinner with "Refreshing..." text while data is re-fetched from the backend.
+
+All data-displaying pages follow this standardized refresher configuration: `pullingIcon="chevron-down-circle-outline"`, `pullingText="Pull to refresh"`, `refreshingSpinner="circles"`, and `refreshingText="Refreshing..."`. This ensures a consistent and intuitive user experience across the application. The refresh event handler calls the respective data-loading service method, and upon completion (success or error), the refresher automatically returns to its idle state, allowing users to interact with the newly loaded or unchanged data.
+
+---
+
+## 10. Future Enhancements (Post-MVP)
 
 * Offline mode with local order queue
 * Multi-user PoS sessions

@@ -1,26 +1,26 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import {
-    IonBadge,
-    IonButton,
-    IonButtons,
-    IonContent,
-    IonHeader,
-    IonIcon,
-    IonItem,
-    IonLabel,
-    IonList,
-    IonMenuButton,
-    IonRefresher,
-    IonRefresherContent,
-    IonSpinner,
-    IonTitle,
-    IonToolbar,
-    LoadingController,
-    ToastController,
+  IonBadge,
+  IonButton,
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonIcon,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonMenuButton,
+  IonRefresher,
+  IonRefresherContent,
+  IonSpinner,
+  IonTitle,
+  IonToolbar,
+  LoadingController,
+  ToastController,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { refreshOutline, syncOutline, trashOutline } from 'ionicons/icons';
+import { chevronDownCircleOutline, refreshOutline, syncOutline, trashOutline } from 'ionicons/icons';
 import { NetworkService } from '../../core/services/network.service';
 import { OrderQueueService, QueuedOrder } from '../../core/services/order-queue.service';
 import { SyncCoordinatorService } from '../../core/services/sync-coordinator.service';
@@ -64,7 +64,7 @@ export class OrderQueuePage implements OnInit {
   trashOutline = trashOutline;
 
   constructor() {
-    addIcons({ refreshOutline, syncOutline, trashOutline });
+    addIcons({ refreshOutline, syncOutline, trashOutline, chevronDownCircleOutline });
   }
 
   ngOnInit(): void {
