@@ -26,7 +26,7 @@ export class AppComponent implements OnInit, OnDestroy {
   queueService = inject(OrderQueueService);
   private router = inject(Router);
   private translate = inject(TranslateService);
-  currentLanguage = 'en';
+  currentLanguage = 'es';
 
   constructor() {
     addIcons({ menu, imageOutline, cartOutline, checkmarkCircleOutline, logOutOutline, homeOutline, gridOutline, settingsOutline, closeCircleOutline, receiptOutline, cloudUploadOutline });
