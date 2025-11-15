@@ -1,7 +1,7 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Device } from '@capacitor/device';
-import { IonApp, IonBadge, IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonMenu, IonMenuToggle, IonRouterOutlet, IonTitle, IonToolbar, Platform } from '@ionic/angular/standalone';
+import { IonApp, IonBadge, IonContent, IonHeader, IonIcon, IonItem, IonItemDivider, IonLabel, IonList, IonMenu, IonMenuToggle, IonRouterOutlet, IonTitle, IonToolbar, Platform } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
 import { cartOutline, checkmarkCircleOutline, closeCircleOutline, cloudUploadOutline, gridOutline, homeOutline, imageOutline, logOutOutline, menu, receiptOutline, settingsOutline } from 'ionicons/icons';
@@ -12,11 +12,12 @@ import { PosService } from './core/services/pos.service';
 import { StorageService } from './core/services/storage.service';
 import { SyncCoordinatorService } from './core/services/sync-coordinator.service';
 import { TenantService } from './core/services/tenant.service';
+import { LanguageSwitcherComponent } from './shared/components/language-switcher/language-switcher.component';
 
 @Component({
   selector: 'app-root',
   templateUrl: 'app.component.html',
-  imports: [IonApp, IonRouterOutlet, IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonIcon, IonLabel, IonMenuToggle, RouterLink, RouterLinkActive, TranslateModule, IonBadge],
+  imports: [IonApp, IonRouterOutlet, IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonIcon, IonLabel, IonMenuToggle, RouterLink, RouterLinkActive, TranslateModule, IonBadge, IonItemDivider, LanguageSwitcherComponent],
 })
 export class AppComponent implements OnInit, OnDestroy {
   private platform = inject(Platform);
@@ -29,7 +30,6 @@ export class AppComponent implements OnInit, OnDestroy {
   queueService = inject(OrderQueueService);
   private router = inject(Router);
   private translate = inject(TranslateService);
-  currentLanguage = 'es';
 
   constructor() {
     addIcons({ menu, imageOutline, cartOutline, checkmarkCircleOutline, logOutOutline, homeOutline, gridOutline, settingsOutline, closeCircleOutline, receiptOutline, cloudUploadOutline });
@@ -84,7 +84,6 @@ export class AppComponent implements OnInit, OnDestroy {
     // Get device or browser language
     const detectedLanguage = await this.getDetectedLanguage();
     this.translate.use(detectedLanguage);
-    this.currentLanguage = detectedLanguage;
   }
 
   /**
@@ -155,9 +154,16 @@ export class AppComponent implements OnInit, OnDestroy {
     return supportedLanguages[primaryLanguage] || 'en';
   }
 
-  switchLanguage(language: string) {
-    this.translate.use(language);
-    this.currentLanguage = language;
+  /**
+   * Handle language change from LanguageSwitcher component
+   * This method is called when the user selects a language from the menu
+   * 
+   * @param languageCode - The selected language code ('en', 'es', or 'ca')
+   */
+  onLanguageChanged(languageCode: string): void {
+    console.log('Language changed to:', languageCode);
+    // Optionally close menu after language change for better UX
+    // this.menuController.close('main-menu');
   }
 
   logout() {

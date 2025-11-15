@@ -80,6 +80,11 @@
     "CONNECTING": "Connecting...",
     "TEST_PRINTER": "Test Printer"
   },
+  "MENU": {
+    "TITLE": "Menu",
+    "LANGUAGE": "Language",
+    "SETTINGS": "Settings"
+  },
   "HOME": "Home",
   "WELCOME": "Welcome to Cartaya POS"
 }

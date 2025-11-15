@@ -80,6 +80,11 @@
     "CONNECTING": "Connectant...",
     "TEST_PRINTER": "Provar Impressora"
   },
+  "MENU": {
+    "TITLE": "Menú",
+    "LANGUAGE": "Idioma",
+    "SETTINGS": "Configuració"
+  },
   "HOME": "Inici",
   "WELCOME": "Benvingut a Cartaya POS"
 }

@@ -9,7 +9,6 @@
     <ion-radio-group
       [value]="currentLanguage()"
       (ionChange)="onLanguageSelect($event.detail.value)"
-      [disabled]="isLoading()"
       aria-label="Select language">
       
       <ion-item *ngFor="let lang of availableLanguages" [disabled]="isLoading()">
