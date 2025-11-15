@@ -1,12 +1,12 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import {
-    ApiErrorResponse,
-    Order,
-    OrderHistoryResponse,
+  ApiErrorResponse,
+  Order,
+  OrderHistoryResponse,
 } from '../models/order.model';
 
 /**
@@ -26,8 +26,7 @@ import {
 })
 export class OrderHistoryService {
   private readonly API_URL = environment.apiUrl;
-
-  constructor(private http: HttpClient) {}
+  private http = inject(HttpClient);
 
   /**
    * Fetch order history for a specific POS within a time range

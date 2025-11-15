@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import {
     IonBackButton,
@@ -28,11 +28,7 @@ import { OrderSummaryComponent } from '../order-summary/order-summary.component'
   templateUrl: './cart.page.html',
   styleUrls: ['./cart.page.scss'],
 })
-export class CartPage implements OnInit {
+export class CartPage {
   private router = inject(Router);
   orderService = inject(OrderService);
-
-  ngOnInit(): void {
-    // Component initialized
-  }
 }

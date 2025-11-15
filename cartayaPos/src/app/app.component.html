@@ -21,6 +21,15 @@
           </ion-item>
         </ion-menu-toggle>
         <ion-menu-toggle auto-hide="false">
+          <ion-item button routerLink="/order-queue" routerLinkActive="selected">
+            <ion-icon slot="start" name="cloud-upload-outline"></ion-icon>
+            <ion-label>Order Queue</ion-label>
+            @if (queueService.totalQueueSize() > 0) {
+              <ion-badge>{{ queueService.pendingCount() }}</ion-badge>
+            }
+          </ion-item>
+        </ion-menu-toggle>
+        <ion-menu-toggle auto-hide="false">
           <ion-item button routerLink="/settings" routerLinkActive="selected">
             <ion-icon slot="start" name="settings-outline"></ion-icon>
             <ion-label>Settings</ion-label>

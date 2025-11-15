@@ -1,16 +1,14 @@
-<ion-header>
-  <ion-toolbar>
-    <ion-buttons slot="start">
-      <ion-menu-button></ion-menu-button>
-    </ion-buttons>
-    <ion-title>Order History</ion-title>
-  </ion-toolbar>
-</ion-header>
+<app-page-header title="Order History"></app-page-header>
 
 <ion-content>
   <!-- Pull-to-Refresh -->
   <ion-refresher slot="fixed" (ionRefresh)="onRefresh($event)">
-    <ion-refresher-content></ion-refresher-content>
+    <ion-refresher-content
+      pullingIcon="chevron-down-circle-outline"
+      pullingText="Pull to refresh"
+      refreshingSpinner="circles"
+      refreshingText="Refreshing..."
+    ></ion-refresher-content>
   </ion-refresher>
 
   <!-- Loading State -->

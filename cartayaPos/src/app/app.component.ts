@@ -1,31 +1,36 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Device } from '@capacitor/device';
-import { IonApp, IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonMenu, IonMenuToggle, IonRouterOutlet, IonTitle, IonToolbar } from '@ionic/angular/standalone';
+import { IonApp, IonBadge, IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonMenu, IonMenuToggle, IonRouterOutlet, IonTitle, IonToolbar } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
-import { cartOutline, checkmarkCircleOutline, closeCircleOutline, gridOutline, homeOutline, imageOutline, logOutOutline, menu, receiptOutline, settingsOutline } from 'ionicons/icons';
+import { cartOutline, checkmarkCircleOutline, closeCircleOutline, cloudUploadOutline, gridOutline, homeOutline, imageOutline, logOutOutline, menu, receiptOutline, settingsOutline } from 'ionicons/icons';
 import { AuthService } from './core/services/auth.service';
+import { OrderQueueService } from './core/services/order-queue.service';
 import { PosService } from './core/services/pos.service';
 import { StorageService } from './core/services/storage.service';
+import { SyncCoordinatorService } from './core/services/sync-coordinator.service';
 import { TenantService } from './core/services/tenant.service';
+import { NetworkStatusComponent } from './shared/components/network-status/network-status.component';
 
 @Component({
   selector: 'app-root',
   templateUrl: 'app.component.html',
-  imports: [IonApp, IonRouterOutlet, IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonIcon, IonLabel, IonMenuToggle, RouterLink, RouterLinkActive, TranslateModule],
+  imports: [IonApp, IonRouterOutlet, IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonIcon, IonLabel, IonMenuToggle, RouterLink, RouterLinkActive, TranslateModule, NetworkStatusComponent, IonBadge],
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
   private storageService = inject(StorageService);
   private authService = inject(AuthService);
   private tenantService = inject(TenantService);
   private posService = inject(PosService);
+  private syncCoordinator = inject(SyncCoordinatorService);
+  queueService = inject(OrderQueueService);
   private router = inject(Router);
   private translate = inject(TranslateService);
   currentLanguage = 'en';
 
   constructor() {
-    addIcons({ menu, imageOutline, cartOutline, checkmarkCircleOutline, logOutOutline, homeOutline, gridOutline, settingsOutline, closeCircleOutline, receiptOutline });
+    addIcons({ menu, imageOutline, cartOutline, checkmarkCircleOutline, logOutOutline, homeOutline, gridOutline, settingsOutline, closeCircleOutline, receiptOutline, cloudUploadOutline });
   }
 
   async ngOnInit() {
@@ -39,6 +44,9 @@ export class AppComponent implements OnInit {
     } catch (error) {
       console.error('Failed to initialize storage:', error);
     }
+
+    // Initialize SyncCoordinator
+    this.syncCoordinator.initialize();
 
     // Check for existing session
     this.authService.checkSession().subscribe({
@@ -64,6 +72,14 @@ export class AppComponent implements OnInit {
     const detectedLanguage = await this.getDetectedLanguage();
     this.translate.use(detectedLanguage);
     this.currentLanguage = detectedLanguage;
+  }
+
+  /**
+   * Clean up on component destruction
+   * Destroys the SyncCoordinator service
+   */
+  ngOnDestroy(): void {
+    this.syncCoordinator.destroy();
   }
 
   /**

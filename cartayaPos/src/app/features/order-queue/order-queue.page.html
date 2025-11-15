@@ -1,0 +1,77 @@
+<app-page-header title="Order Queue">
+  <ion-button slot="end" (click)="retryAll()" [disabled]="!networkService.getIsOnline() || queueService.totalQueueSize() === 0">
+    <ion-icon slot="icon-only" [icon]="syncOutline"></ion-icon>
+  </ion-button>
+</app-page-header>
+
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
+    <ion-refresher-content
+      pullingIcon="chevron-down-circle-outline"
+      pullingText="Pull to refresh"
+      refreshingSpinner="circles"
+      refreshingText="Refreshing..."
+    ></ion-refresher-content>
+  </ion-refresher>
+
+  @if (!networkService.isOnline()) {
+    <div class="offline-banner">
+      <p>You're offline. Orders will sync when connection is restored.</p>
+    </div>
+  }
+
+  @if (syncCoordinator.syncState().isSyncing) {
+    <div class="sync-status">
+      <ion-spinner name="crescent"></ion-spinner>
+      <p>Syncing orders...</p>
+    </div>
+  }
+
+  @if (queueService.totalQueueSize() === 0) {
+    <div class="empty-state">
+      <ion-icon [icon]="refreshOutline"></ion-icon>
+      <h2>Queue is Empty</h2>
+      <p>All orders have been synced</p>
+    </div>
+  } @else {
+    <ion-list>
+      @for (order of queueService.queuedOrders(); track order.id) {
+        <ion-item>
+          <ion-label>
+            <h2>Order #{{ order.metadata?.orderNumber || order.id.slice(-6) }}</h2>
+            <p>{{ order.metadata?.itemCount || 0 }} items · {{ order.metadata?.total || 0 | currency }}</p>
+            <p class="timestamp">{{ formatDate(order.createdAt) }}</p>
+            @if (order.error) {
+              <p class="error-text">{{ order.error }}</p>
+            }
+          </ion-label>
+
+          <ion-badge [color]="getStatusColor(order.status)" slot="end">
+            {{ order.status }}
+          </ion-badge>
+
+          @if (order.status !== 'synced' && order.status !== 'syncing') {
+            <div class="action-buttons">
+              <ion-button
+                fill="clear"
+                size="small"
+                (click)="retryOne(order)"
+                [disabled]="!networkService.getIsOnline()"
+              >
+                <ion-icon slot="icon-only" [icon]="syncOutline"></ion-icon>
+              </ion-button>
+              <ion-button
+                fill="clear"
+                size="small"
+                color="danger"
+                (click)="removeOrder(order)"
+              >
+                <ion-icon slot="icon-only" [icon]="trashOutline"></ion-icon>
+              </ion-button>
+            </div>
+          }
+        </ion-item>
+      }
+    </ion-list>
+  }
+</ion-content>
