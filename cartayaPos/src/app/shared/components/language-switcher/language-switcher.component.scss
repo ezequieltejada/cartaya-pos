@@ -1,0 +1,159 @@
+/// Language Switcher Component Styles
+/// Provides styling for different display modes with accessibility considerations
+
+// Base styles
+:host {
+  --language-item-padding: 12px 16px;
+  --language-radio-size: 44px;
+}
+
+ion-list {
+  background: transparent;
+  padding: 0;
+  margin: 0;
+
+  ion-list-header {
+    padding-top: 16px;
+    padding-bottom: 8px;
+    margin-bottom: 0;
+
+    ion-label {
+      font-weight: 500;
+      font-size: 0.875rem;
+    }
+  }
+
+  ion-item {
+    // Ensure minimum touch target size (WCAG 2.5.5: 44x44px recommended)
+    min-height: var(--language-radio-size);
+    padding: var(--language-item-padding);
+    --padding-start: 0;
+    --padding-end: 0;
+    --inner-padding-start: 0;
+    --inner-padding-end: 0;
+
+    // Disabled state for loading
+    &[disabled] {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    ion-radio {
+      margin-right: 12px;
+      margin-left: 0;
+    }
+
+    ion-label {
+      margin: 0;
+      padding-left: 8px;
+    }
+  }
+
+  ion-radio-group[disabled] {
+    ion-item {
+      opacity: 0.6;
+    }
+  }
+}
+
+// Display Mode: Menu (default)
+.language-switcher-menu {
+  margin: 12px 0;
+
+  ion-item {
+    --background: transparent;
+    --background-activated: var(--ion-color-light);
+    --color-activated: var(--ion-color-primary);
+
+    &:hover:not([disabled]) {
+      background-color: var(--ion-color-light);
+    }
+  }
+}
+
+// Display Mode: Modal
+.language-switcher-modal {
+  margin: 0;
+  border-radius: 8px;
+  overflow: hidden;
+
+  ion-item {
+    --background: var(--ion-color-light);
+    --background-activated: var(--ion-color-light-shade);
+
+    &:not(:last-child) {
+      border-bottom: 1px solid var(--ion-border-color);
+    }
+  }
+}
+
+// Display Mode: Popover
+.language-switcher-popover {
+  margin: 0;
+  border-radius: 4px;
+  background-color: var(--ion-color-light);
+
+  ion-item {
+    --background: transparent;
+    --background-activated: var(--ion-color-light-shade);
+
+    &:not(:last-child) {
+      border-bottom: 1px solid var(--ion-border-color);
+    }
+  }
+}
+
+// Accessibility: Focus states
+ion-item:focus-within {
+  outline: 2px solid var(--ion-color-primary);
+  outline-offset: -2px;
+}
+
+// Dark mode support
+@media (prefers-color-scheme: dark) {
+  ion-list {
+    ion-item {
+      --background-activated: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  .language-switcher-menu {
+    ion-item:hover:not([disabled]) {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  .language-switcher-modal {
+    ion-item {
+      --background-activated: rgba(255, 255, 255, 0.15);
+    }
+  }
+
+  .language-switcher-popover {
+    background-color: rgba(255, 255, 255, 0.05);
+
+    ion-item {
+      --background-activated: rgba(255, 255, 255, 0.1);
+    }
+  }
+}
+
+// High contrast mode support
+@media (prefers-contrast: more) {
+  ion-list {
+    ion-item {
+      border: 1px solid transparent;
+
+      &:focus-within {
+        border-color: var(--ion-color-primary);
+      }
+    }
+  }
+}
+
+// Reduced motion support
+@media (prefers-reduced-motion: reduce) {
+  ion-item {
+    transition: none;
+  }
+}
