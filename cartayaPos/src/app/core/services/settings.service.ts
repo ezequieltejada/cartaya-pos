@@ -3,11 +3,13 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, catchError, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { TenantSettings } from '../models/tenant-settings.model';
+import { UserSettings } from '../models/user.model';
 
 /**
  * Settings Service
  * Manages tenant settings including timezone and currency
  * Fetches settings from the backend and provides them to other services
+ * Also manages user-specific settings (language preferences, etc.)
  */
 @Injectable({
   providedIn: 'root',
@@ -18,6 +20,7 @@ export class SettingsService {
 
   // Writable signals
   readonly tenantSettings = signal<TenantSettings | null>(null);
+  readonly userSettings = signal<UserSettings | null>(null);
   readonly isLoading = signal(false);
   readonly error = signal<string | null>(null);
 
@@ -80,5 +83,61 @@ export class SettingsService {
   clearSettings(): void {
     this.tenantSettings.set(null);
     this.error.set(null);
+  }
+
+  /**
+   * Get the current user's language preference
+   * Returns the language code from user settings or null if not set
+   */
+  getUserLanguage(): string | null {
+    return this.userSettings()?.language ?? null;
+  }
+
+  /**
+   * Set user language preference
+   * Sends PATCH request to backend to update user settings
+   * Updates local state on success, logs error and continues on failure
+   * @param language The language code to set ('en' | 'es' | 'ca')
+   * @returns Observable that completes when request finishes
+   */
+  setUserLanguage(language: string): Observable<UserSettings> {
+    return this.httpClient
+      .patch<UserSettings>(`${this.API_URL}/users/me/settings`, { language })
+      .pipe(
+        tap((settings) => {
+          const currentSettings = this.userSettings() ?? { language: 'en' };
+          this.userSettings.set({ ...currentSettings, language: settings.language });
+        }),
+        catchError((error) => {
+          console.error('Failed to update user language preference:', error);
+          throw error;
+        })
+      );
+  }
+
+  /**
+   * Fetch user settings from the backend
+   * Retrieves the current user's settings including language preference
+   * @returns Observable with user settings
+   */
+  fetchUserSettings(): Observable<UserSettings> {
+    return this.httpClient
+      .get<UserSettings>(`${this.API_URL}/users/me/settings`)
+      .pipe(
+        tap((settings) => {
+          this.userSettings.set(settings);
+        }),
+        catchError((error) => {
+          console.error('Failed to fetch user settings:', error);
+          throw error;
+        })
+      );
+  }
+
+  /**
+   * Get the full user settings object
+   */
+  getUserSettings(): UserSettings | null {
+    return this.userSettings();
   }
 }
