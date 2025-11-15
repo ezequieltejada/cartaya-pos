@@ -1,11 +1,85 @@
 {
-  "HELLO": "Hola",
-  "WELCOME": "Benvingut a Cartaya POS",
+  "COMMON": {
+    "BUTTONS": {
+      "CANCEL": "Cancel·lar",
+      "CONFIRM": "Confirmar",
+      "SAVE": "Guardar",
+      "BACK": "Enrere",
+      "CONTINUE": "Continuar",
+      "DELETE": "Eliminar",
+      "EDIT": "Editar",
+      "OK": "D'acord",
+      "YES": "Sí",
+      "NO": "No"
+    },
+    "ERRORS": {
+      "NETWORK": "Error de xarxa. Si us plau, intenteu de nou.",
+      "GENERIC": "Quelcom ha anat malament. Si us plau, intenteu de nou.",
+      "VALIDATION": "Si us plau, comproveu la vostra entrada i intenteu de nou.",
+      "TIMEOUT": "La sol·licitud ha esgotat el temps d'espera. Si us plau, intenteu de nou."
+    },
+    "LOADING": {
+      "MESSAGE": "Carregant...",
+      "WAIT": "Si us plau, espereu..."
+    },
+    "LANGUAGE": "Idioma",
+    "ENGLISH": "English",
+    "SPANISH": "Español",
+    "CATALAN": "Català"
+  },
+  "AUTH": {
+    "LOGIN": {
+      "TITLE": "Iniciar Sessió",
+      "EMAIL_LABEL": "Correu Electrònic",
+      "PASSWORD_LABEL": "Contrasenya",
+      "LOGIN_BUTTON": "Iniciar Sessió",
+      "FORGOT_PASSWORD": "Heu oblidat la vostra contrasenya?"
+    },
+    "ERRORS": {
+      "INVALID_CREDENTIALS": "Correu o contrasenya invàlids.",
+      "SESSION_EXPIRED": "La vostra sessió ha expirat. Si us plau, inicieu sessió de nou."
+    }
+  },
+  "POS_SELECTION": {
+    "TITLE": "Seleccioneu Punt de Venda",
+    "SELECT_PROMPT": "Si us plau, seleccioneu un punt de venda per continuar",
+    "NO_POS_AVAILABLE": "No hi ha punts de venda disponibles. Si us plau, contacteu amb el vostre administrador."
+  },
+  "PRODUCT_GRID": {
+    "TITLE": "Productes",
+    "SEARCH_PLACEHOLDER": "Cercar productes...",
+    "NO_PRODUCTS": "No hi ha productes disponibles.",
+    "PRODUCT_COUNT": "Productes: {count}"
+  },
+  "MODIFIERS": {
+    "TITLE": "Opcions del Producte",
+    "CONFIRM_BUTTON": "Afegir al Carretó",
+    "BACK_BUTTON": "Enrere",
+    "TOTAL_LABEL": "Total"
+  },
+  "ORDER_SUMMARY": {
+    "TITLE": "Resum de la Comanda",
+    "SUBTOTAL": "Subtotal",
+    "TOTAL": "Total",
+    "ITEMS_COUNT": "Articles: {count}",
+    "CANCEL_ORDER": "Cancel·lar Comanda",
+    "CASH_ORDER": "Pagar en Efectiu",
+    "EMPTY_CART": "El vostre carretó està buit.",
+    "DISCOUNT": "Descompte",
+    "TAX": "Impost"
+  },
+  "SETTINGS": {
+    "TITLE": "Configuració",
+    "PRINTER_SECTION": "Configuració de l'Impressora",
+    "LANGUAGE_SECTION": "Configuració d'Idioma",
+    "CONNECT_BUTTON": "Connectar",
+    "DISCONNECT_BUTTON": "Desconnectar",
+    "CONNECTION_STATUS": "Estat de la Connexió",
+    "CONNECTED": "Connectat",
+    "DISCONNECTED": "Desconnectat",
+    "CONNECTING": "Connectant...",
+    "TEST_PRINTER": "Provar Impressora"
+  },
   "HOME": "Inici",
-  "SETTINGS": "Configuració",
-  "LANGUAGE": "Idioma",
-  "ENGLISH": "English",
-  "SPANISH": "Español",
-  "CATALAN": "Català",
-  "PRINTER_TEST": "Prova d'Impressora"
+  "WELCOME": "Benvingut a Cartaya POS"
 }

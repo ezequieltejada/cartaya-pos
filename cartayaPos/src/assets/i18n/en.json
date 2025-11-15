@@ -1,11 +1,85 @@
 {
-  "HELLO": "Hello",
-  "WELCOME": "Welcome to Cartaya POS",
+  "COMMON": {
+    "BUTTONS": {
+      "CANCEL": "Cancel",
+      "CONFIRM": "Confirm",
+      "SAVE": "Save",
+      "BACK": "Back",
+      "CONTINUE": "Continue",
+      "DELETE": "Delete",
+      "EDIT": "Edit",
+      "OK": "OK",
+      "YES": "Yes",
+      "NO": "No"
+    },
+    "ERRORS": {
+      "NETWORK": "Network error. Please try again.",
+      "GENERIC": "Something went wrong. Please try again.",
+      "VALIDATION": "Please check your input and try again.",
+      "TIMEOUT": "Request timed out. Please try again."
+    },
+    "LOADING": {
+      "MESSAGE": "Loading...",
+      "WAIT": "Please wait..."
+    },
+    "LANGUAGE": "Language",
+    "ENGLISH": "English",
+    "SPANISH": "Español",
+    "CATALAN": "Català"
+  },
+  "AUTH": {
+    "LOGIN": {
+      "TITLE": "Sign In",
+      "EMAIL_LABEL": "Email",
+      "PASSWORD_LABEL": "Password",
+      "LOGIN_BUTTON": "Sign In",
+      "FORGOT_PASSWORD": "Forgot password?"
+    },
+    "ERRORS": {
+      "INVALID_CREDENTIALS": "Invalid email or password.",
+      "SESSION_EXPIRED": "Your session has expired. Please sign in again."
+    }
+  },
+  "POS_SELECTION": {
+    "TITLE": "Select Point of Sale",
+    "SELECT_PROMPT": "Please select a point of sale to continue",
+    "NO_POS_AVAILABLE": "No point of sale available. Please contact your administrator."
+  },
+  "PRODUCT_GRID": {
+    "TITLE": "Products",
+    "SEARCH_PLACEHOLDER": "Search products...",
+    "NO_PRODUCTS": "No products available.",
+    "PRODUCT_COUNT": "Products: {count}"
+  },
+  "MODIFIERS": {
+    "TITLE": "Product Options",
+    "CONFIRM_BUTTON": "Add to Cart",
+    "BACK_BUTTON": "Back",
+    "TOTAL_LABEL": "Total"
+  },
+  "ORDER_SUMMARY": {
+    "TITLE": "Order Summary",
+    "SUBTOTAL": "Subtotal",
+    "TOTAL": "Total",
+    "ITEMS_COUNT": "Items: {count}",
+    "CANCEL_ORDER": "Cancel Order",
+    "CASH_ORDER": "Pay with Cash",
+    "EMPTY_CART": "Your cart is empty.",
+    "DISCOUNT": "Discount",
+    "TAX": "Tax"
+  },
+  "SETTINGS": {
+    "TITLE": "Settings",
+    "PRINTER_SECTION": "Printer Settings",
+    "LANGUAGE_SECTION": "Language Settings",
+    "CONNECT_BUTTON": "Connect",
+    "DISCONNECT_BUTTON": "Disconnect",
+    "CONNECTION_STATUS": "Connection Status",
+    "CONNECTED": "Connected",
+    "DISCONNECTED": "Disconnected",
+    "CONNECTING": "Connecting...",
+    "TEST_PRINTER": "Test Printer"
+  },
   "HOME": "Home",
-  "SETTINGS": "Settings",
-  "LANGUAGE": "Language",
-  "ENGLISH": "English",
-  "SPANISH": "Español",
-  "CATALAN": "Català",
-  "PRINTER_TEST": "Printer Test"
+  "WELCOME": "Welcome to Cartaya POS"
 }

@@ -1,11 +1,85 @@
 {
-  "HELLO": "Hola",
-  "WELCOME": "Bienvenido a Cartaya POS",
+  "COMMON": {
+    "BUTTONS": {
+      "CANCEL": "Cancelar",
+      "CONFIRM": "Confirmar",
+      "SAVE": "Guardar",
+      "BACK": "Atrás",
+      "CONTINUE": "Continuar",
+      "DELETE": "Eliminar",
+      "EDIT": "Editar",
+      "OK": "Aceptar",
+      "YES": "Sí",
+      "NO": "No"
+    },
+    "ERRORS": {
+      "NETWORK": "Error de red. Por favor, intente de nuevo.",
+      "GENERIC": "Algo salió mal. Por favor, intente de nuevo.",
+      "VALIDATION": "Por favor, verifique su entrada e intente de nuevo.",
+      "TIMEOUT": "La solicitud agotó el tiempo de espera. Por favor, intente de nuevo."
+    },
+    "LOADING": {
+      "MESSAGE": "Cargando...",
+      "WAIT": "Por favor, espere..."
+    },
+    "LANGUAGE": "Idioma",
+    "ENGLISH": "English",
+    "SPANISH": "Español",
+    "CATALAN": "Català"
+  },
+  "AUTH": {
+    "LOGIN": {
+      "TITLE": "Iniciar Sesión",
+      "EMAIL_LABEL": "Correo Electrónico",
+      "PASSWORD_LABEL": "Contraseña",
+      "LOGIN_BUTTON": "Iniciar Sesión",
+      "FORGOT_PASSWORD": "¿Olvidó su contraseña?"
+    },
+    "ERRORS": {
+      "INVALID_CREDENTIALS": "Correo o contraseña inválidos.",
+      "SESSION_EXPIRED": "Su sesión ha expirado. Por favor, inicie sesión de nuevo."
+    }
+  },
+  "POS_SELECTION": {
+    "TITLE": "Seleccione Punto de Venta",
+    "SELECT_PROMPT": "Por favor, seleccione un punto de venta para continuar",
+    "NO_POS_AVAILABLE": "No hay puntos de venta disponibles. Por favor, contacte a su administrador."
+  },
+  "PRODUCT_GRID": {
+    "TITLE": "Productos",
+    "SEARCH_PLACEHOLDER": "Buscar productos...",
+    "NO_PRODUCTS": "No hay productos disponibles.",
+    "PRODUCT_COUNT": "Productos: {count}"
+  },
+  "MODIFIERS": {
+    "TITLE": "Opciones del Producto",
+    "CONFIRM_BUTTON": "Añadir al Carrito",
+    "BACK_BUTTON": "Atrás",
+    "TOTAL_LABEL": "Total"
+  },
+  "ORDER_SUMMARY": {
+    "TITLE": "Resumen del Pedido",
+    "SUBTOTAL": "Subtotal",
+    "TOTAL": "Total",
+    "ITEMS_COUNT": "Artículos: {count}",
+    "CANCEL_ORDER": "Cancelar Pedido",
+    "CASH_ORDER": "Pagar en Efectivo",
+    "EMPTY_CART": "Su carrito está vacío.",
+    "DISCOUNT": "Descuento",
+    "TAX": "Impuesto"
+  },
+  "SETTINGS": {
+    "TITLE": "Configuración",
+    "PRINTER_SECTION": "Configuración de Impresora",
+    "LANGUAGE_SECTION": "Configuración de Idioma",
+    "CONNECT_BUTTON": "Conectar",
+    "DISCONNECT_BUTTON": "Desconectar",
+    "CONNECTION_STATUS": "Estado de Conexión",
+    "CONNECTED": "Conectado",
+    "DISCONNECTED": "Desconectado",
+    "CONNECTING": "Conectando...",
+    "TEST_PRINTER": "Probar Impresora"
+  },
   "HOME": "Inicio",
-  "SETTINGS": "Configuración",
-  "LANGUAGE": "Idioma",
-  "ENGLISH": "English",
-  "SPANISH": "Español",
-  "CATALAN": "Català",
-  "PRINTER_TEST": "Prueba de Impresora"
+  "WELCOME": "Bienvenido a Cartaya POS"
 }
