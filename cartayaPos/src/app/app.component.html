@@ -11,19 +11,19 @@
         <ion-menu-toggle auto-hide="false">
           <ion-item button routerLink="/products" routerLinkActive="selected">
             <ion-icon slot="start" name="grid-outline"></ion-icon>
-            <ion-label>Products</ion-label>
+            <ion-label>{{ 'MENU.PRODUCTS' | translate }}</ion-label>
           </ion-item>
         </ion-menu-toggle>
         <ion-menu-toggle auto-hide="false">
           <ion-item button routerLink="/order-history" routerLinkActive="selected">
             <ion-icon slot="start" name="receipt-outline"></ion-icon>
-            <ion-label>Order History</ion-label>
+            <ion-label>{{ 'MENU.ORDER_HISTORY' | translate }}</ion-label>
           </ion-item>
         </ion-menu-toggle>
         <ion-menu-toggle auto-hide="false">
           <ion-item button routerLink="/order-queue" routerLinkActive="selected">
             <ion-icon slot="start" name="cloud-upload-outline"></ion-icon>
-            <ion-label>Order Queue</ion-label>
+            <ion-label>{{ 'MENU.ORDER_QUEUE' | translate }}</ion-label>
             @if (queueService.totalQueueSize() > 0) {
               <ion-badge>{{ queueService.pendingCount() }}</ion-badge>
             }
@@ -32,7 +32,7 @@
         <ion-menu-toggle auto-hide="false">
           <ion-item button routerLink="/settings" routerLinkActive="selected">
             <ion-icon slot="start" name="settings-outline"></ion-icon>
-            <ion-label>Settings</ion-label>
+            <ion-label>{{ 'MENU.SETTINGS' | translate }}</ion-label>
           </ion-item>
         </ion-menu-toggle>
 
@@ -50,7 +50,7 @@
         <ion-menu-toggle auto-hide="false">
           <ion-item button (click)="logout()" class="logout-item">
             <ion-icon slot="start" name="log-out-outline"></ion-icon>
-            <ion-label>Logout</ion-label>
+            <ion-label>{{ 'MENU.LOGOUT' | translate }}</ion-label>
           </ion-item>
         </ion-menu-toggle>
       </ion-list>

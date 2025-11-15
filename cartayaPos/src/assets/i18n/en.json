@@ -136,8 +136,12 @@
   },
   "MENU": {
     "TITLE": "Menu",
+    "PRODUCTS": "Products",
+    "ORDER_HISTORY": "Order History",
+    "ORDER_QUEUE": "Order Queue",
+    "SETTINGS": "Settings",
     "LANGUAGE": "Language",
-    "SETTINGS": "Settings"
+    "LOGOUT": "Logout"
   },
   "CART": {
     "TITLE": "Order Summary"

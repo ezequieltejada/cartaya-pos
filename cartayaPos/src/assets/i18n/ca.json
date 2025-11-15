@@ -139,8 +139,12 @@
   },
   "MENU": {
     "TITLE": "Menú",
+    "PRODUCTS": "Productes",
+    "ORDER_HISTORY": "Historial de Comandes",
+    "ORDER_QUEUE": "Cua de Comandes",
+    "SETTINGS": "Configuració",
     "LANGUAGE": "Idioma",
-    "SETTINGS": "Configuració"
+    "LOGOUT": "Tancar Sessió"
   },
   "HOME": "Inici",
   "WELCOME": "Benvingut a Cartaya POS"

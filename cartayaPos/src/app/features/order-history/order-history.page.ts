@@ -9,6 +9,8 @@ import {
   IonRefresherContent,
   IonSpinner, RefresherEventDetail
 } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import { chevronDownCircleOutline } from 'ionicons/icons';
 import { firstValueFrom } from 'rxjs';
 import { PosService } from '../../core/services/pos.service';
 import { TenantService } from '../../core/services/tenant.service';
@@ -45,6 +47,10 @@ export class OrderHistoryPage implements OnInit {
   orders = signal<Order[]>([]);
   isLoading = signal(false);
   error = signal<string | null>(null);
+
+  constructor() {
+    addIcons({ chevronDownCircleOutline });
+  }
 
   ngOnInit(): void {
     this.loadOrders();
