@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, Signal, computed, inject, signal } from '@angular/core';
 import type { DBSchema, IDBPDatabase } from 'idb';
 import { openDB } from 'idb';
@@ -233,7 +233,7 @@ export class OrderQueueService {
 
   /**
    * Process the entire queue
-   * Attempts to sync all pending/out-of-sync orders
+   * Attempts to sync all pending/syncing/out-of-sync orders
    *
    * @returns RetryResult with summary of retry attempts
    */
@@ -244,7 +244,7 @@ export class OrderQueueService {
     }
 
     const pendingOrders = this._queuedOrders().filter(
-      (o) => o.status === 'pending' || o.status === 'out-of-sync'
+      (o) => o.status === 'pending' || o.status === 'syncing' || o.status === 'out-of-sync'
     );
 
     const result: RetryResult = {
@@ -298,18 +298,41 @@ export class OrderQueueService {
     try {
       // Attempt to POST order to backend
       const url = `${this.API_URL}/tenants/${order.tenantId}/pos/${order.posId}/orders`;
+      console.log(`Attempting to sync order ${queueId} to URL: ${url}`, order.payload);
       const response = await firstValueFrom(
         this.httpClient.post<{ orderId: string }>(url, order.payload)
       );
 
       // Success! Remove from queue
+      console.log(`Order sync response:`, response);
       await this.remove(queueId);
       console.log(`Order synced successfully: ${queueId}`);
       return true;
     } catch (error) {
       // Retry failed
       const newRetryCount = order.retryCount + 1;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Extract HTTP status from error if available
+      let httpStatus = 0;
+      if (error instanceof HttpErrorResponse) {
+        httpStatus = error.status;
+        errorMessage = `HTTP ${error.status}: ${error.statusText || errorMessage}`;
+      }
+      
+      console.error(`Order sync failed for ${queueId}:`, error);
+
+      // Handle authentication failures (401) - these need user intervention, not retries
+      if (httpStatus === 401) {
+        console.warn(`Authentication lost for order ${queueId} - marking as out-of-sync`);
+        await this.updateOrder(queueId, {
+          status: 'out-of-sync',
+          retryCount: newRetryCount,
+          lastAttemptAt: new Date().toISOString(),
+          error: 'Authentication required - please log in again',
+        });
+        return false;
+      }
 
       if (newRetryCount >= order.maxRetries) {
         // Max retries reached - mark as out-of-sync
@@ -366,17 +389,17 @@ export class OrderQueueService {
   }
 
   /**
-   * Manually retry all queued orders (including out-of-sync)
+   * Manually retry all queued orders (including out-of-sync and stuck syncing)
    * Resets retry counts for out-of-sync orders and processes queue
    *
    * @returns RetryResult with summary of retry attempts
    */
   async retryAll(): Promise<RetryResult> {
-    // Reset retry counts for out-of-sync orders
-    const outOfSyncOrders = this._queuedOrders().filter(
-      (o) => o.status === 'out-of-sync'
+    // Reset retry counts for out-of-sync orders and unstick syncing orders
+    const ordersToReset = this._queuedOrders().filter(
+      (o) => o.status === 'out-of-sync' || o.status === 'syncing'
     );
-    for (const order of outOfSyncOrders) {
+    for (const order of ordersToReset) {
       await this.updateOrder(order.id, {
         status: 'pending',
         retryCount: 0,
