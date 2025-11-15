@@ -9,6 +9,7 @@ import {
     IonTitle,
     IonToolbar,
 } from '@ionic/angular/standalone';
+import { TranslateModule } from '@ngx-translate/core';
 import { OrderService } from '../../core/services/order.service';
 import { OrderSummaryComponent } from '../order-summary/order-summary.component';
 
@@ -23,6 +24,7 @@ import { OrderSummaryComponent } from '../order-summary/order-summary.component'
     IonBackButton,
     IonContent,
     CommonModule,
+    TranslateModule,
     OrderSummaryComponent,
   ],
   templateUrl: './cart.page.html',

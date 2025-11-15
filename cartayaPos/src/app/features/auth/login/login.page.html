@@ -1,10 +1,10 @@
 <ion-content class="ion-padding">
   <div class="login-container">
-    <h1 class="login-title">Cartaya POS</h1>
+    <h1 class="login-title">{{ 'AUTH.LOGIN.TITLE' | translate }}</h1>
 
     <ion-card>
       <ion-card-header>
-        <ion-card-title>Login</ion-card-title>
+        <ion-card-title>{{ 'AUTH.LOGIN.CARD_TITLE' | translate }}</ion-card-title>
       </ion-card-header>
 
       <ion-card-content>
@@ -13,7 +13,7 @@
             <ion-input
               formControlName="email"
               type="email"
-              placeholder="Email"
+              [placeholder]="'AUTH.LOGIN.EMAIL_LABEL' | translate"
               [class.input-error]="email?.invalid && email?.touched"
               class="ion-margin-bottom"
             />
@@ -22,8 +22,8 @@
               *ngIf="email?.invalid && email?.touched"
               class="error-message"
             >
-              <small *ngIf="email?.errors?.['required']">Email is required</small>
-              <small *ngIf="email?.errors?.['email']">Invalid email format</small>
+              <small *ngIf="email?.errors?.['required']">{{ 'AUTH.LOGIN.VALIDATION.EMAIL_REQUIRED' | translate }}</small>
+              <small *ngIf="email?.errors?.['email']">{{ 'AUTH.LOGIN.VALIDATION.EMAIL_INVALID' | translate }}</small>
             </ion-text>
           </div>
 
@@ -31,7 +31,7 @@
             <ion-input
               formControlName="password"
               type="password"
-              placeholder="Password"
+              [placeholder]="'AUTH.LOGIN.PASSWORD_LABEL' | translate"
               [class.input-error]="password?.invalid && password?.touched"
               class="ion-margin-bottom"
             />
@@ -40,10 +40,8 @@
               *ngIf="password?.invalid && password?.touched"
               class="error-message"
             >
-              <small *ngIf="password?.errors?.['required']">Password is required</small>
-              <small *ngIf="password?.errors?.['minlength']"
-                >Password must be at least 8 characters</small
-              >
+              <small *ngIf="password?.errors?.['required']">{{ 'AUTH.LOGIN.VALIDATION.PASSWORD_REQUIRED' | translate }}</small>
+              <small *ngIf="password?.errors?.['minlength']">{{ 'AUTH.LOGIN.VALIDATION.PASSWORD_MIN_LENGTH' | translate }}</small>
             </ion-text>
           </div>
 
@@ -54,7 +52,7 @@
             class="ion-margin-top"
           >
             <ion-spinner *ngIf="isLoading" name="crescent" class="spinner-margin"></ion-spinner>
-            {{ isLoading ? 'Logging in...' : 'Login' }}
+            {{ isLoading ? ('AUTH.LOGIN.LOGGING_IN' | translate) : ('AUTH.LOGIN.LOGIN_BUTTON' | translate) }}
           </ion-button>
         </form>
       </ion-card-content>

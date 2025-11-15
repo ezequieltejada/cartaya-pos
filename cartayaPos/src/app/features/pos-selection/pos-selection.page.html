@@ -1,25 +1,25 @@
 <ion-header>
   <ion-toolbar>
-    <ion-title>Select Point of Sale</ion-title>
+    <ion-title>{{ 'POS_SELECTION.TITLE' | translate }}</ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-content class="ion-padding">
   <div *ngIf="isLoading" class="loading-container">
     <ion-spinner></ion-spinner>
-    <p>Loading available locations...</p>
+    <p>{{ 'POS_SELECTION.LOADING_MESSAGE' | translate }}</p>
   </div>
 
   <div *ngIf="hasNoPosAvailable" class="empty-state">
     <ion-text>
-      <h2>No Points of Sale Available</h2>
-      <p>You don't have any assigned points of sale. Please contact your administrator.</p>
+      <h2>{{ 'POS_SELECTION.NO_POS_AVAILABLE' | translate }}</h2>
+      <p>{{ 'POS_SELECTION.NO_POS_MESSAGE' | translate }}</p>
     </ion-text>
   </div>
 
   <div *ngIf="!isLoading && !hasNoPosAvailable">
     <ion-text>
-      <p class="instruction-text">Select a point of sale to continue:</p>
+      <p class="instruction-text">{{ 'POS_SELECTION.SELECT_PROMPT' | translate }}</p>
     </ion-text>
 
     <ion-radio-group [(ngModel)]="selectedPosId">
@@ -38,7 +38,7 @@
       (click)="onContinue()"
       class="ion-margin-top"
     >
-      Continue
+      {{ 'POS_SELECTION.CONTINUE_BUTTON' | translate }}
     </ion-button>
   </div>
 </ion-content>

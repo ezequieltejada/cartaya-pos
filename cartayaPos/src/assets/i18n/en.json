@@ -29,33 +29,64 @@
   },
   "AUTH": {
     "LOGIN": {
-      "TITLE": "Sign In",
+      "TITLE": "Cartaya POS",
+      "CARD_TITLE": "Login",
       "EMAIL_LABEL": "Email",
       "PASSWORD_LABEL": "Password",
-      "LOGIN_BUTTON": "Sign In",
-      "FORGOT_PASSWORD": "Forgot password?"
+      "LOGIN_BUTTON": "Login",
+      "FORGOT_PASSWORD": "Forgot password?",
+      "LOGGING_IN": "Logging in...",
+      "VALIDATION": {
+        "EMAIL_REQUIRED": "Email is required",
+        "EMAIL_INVALID": "Invalid email format",
+        "PASSWORD_REQUIRED": "Password is required",
+        "PASSWORD_MIN_LENGTH": "Password must be at least 8 characters",
+        "FILL_ALL_FIELDS": "Please fill in all fields correctly."
+      }
     },
     "ERRORS": {
+      "LOGIN_FAILED": "Login failed. Please try again.",
       "INVALID_CREDENTIALS": "Invalid email or password.",
-      "SESSION_EXPIRED": "Your session has expired. Please sign in again."
+      "SESSION_EXPIRED": "Your session has expired. Please sign in again.",
+      "NO_INTERNET": "No internet connection."
     }
   },
   "POS_SELECTION": {
     "TITLE": "Select Point of Sale",
-    "SELECT_PROMPT": "Please select a point of sale to continue",
-    "NO_POS_AVAILABLE": "No point of sale available. Please contact your administrator."
+    "SELECT_PROMPT": "Select a point of sale to continue",
+    "NO_POS_AVAILABLE": "No Point of Sale Available",
+    "NO_POS_MESSAGE": "You don't have any assigned points of sale. Please contact your administrator.",
+    "LOADING_MESSAGE": "Loading available locations...",
+    "CONTINUE_BUTTON": "Continue"
   },
   "PRODUCT_GRID": {
     "TITLE": "Products",
     "SEARCH_PLACEHOLDER": "Search products...",
     "NO_PRODUCTS": "No products available.",
-    "PRODUCT_COUNT": "Products: {count}"
+    "NO_SEARCH_RESULTS": "No products found for",
+    "PRODUCT_COUNT": "Products: {count}",
+    "RETRY_BUTTON": "Retry",
+    "PRINTER_UNAVAILABLE": "Printer is unavailable. Please check the connection.",
+    "GO_TO_SETTINGS": "Go to Settings",
+    "CLEAR_SEARCH": "Clear Search",
+    "PRODUCT_ADDED": "added to order",
+    "LOADING": "Loading..."
   },
   "MODIFIERS": {
     "TITLE": "Product Options",
+    "LOADING": "Loading modifiers...",
+    "ERROR_TITLE": "Unable to Load Modifiers",
+    "RETRY_BUTTON": "Retry",
+    "CONTINUE_WITHOUT": "Continue Without Modifiers",
+    "NO_MODIFIERS": "No Modifiers Available",
+    "NO_MODIFIERS_MESSAGE": "This product doesn't have any customization options.",
+    "ADD_TO_ORDER": "Add to Order",
+    "SELECT_LABEL": "Select Modifiers",
     "CONFIRM_BUTTON": "Add to Cart",
     "BACK_BUTTON": "Back",
-    "TOTAL_LABEL": "Total"
+    "TOTAL_LABEL": "Total",
+    "ITEM_ADDED": "Item added to order",
+    "ITEM_UPDATED": "Item updated"
   },
   "ORDER_SUMMARY": {
     "TITLE": "Order Summary",
@@ -66,7 +97,20 @@
     "CASH_ORDER": "Pay with Cash",
     "EMPTY_CART": "Your cart is empty.",
     "DISCOUNT": "Discount",
-    "TAX": "Tax"
+    "TAX": "Tax",
+    "NO_ITEMS": "No items in order",
+    "CANCEL_CONFIRMATION": "Cancel Order",
+    "CANCEL_MESSAGE": "Are you sure? This will clear all items.",
+    "COMPLETE_ORDER": "Complete Order",
+    "PROCESSING": "Processing...",
+    "ORDER_COMPLETED": "Order completed!",
+    "ORDER_COMPLETED_NO_PRINT": "Order completed! (Printing skipped)",
+    "ORDER_FAILED": "Order failed. Please try again.",
+    "NO_PRINTER_SELECTED": "No printer selected. Order will be saved without printing.",
+    "PRINTER_DISCONNECTED": "Printer was manually disconnected. Order will be saved without printing.",
+    "PRINT_FAILED": "Order saved but print failed",
+    "ITEM_REMOVED": "Item removed",
+    "SELECT_POS_TENANT": "Please select PoS and Tenant"
   },
   "SETTINGS": {
     "TITLE": "Settings",
@@ -78,12 +122,25 @@
     "CONNECTED": "Connected",
     "DISCONNECTED": "Disconnected",
     "CONNECTING": "Connecting...",
-    "TEST_PRINTER": "Test Printer"
+    "TEST_PRINTER": "Test Printer",
+    "PRINTER_CONNECTION": "Printer Connection",
+    "AVAILABLE_PRINTERS": "Available Printers",
+    "SCAN_FOR_PRINTERS": "Scan for Printers",
+    "SCANNING": "Scanning...",
+    "NO_PRINTER_SELECTED": "No printer selected",
+    "SELECTED_NOT_CONNECTED": "Selected (Not Connected)",
+    "NO_PRINTERS_FOUND": "No printers found. Click \"Scan for Printers\" to search for available Bluetooth devices.",
+    "PRINTER_NAME": "Printer:",
+    "UNKNOWN_DEVICE": "Unknown Device",
+    "CLEAR_SELECTION": "Clear Selection"
   },
   "MENU": {
     "TITLE": "Menu",
     "LANGUAGE": "Language",
     "SETTINGS": "Settings"
+  },
+  "CART": {
+    "TITLE": "Order Summary"
   },
   "HOME": "Home",
   "WELCOME": "Welcome to Cartaya POS"

@@ -4,14 +4,15 @@ import { Router } from '@angular/router';
 import { Dialog } from '@capacitor/dialog';
 import { AlertController, ToastController } from '@ionic/angular';
 import {
-  IonButton,
-  IonIcon,
-  IonItem,
-  IonLabel,
-  IonList,
-  IonSpinner,
-  IonText,
+    IonButton,
+    IonIcon,
+    IonItem,
+    IonLabel,
+    IonList,
+    IonSpinner,
+    IonText,
 } from '@ionic/angular/standalone';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
 import { checkmark, chevronDown, chevronUp, close, pencil, trash } from 'ionicons/icons';
 import { OrderService } from '../../core/services/order.service';
@@ -31,6 +32,7 @@ import { Printer } from '../../services/printer';
   standalone: true,
   imports: [
     CommonModule,
+    TranslateModule,
     IonList,
     IonItem,
     IonLabel,
@@ -48,6 +50,7 @@ export class OrderSummaryComponent {
   private router = inject(Router);
   private toastController = inject(ToastController);
   private alertController = inject(AlertController);
+  private translate = inject(TranslateService);
 
   // Expose Math.abs for template use
   Math = Math;
@@ -68,12 +71,17 @@ export class OrderSummaryComponent {
    * Uses native Dialog plugin on iOS/Android, falls back to Ionic AlertController on web
    */
   async showCancelConfirmation(): Promise<void> {
+    const title = this.translate.instant('ORDER_SUMMARY.CANCEL_CONFIRMATION');
+    const message = this.translate.instant('ORDER_SUMMARY.CANCEL_MESSAGE');
+    const okButtonTitle = this.translate.instant('COMMON.BUTTONS.YES');
+    const cancelButtonTitle = this.translate.instant('COMMON.BUTTONS.NO');
+
     try {
       const { value } = await Dialog.confirm({
-        title: 'Cancel Order',
-        message: 'Are you sure? This will clear all items.',
-        okButtonTitle: 'Yes',
-        cancelButtonTitle: 'No',
+        title,
+        message,
+        okButtonTitle,
+        cancelButtonTitle,
       });
 
       if (value) {
@@ -83,15 +91,15 @@ export class OrderSummaryComponent {
       // Fallback to Ionic AlertController if Dialog is not available
       console.warn('Dialog plugin not available, using Ionic AlertController:', error);
       const alert = await this.alertController.create({
-        header: 'Cancel Order',
-        message: 'Are you sure? This will clear all items.',
+        header: title,
+        message,
         buttons: [
           {
-            text: 'No',
+            text: cancelButtonTitle,
             role: 'cancel',
           },
           {
-            text: 'Yes',
+            text: okButtonTitle,
             role: 'destructive',
             handler: async () => {
               await this.cancelOrder();
@@ -109,7 +117,7 @@ export class OrderSummaryComponent {
    */
   private async cancelOrder(): Promise<void> {
     this.orderService.clearOrder();
-    this.showToast('Order cancelled', 'bottom');
+    this.showToast('ORDER_SUMMARY.CANCEL_ORDER', 'bottom');
     
     // Navigate back to products page
     await this.router.navigate(['/products']);
@@ -125,12 +133,17 @@ export class OrderSummaryComponent {
       .map((item) => `${item.productName} - $${(item.subtotal ?? 0).toFixed(2)}`)
       .join('\n');
 
+    const title = this.translate.instant('ORDER_SUMMARY.COMPLETE_ORDER');
+    const message = `Items:\n${itemsText}\n\n${this.translate.instant('ORDER_SUMMARY.TOTAL')}: $${total}`;
+    const confirmButtonTitle = this.translate.instant('COMMON.BUTTONS.CONFIRM');
+    const cancelButtonTitle = this.translate.instant('COMMON.BUTTONS.CANCEL');
+
     try {
       const { value } = await Dialog.confirm({
-        title: 'Complete Order',
-        message: `Items:\n${itemsText}\n\nTotal: $${total}`,
-        okButtonTitle: 'Confirm',
-        cancelButtonTitle: 'Cancel',
+        title,
+        message,
+        okButtonTitle: confirmButtonTitle,
+        cancelButtonTitle,
       });
 
       if (value) {
@@ -140,15 +153,15 @@ export class OrderSummaryComponent {
       // Fallback to Ionic AlertController if Dialog is not available
       console.warn('Dialog plugin not available, using Ionic AlertController:', error);
       const alert = await this.alertController.create({
-        header: 'Complete Order',
-        message: `Items:\n${itemsText}\n\nTotal: $${total}`,
+        header: title,
+        message,
         buttons: [
           {
-            text: 'Cancel',
+            text: cancelButtonTitle,
             role: 'cancel',
           },
           {
-            text: 'Confirm',
+            text: confirmButtonTitle,
             handler: async () => {
               await this.cashOrder();
             },
@@ -172,13 +185,13 @@ export class OrderSummaryComponent {
     const tenantId = this.tenantService.getCurrentTenantId();
 
     if (!posId || !tenantId) {
-      this.showToast('Please select PoS and Tenant', 'top');
+      this.showToast('ORDER_SUMMARY.SELECT_POS_TENANT', 'top');
       return;
     }
 
     // Check if a printer is selected
     if (!this.printer.selectedPrinter) {
-      this.showToast('No printer selected. Order will be saved without printing.', 'top');
+      this.showToast('ORDER_SUMMARY.NO_PRINTER_SELECTED', 'top');
       // Continue with order submission even without printer
       this.submitOrderWithoutPrinter(posId, tenantId);
       return;
@@ -186,7 +199,7 @@ export class OrderSummaryComponent {
 
     // Check if user manually disconnected from the printer
     if (this.printer.isUserManuallyDisconnected()) {
-      this.showToast('Printer was manually disconnected. Order will be saved without printing.', 'top');
+      this.showToast('ORDER_SUMMARY.PRINTER_DISCONNECTED', 'top');
       // Continue with order submission even without printer
       this.submitOrderWithoutPrinter(posId, tenantId);
       return;
@@ -204,18 +217,18 @@ export class OrderSummaryComponent {
     this.orderService.submitOrder(posId, tenantId).subscribe({
       next: async (response) => {
         try {
-          this.showToast('Order completed! (Printing skipped)', 'top');
+          this.showToast('ORDER_SUMMARY.ORDER_COMPLETED_NO_PRINT', 'top');
           // Navigate to products page after successful order
           await this.router.navigate(['/products']);
         } catch (error) {
           console.error('Error after order submission:', error);
-          this.showToast('Order completed but an error occurred', 'top');
+          this.showToast('COMMON.ERRORS.GENERIC', 'top');
           await this.router.navigate(['/products']);
         }
       },
       error: (error) => {
         console.error('Order submission failed:', error);
-        this.showToast('Order failed. Please try again.', 'top');
+        this.showToast('ORDER_SUMMARY.ORDER_FAILED', 'top');
       },
     });
   }
@@ -229,19 +242,19 @@ export class OrderSummaryComponent {
         try {
           // Print receipt (will attempt to reconnect if necessary)
           await this.printReceipt(response);
-          this.showToast('Order completed!', 'top');
+          this.showToast('ORDER_SUMMARY.ORDER_COMPLETED', 'top');
           // Navigate to products page after successful order
           await this.router.navigate(['/products']);
         } catch (error) {
           console.error('Error printing receipt:', error);
-          this.showToast('Order saved but print failed', 'top');
+          this.showToast('ORDER_SUMMARY.PRINT_FAILED', 'top');
           // Navigate to products even if printing failed
           await this.router.navigate(['/products']);
         }
       },
       error: (error) => {
         console.error('Order submission failed:', error);
-        this.showToast('Order failed. Please try again.', 'top');
+        this.showToast('ORDER_SUMMARY.ORDER_FAILED', 'top');
       },
     });
   }
@@ -257,7 +270,7 @@ export class OrderSummaryComponent {
       await this.printer.printReceipt(receiptContent);
     } catch (error) {
       console.error('Error printing receipt:', error);
-      this.showToast('Order saved but print failed', 'top');
+      this.showToast('ORDER_SUMMARY.PRINT_FAILED', 'top');
     }
   }
 
@@ -307,14 +320,15 @@ export class OrderSummaryComponent {
    */
   async removeItem(itemId: string): Promise<void> {
     this.orderService.removeItem(itemId);
-    this.showToast('Item removed', 'bottom');
+    this.showToast('ORDER_SUMMARY.ITEM_REMOVED', 'bottom');
     // Menu will be closed automatically by the effect watching hasItems
   }
 
   /**
    * Shows a toast notification
    */
-  private async showToast(message: string, position: 'top' | 'middle' | 'bottom'): Promise<void> {
+  private async showToast(messageKey: string, position: 'top' | 'middle' | 'bottom'): Promise<void> {
+    const message = this.translate.instant(messageKey);
     const toast = await this.toastController.create({
       message,
       duration: 2000,

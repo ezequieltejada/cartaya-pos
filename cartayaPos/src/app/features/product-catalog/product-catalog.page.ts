@@ -15,6 +15,7 @@ import {
   IonSearchbar,
   IonSpinner, ToastController
 } from '@ionic/angular/standalone';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
 import { alertCircleOutline, cartOutline, refreshOutline, searchOutline, settingsOutline } from 'ionicons/icons';
 import { Pos } from '../../core/models/pos.model';
@@ -55,6 +56,7 @@ import { ProductCardComponent } from './components/product-card/product-card.com
     CommonModule,
     FormsModule,
     ScrollingModule,
+    TranslateModule,
     IonContent,
     IonButton,
     IonIcon,
@@ -82,6 +84,7 @@ export class ProductCatalogPage implements OnInit {
   private router = inject(Router);
   private toastController = inject(ToastController);
   private modifierService = inject(ModifierService);
+  private translate = inject(TranslateService);
   protected printerService = inject(Printer);
   orderService = inject(OrderService);
   private authService = inject(AuthService);
@@ -258,7 +261,7 @@ export class ProductCatalogPage implements OnInit {
     } else {
       // Add directly to order without modifiers
       this.orderService.addConfiguredProduct(product, []);
-      await this.showSuccessToast(`"${product.name}" added to order`);
+      await this.showSuccessToast(`"${product.name}" ` + this.translate.instant('PRODUCT_GRID.PRODUCT_ADDED'));
     }
   }
 

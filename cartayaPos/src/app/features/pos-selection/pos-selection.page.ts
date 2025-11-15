@@ -15,6 +15,7 @@ import {
     IonTitle,
     IonToolbar,
 } from '@ionic/angular/standalone';
+import { TranslateModule } from '@ngx-translate/core';
 import { Pos } from '../../core/models/pos.model';
 import { AuthService } from '../../core/services/auth.service';
 import { PosService } from '../../core/services/pos.service';
@@ -25,6 +26,7 @@ import { PosService } from '../../core/services/pos.service';
   imports: [
     CommonModule,
     FormsModule,
+    TranslateModule,
     IonContent,
     IonHeader,
     IonTitle,

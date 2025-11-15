@@ -29,33 +29,64 @@
   },
   "AUTH": {
     "LOGIN": {
-      "TITLE": "Iniciar Sesión",
+      "TITLE": "Cartaya POS",
+      "CARD_TITLE": "Iniciar Sesión",
       "EMAIL_LABEL": "Correo Electrónico",
       "PASSWORD_LABEL": "Contraseña",
       "LOGIN_BUTTON": "Iniciar Sesión",
-      "FORGOT_PASSWORD": "¿Olvidó su contraseña?"
+      "FORGOT_PASSWORD": "¿Olvidó su contraseña?",
+      "LOGGING_IN": "Iniciando sesión...",
+      "VALIDATION": {
+        "EMAIL_REQUIRED": "El correo electrónico es obligatorio",
+        "EMAIL_INVALID": "Formato de correo inválido",
+        "PASSWORD_REQUIRED": "La contraseña es obligatoria",
+        "PASSWORD_MIN_LENGTH": "La contraseña debe tener al menos 8 caracteres",
+        "FILL_ALL_FIELDS": "Por favor, rellene todos los campos correctamente."
+      }
     },
     "ERRORS": {
+      "LOGIN_FAILED": "Error al iniciar sesión. Por favor, intente de nuevo.",
       "INVALID_CREDENTIALS": "Correo o contraseña inválidos.",
-      "SESSION_EXPIRED": "Su sesión ha expirado. Por favor, inicie sesión de nuevo."
+      "SESSION_EXPIRED": "Su sesión ha expirado. Por favor, inicie sesión de nuevo.",
+      "NO_INTERNET": "Sin conexión a Internet."
     }
   },
   "POS_SELECTION": {
     "TITLE": "Seleccione Punto de Venta",
     "SELECT_PROMPT": "Por favor, seleccione un punto de venta para continuar",
-    "NO_POS_AVAILABLE": "No hay puntos de venta disponibles. Por favor, contacte a su administrador."
+    "NO_POS_AVAILABLE": "No hay Puntos de Venta Disponibles",
+    "NO_POS_MESSAGE": "No tiene asignados puntos de venta. Por favor, contacte a su administrador.",
+    "LOADING_MESSAGE": "Cargando ubicaciones disponibles...",
+    "CONTINUE_BUTTON": "Continuar"
   },
   "PRODUCT_GRID": {
     "TITLE": "Productos",
     "SEARCH_PLACEHOLDER": "Buscar productos...",
     "NO_PRODUCTS": "No hay productos disponibles.",
-    "PRODUCT_COUNT": "Productos: {count}"
+    "NO_SEARCH_RESULTS": "No se encontraron productos para",
+    "PRODUCT_COUNT": "Productos: {count}",
+    "RETRY_BUTTON": "Reintentar",
+    "PRINTER_UNAVAILABLE": "La impresora no está disponible. Por favor, compruebe la conexión.",
+    "GO_TO_SETTINGS": "Ir a Configuración",
+    "CLEAR_SEARCH": "Borrar Búsqueda",
+    "PRODUCT_ADDED": "añadido al pedido",
+    "LOADING": "Cargando..."
   },
   "MODIFIERS": {
     "TITLE": "Opciones del Producto",
+    "LOADING": "Cargando opciones...",
+    "ERROR_TITLE": "No se pudo cargar las opciones",
+    "RETRY_BUTTON": "Reintentar",
+    "CONTINUE_WITHOUT": "Continuar sin opciones",
+    "NO_MODIFIERS": "Sin Opciones Disponibles",
+    "NO_MODIFIERS_MESSAGE": "Este producto no tiene opciones de personalización.",
+    "ADD_TO_ORDER": "Añadir al Pedido",
+    "SELECT_LABEL": "Seleccione Opciones",
     "CONFIRM_BUTTON": "Añadir al Carrito",
     "BACK_BUTTON": "Atrás",
-    "TOTAL_LABEL": "Total"
+    "TOTAL_LABEL": "Total",
+    "ITEM_ADDED": "Artículo añadido al pedido",
+    "ITEM_UPDATED": "Artículo actualizado"
   },
   "ORDER_SUMMARY": {
     "TITLE": "Resumen del Pedido",
@@ -66,7 +97,20 @@
     "CASH_ORDER": "Pagar en Efectivo",
     "EMPTY_CART": "Su carrito está vacío.",
     "DISCOUNT": "Descuento",
-    "TAX": "Impuesto"
+    "TAX": "Impuesto",
+    "NO_ITEMS": "Sin artículos en el pedido",
+    "CANCEL_CONFIRMATION": "Cancelar Pedido",
+    "CANCEL_MESSAGE": "¿Está seguro? Esto borrará todos los artículos.",
+    "COMPLETE_ORDER": "Completar Pedido",
+    "PROCESSING": "Procesando...",
+    "ORDER_COMPLETED": "¡Pedido completado!",
+    "ORDER_COMPLETED_NO_PRINT": "¡Pedido completado! (Impresión omitida)",
+    "ORDER_FAILED": "El pedido falló. Por favor, intente de nuevo.",
+    "NO_PRINTER_SELECTED": "Sin impresora seleccionada. El pedido se guardará sin imprimir.",
+    "PRINTER_DISCONNECTED": "La impresora fue desconectada manualmente. El pedido se guardará sin imprimir.",
+    "PRINT_FAILED": "Pedido guardado pero la impresión falló",
+    "ITEM_REMOVED": "Artículo eliminado",
+    "SELECT_POS_TENANT": "Por favor, seleccione PdV e Inquilino"
   },
   "SETTINGS": {
     "TITLE": "Configuración",
@@ -78,7 +122,20 @@
     "CONNECTED": "Conectado",
     "DISCONNECTED": "Desconectado",
     "CONNECTING": "Conectando...",
-    "TEST_PRINTER": "Probar Impresora"
+    "TEST_PRINTER": "Probar Impresora",
+    "PRINTER_CONNECTION": "Conexión de Impresora",
+    "AVAILABLE_PRINTERS": "Impresoras Disponibles",
+    "SCAN_FOR_PRINTERS": "Buscar Impresoras",
+    "SCANNING": "Buscando...",
+    "NO_PRINTER_SELECTED": "Sin impresora seleccionada",
+    "SELECTED_NOT_CONNECTED": "Seleccionada (Sin conexión)",
+    "NO_PRINTERS_FOUND": "No se encontraron impresoras. Haga clic en \"Buscar Impresoras\" para buscar dispositivos Bluetooth disponibles.",
+    "PRINTER_NAME": "Impresora:",
+    "UNKNOWN_DEVICE": "Dispositivo Desconocido",
+    "CLEAR_SELECTION": "Limpiar Selección"
+  },
+  "CART": {
+    "TITLE": "Resumen del Pedido"
   },
   "MENU": {
     "TITLE": "Menú",
