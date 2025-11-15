@@ -1,19 +1,13 @@
-<ion-header id="product-catalog-content">
-  <ion-toolbar>
-    <ion-buttons slot="start">
-      <ion-menu-button></ion-menu-button>
-    </ion-buttons>
-    <ion-title>{{ selectedPos?.name }}</ion-title>
-  </ion-toolbar>
-  <ion-toolbar>
-    <ion-searchbar 
-      [(ngModel)]="searchQuery"
-      (ionInput)="onSearchInput($event)"
-      placeholder="Search products..."
-      debounce="300">
-    </ion-searchbar>
-  </ion-toolbar>
-</ion-header>
+<app-page-header [title]="selectedPos?.name || 'Products'" id="product-catalog-content">
+  <ion-searchbar 
+    slot="secondary"
+    [(ngModel)]="searchQuery"
+    (ionInput)="onSearchInput($event)"
+    placeholder="Search products..."
+    debounce="300"
+    >
+  </ion-searchbar>
+</app-page-header>
 
 <ion-content id="product-catalog-content">
   <!-- Error banner -->

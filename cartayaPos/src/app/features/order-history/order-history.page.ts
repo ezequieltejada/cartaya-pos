@@ -23,6 +23,7 @@ import { PosService } from '../../core/services/pos.service';
 import { TenantService } from '../../core/services/tenant.service';
 import { Order } from '../../models/order.model';
 import { OrderHistoryService } from '../../services/order-history.service';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-order-history',
@@ -43,6 +44,7 @@ import { OrderHistoryService } from '../../services/order-history.service';
     IonSpinner,
     IonRefresher,
     IonRefresherContent,
+    PageHeaderComponent,
   ],
   templateUrl: './order-history.page.html',
   styleUrls: ['./order-history.page.scss'],

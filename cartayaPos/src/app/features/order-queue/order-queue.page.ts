@@ -24,6 +24,7 @@ import { refreshOutline, syncOutline, trashOutline } from 'ionicons/icons';
 import { NetworkService } from '../../core/services/network.service';
 import { OrderQueueService, QueuedOrder } from '../../core/services/order-queue.service';
 import { SyncCoordinatorService } from '../../core/services/sync-coordinator.service';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-order-queue',
@@ -45,6 +46,7 @@ import { SyncCoordinatorService } from '../../core/services/sync-coordinator.ser
     IonRefresherContent,
     IonButtons,
     IonMenuButton,
+    PageHeaderComponent,
   ],
   templateUrl: './order-queue.page.html',
   styleUrls: ['./order-queue.page.scss'],

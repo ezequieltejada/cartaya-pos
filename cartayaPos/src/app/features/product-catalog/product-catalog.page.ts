@@ -4,25 +4,25 @@ import { Component, computed, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
-  IonBadge,
-  IonButton,
-  IonButtons,
-  IonCard,
-  IonCardContent,
-  IonCol,
-  IonContent,
-  IonFab,
-  IonFabButton,
-  IonGrid,
-  IonHeader,
-  IonIcon,
-  IonMenuButton,
-  IonRow,
-  IonSearchbar,
-  IonSpinner,
-  IonTitle,
-  IonToolbar,
-  ToastController
+    IonBadge,
+    IonButton,
+    IonButtons,
+    IonCard,
+    IonCardContent,
+    IonCol,
+    IonContent,
+    IonFab,
+    IonFabButton,
+    IonGrid,
+    IonHeader,
+    IonIcon,
+    IonMenuButton,
+    IonRow,
+    IonSearchbar,
+    IonSpinner,
+    IonTitle,
+    IonToolbar,
+    ToastController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { alertCircleOutline, cartOutline, refreshOutline, searchOutline, settingsOutline } from 'ionicons/icons';
@@ -36,6 +36,7 @@ import { ProductService } from '../../core/services/product.service';
 import { SettingsService } from '../../core/services/settings.service';
 import { TenantService } from '../../core/services/tenant.service';
 import { Printer } from '../../services/printer';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { ProductCardComponent } from './components/product-card/product-card.component';
 
 /**
@@ -81,6 +82,7 @@ import { ProductCardComponent } from './components/product-card/product-card.com
     IonCardContent,
     IonFab,
     IonFabButton,
+    PageHeaderComponent,
     ProductCardComponent,
   ],
   templateUrl: './product-catalog.page.html',
