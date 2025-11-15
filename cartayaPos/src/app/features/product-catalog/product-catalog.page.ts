@@ -4,25 +4,16 @@ import { Component, computed, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
-    IonBadge,
-    IonButton,
-    IonButtons,
-    IonCard,
-    IonCardContent,
-    IonCol,
-    IonContent,
-    IonFab,
-    IonFabButton,
-    IonGrid,
-    IonHeader,
-    IonIcon,
-    IonMenuButton,
-    IonRow,
-    IonSearchbar,
-    IonSpinner,
-    IonTitle,
-    IonToolbar,
-    ToastController
+  IonBadge,
+  IonButton, IonCard,
+  IonCardContent,
+  IonCol,
+  IonContent,
+  IonFab,
+  IonFabButton,
+  IonGrid, IonIcon, IonRow,
+  IonSearchbar,
+  IonSpinner, ToastController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { alertCircleOutline, cartOutline, refreshOutline, searchOutline, settingsOutline } from 'ionicons/icons';
@@ -65,11 +56,6 @@ import { ProductCardComponent } from './components/product-card/product-card.com
     FormsModule,
     ScrollingModule,
     IonContent,
-    IonHeader,
-    IonTitle,
-    IonToolbar,
-    IonButtons,
-    IonMenuButton,
     IonButton,
     IonIcon,
     IonBadge,

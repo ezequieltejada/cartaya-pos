@@ -11,12 +11,11 @@ import { PosService } from './core/services/pos.service';
 import { StorageService } from './core/services/storage.service';
 import { SyncCoordinatorService } from './core/services/sync-coordinator.service';
 import { TenantService } from './core/services/tenant.service';
-import { NetworkStatusComponent } from './shared/components/network-status/network-status.component';
 
 @Component({
   selector: 'app-root',
   templateUrl: 'app.component.html',
-  imports: [IonApp, IonRouterOutlet, IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonIcon, IonLabel, IonMenuToggle, RouterLink, RouterLinkActive, TranslateModule, NetworkStatusComponent, IonBadge],
+  imports: [IonApp, IonRouterOutlet, IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonIcon, IonLabel, IonMenuToggle, RouterLink, RouterLinkActive, TranslateModule, IonBadge],
 })
 export class AppComponent implements OnInit, OnDestroy {
   private storageService = inject(StorageService);

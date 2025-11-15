@@ -2,21 +2,12 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import {
-    IonButton,
-    IonButtons,
-    IonContent,
-    IonHeader,
-    IonIcon,
-    IonItem,
-    IonLabel,
-    IonList,
-    IonMenuButton,
-    IonRefresher,
-    IonRefresherContent,
-    IonSpinner,
-    IonTitle,
-    IonToolbar,
-    RefresherEventDetail,
+  IonButton, IonContent, IonIcon,
+  IonItem,
+  IonLabel,
+  IonList, IonRefresher,
+  IonRefresherContent,
+  IonSpinner, RefresherEventDetail
 } from '@ionic/angular/standalone';
 import { firstValueFrom } from 'rxjs';
 import { PosService } from '../../core/services/pos.service';
@@ -31,15 +22,10 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
   imports: [
     CommonModule,
     IonContent,
-    IonHeader,
-    IonTitle,
-    IonToolbar,
     IonList,
     IonItem,
     IonLabel,
     IonIcon,
-    IonMenuButton,
-    IonButtons,
     IonButton,
     IonSpinner,
     IonRefresher,

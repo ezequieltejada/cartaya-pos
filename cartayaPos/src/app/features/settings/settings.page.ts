@@ -2,31 +2,23 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import {
-    IonBadge,
-    IonButton,
-    IonButtons,
-    IonCard,
-    IonCardContent,
-    IonCardHeader,
-    IonCardTitle,
-    IonContent,
-    IonHeader,
-    IonIcon,
-    IonItem,
-    IonLabel,
-    IonList,
-    IonMenuButton,
-    IonSpinner,
-    IonTitle,
-    IonToolbar
+  IonBadge,
+  IonButton, IonCard,
+  IonCardContent,
+  IonCardHeader,
+  IonCardTitle,
+  IonContent, IonIcon,
+  IonItem,
+  IonLabel,
+  IonList, IonSpinner
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
-    bluetoothOutline,
-    checkmarkCircle,
-    closeCircleOutline,
-    radioButtonOff,
-    radioButtonOn
+  bluetoothOutline,
+  checkmarkCircle,
+  closeCircleOutline,
+  radioButtonOff,
+  radioButtonOn
 } from 'ionicons/icons';
 import { OrderHistoryService } from '../../services/order-history.service';
 import { Printer } from '../../services/printer';
@@ -38,11 +30,6 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
   imports: [
     CommonModule,
     IonContent,
-    IonHeader,
-    IonTitle,
-    IonToolbar,
-    IonButtons,
-    IonMenuButton,
     IonCard,
     IonCardContent,
     IonCardHeader,

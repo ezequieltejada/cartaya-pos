@@ -2,22 +2,13 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import {
   IonBadge,
-  IonButton,
-  IonButtons,
-  IonContent,
-  IonHeader,
-  IonIcon,
+  IonButton, IonContent, IonIcon,
   IonItem,
   IonLabel,
-  IonList,
-  IonMenuButton,
-  IonRefresher,
+  IonList, IonRefresher,
   IonRefresherContent,
-  IonSpinner,
-  IonTitle,
-  IonToolbar,
-  LoadingController,
-  ToastController,
+  IonSpinner, LoadingController,
+  ToastController
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { chevronDownCircleOutline, refreshOutline, syncOutline, trashOutline } from 'ionicons/icons';
@@ -31,9 +22,6 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
   standalone: true,
   imports: [
     CommonModule,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
     IonContent,
     IonList,
     IonItem,
@@ -44,8 +32,6 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
     IonSpinner,
     IonRefresher,
     IonRefresherContent,
-    IonButtons,
-    IonMenuButton,
     PageHeaderComponent,
   ],
   templateUrl: './order-queue.page.html',

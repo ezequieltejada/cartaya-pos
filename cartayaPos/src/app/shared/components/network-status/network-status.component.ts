@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
-import { IonButton, IonIcon } from '@ionic/angular/standalone';
+import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { close, cloudOfflineOutline } from 'ionicons/icons';
 import { NetworkService } from '../../../core/services/network.service';
@@ -8,7 +8,7 @@ import { NetworkService } from '../../../core/services/network.service';
 @Component({
   selector: 'app-network-status',
   standalone: true,
-  imports: [CommonModule, IonIcon, IonButton],
+  imports: [CommonModule, IonIcon],
   template: `
     @if (!networkService.isOnline() && isVisible()) {
       <div class="network-banner warning">
