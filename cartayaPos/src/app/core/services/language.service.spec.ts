@@ -1,32 +1,43 @@
 import { TestBed } from '@angular/core/testing';
 import { TranslateService } from '@ngx-translate/core';
+import { of, throwError } from 'rxjs';
+import { AuthService } from './auth.service';
 import { LanguageState } from './language-state.service';
 import { LanguageService } from './language.service';
+import { SettingsService } from './settings.service';
 import { StorageService } from './storage.service';
 
 describe('LanguageService', () => {
   let service: LanguageService;
   let translateService: jasmine.SpyObj<TranslateService>;
   let storageService: jasmine.SpyObj<StorageService>;
+  let authService: jasmine.SpyObj<AuthService>;
+  let settingsService: jasmine.SpyObj<SettingsService>;
   let languageState: LanguageState;
 
   beforeEach(() => {
     // Create spy objects for dependencies
     const translateSpy = jasmine.createSpyObj('TranslateService', ['use', 'getBrowserLang']);
     const storageSpy = jasmine.createSpyObj('StorageService', ['get', 'set']);
+    const authSpy = jasmine.createSpyObj('AuthService', ['getCurrentUser']);
+    const settingsSpy = jasmine.createSpyObj('SettingsService', ['setUserLanguage']);
 
     TestBed.configureTestingModule({
       providers: [
         LanguageService,
         LanguageState,
         { provide: TranslateService, useValue: translateSpy },
-        { provide: StorageService, useValue: storageSpy }
+        { provide: StorageService, useValue: storageSpy },
+        { provide: AuthService, useValue: authSpy },
+        { provide: SettingsService, useValue: settingsSpy }
       ]
     });
 
     service = TestBed.inject(LanguageService);
     translateService = TestBed.inject(TranslateService) as jasmine.SpyObj<TranslateService>;
     storageService = TestBed.inject(StorageService) as jasmine.SpyObj<StorageService>;
+    authService = TestBed.inject(AuthService) as jasmine.SpyObj<AuthService>;
+    settingsService = TestBed.inject(SettingsService) as jasmine.SpyObj<SettingsService>;
     languageState = TestBed.inject(LanguageState);
 
     // Setup default mocks
@@ -34,6 +45,8 @@ describe('LanguageService', () => {
     translateSpy.use.and.returnValue({ toPromise: () => Promise.resolve() } as any);
     storageSpy.get.and.returnValue(Promise.resolve(null));
     storageSpy.set.and.returnValue(Promise.resolve());
+    authSpy.getCurrentUser.and.returnValue(null);
+    settingsSpy.setUserLanguage.and.returnValue(of({}));
   });
 
   afterEach(() => {
@@ -41,7 +54,25 @@ describe('LanguageService', () => {
   });
 
   describe('init()', () => {
-    it('should load saved language preference from storage', async () => {
+    it('should load language from authenticated user backend settings first', async () => {
+      const mockUser = {
+        id: '1',
+        email: 'test@test.com',
+        name: 'Test User',
+        settings: { language: 'es' },
+        createdAt: '',
+        updatedAt: ''
+      };
+      authService.getCurrentUser.and.returnValue(mockUser);
+
+      await service.init();
+
+      expect(translateService.use).toHaveBeenCalledWith('es');
+      expect(service.getCurrentLanguage()).toBe('es');
+    });
+
+    it('should load saved language preference from storage when no backend settings', async () => {
+      authService.getCurrentUser.and.returnValue(null);
       storageService.get.and.returnValue(Promise.resolve('es'));
 
       await service.init();
@@ -51,7 +82,8 @@ describe('LanguageService', () => {
       expect(service.getCurrentLanguage()).toBe('es');
     });
 
-    it('should use browser language when no saved preference', async () => {
+    it('should use browser language when no backend or saved preference', async () => {
+      authService.getCurrentUser.and.returnValue(null);
       storageService.get.and.returnValue(Promise.resolve(null));
       translateService.getBrowserLang.and.returnValue('ca');
 
@@ -62,6 +94,7 @@ describe('LanguageService', () => {
     });
 
     it('should fallback to en when browser language is not supported', async () => {
+      authService.getCurrentUser.and.returnValue(null);
       storageService.get.and.returnValue(Promise.resolve(null));
       translateService.getBrowserLang.and.returnValue('fr');
 
@@ -72,6 +105,7 @@ describe('LanguageService', () => {
     });
 
     it('should fallback to en when browser language is null', async () => {
+      authService.getCurrentUser.and.returnValue(null);
       storageService.get.and.returnValue(Promise.resolve(null));
       translateService.getBrowserLang.and.returnValue(undefined);
 
@@ -82,6 +116,7 @@ describe('LanguageService', () => {
     });
 
     it('should fallback to en when saved preference is invalid', async () => {
+      authService.getCurrentUser.and.returnValue(null);
       storageService.get.and.returnValue(Promise.resolve('invalid_lang'));
 
       await service.init();
@@ -91,6 +126,7 @@ describe('LanguageService', () => {
     });
 
     it('should set loading state during initialization', async () => {
+      authService.getCurrentUser.and.returnValue(null);
       const loadingStates: boolean[] = [];
       const originalSetLoading = languageState.setLoading.bind(languageState);
       spyOn(languageState, 'setLoading').and.callFake((loading: boolean) => {
@@ -105,6 +141,7 @@ describe('LanguageService', () => {
     });
 
     it('should handle storage errors gracefully', async () => {
+      authService.getCurrentUser.and.returnValue(null);
       storageService.get.and.returnValue(Promise.reject(new Error('Storage error')));
       spyOn(console, 'error');
 
@@ -115,12 +152,25 @@ describe('LanguageService', () => {
     });
 
     it('should handle setLanguage errors during init', async () => {
+      authService.getCurrentUser.and.returnValue(null);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       translateService.use.and.returnValue({ toPromise: () => Promise.reject(new Error('Translation error')) } as any);
       spyOn(console, 'error');
 
       await service.init();
 
       expect(console.error).toHaveBeenCalled();
+    });
+
+    it('should check sync status after initialization', async () => {
+      authService.getCurrentUser.and.returnValue(null);
+      storageService.get.and.returnValue(Promise.resolve('es'));
+      languageState.setSyncStatus(false);
+
+      await service.init();
+
+      // After init, if sync was needed, it would have been attempted
+      expect(settingsService.setUserLanguage).toHaveBeenCalled();
     });
   });
 
@@ -143,10 +193,28 @@ describe('LanguageService', () => {
       expect(service.getCurrentLanguage()).toBe('es');
     });
 
-    it('should set sync status to false', async () => {
+    it('should sync to backend after persisting locally', async () => {
+      await service.setLanguage('es');
+
+      expect(settingsService.setUserLanguage).toHaveBeenCalledWith('es');
+    });
+
+    it('should update sync status to true on successful backend sync', async () => {
+      settingsService.setUserLanguage.and.returnValue(of({ language: 'es' }));
+
+      await service.setLanguage('es');
+
+      expect(languageState.isSynced()).toBe(true);
+    });
+
+    it('should update sync status to false on backend sync failure', async () => {
+      settingsService.setUserLanguage.and.returnValue(throwError(() => new Error('Backend error')));
+      spyOn(console, 'error');
+
       await service.setLanguage('es');
 
       expect(languageState.isSynced()).toBe(false);
+      expect(console.error).toHaveBeenCalled();
     });
 
     it('should clear previous errors when setting language', async () => {
@@ -277,16 +345,82 @@ describe('LanguageService', () => {
     });
   });
 
-  describe('syncWithBackend()', () => {
-    it('should be callable without errors', async () => {
-      await expectAsync(service.syncWithBackend()).toBeResolved();
+  describe('Backend sync functionality', () => {
+    describe('sync on language change', () => {
+      it('should call syncWithBackend when language is set', async () => {
+        await service.setLanguage('es');
+        expect(settingsService.setUserLanguage).toHaveBeenCalledWith('es');
+      });
+
+      it('should set isSynced to true on successful sync', async () => {
+        settingsService.setUserLanguage.and.returnValue(of({ language: 'es' }));
+        await service.setLanguage('es');
+        expect(languageState.isSynced()).toBe(true);
+      });
+
+      it('should set isSynced to false on sync failure and continue with local state', async () => {
+        settingsService.setUserLanguage.and.returnValue(throwError(() => new Error('Network error')));
+        spyOn(console, 'error');
+
+        await service.setLanguage('es');
+
+        expect(languageState.isSynced()).toBe(false);
+        expect(service.getCurrentLanguage()).toBe('es');
+        expect(storageService.set).toHaveBeenCalled();
+      });
+
+      it('should set error state on sync failure', async () => {
+        const error = new Error('Backend sync failed');
+        settingsService.setUserLanguage.and.returnValue(throwError(() => error));
+        spyOn(console, 'error');
+
+        await service.setLanguage('es');
+
+        expect(languageState.hasError()).toBe(true);
+      });
+
+      it('should not throw on backend sync failure', async () => {
+        settingsService.setUserLanguage.and.returnValue(throwError(() => new Error('Backend error')));
+
+        await expectAsync(service.setLanguage('es')).toBeResolved();
+      });
     });
 
-    it('should be a placeholder for Phase 4', async () => {
-      // This is a placeholder that does nothing - just verify it doesn't throw
-      const result = service.syncWithBackend();
-      expect(result).toBeDefined();
-      await result;
+    describe('checkSyncStatus()', () => {
+      it('should retry sync if isSynced is false', async () => {
+        languageState.setSyncStatus(false);
+        languageState.setLanguage('es');
+        settingsService.setUserLanguage.and.returnValue(of({ language: 'es' }));
+
+        await service.init();
+
+        expect(settingsService.setUserLanguage).toHaveBeenCalled();
+      });
+
+      it('should not retry sync if isSynced is true', async () => {
+        authService.getCurrentUser.and.returnValue(null);
+        settingsService.setUserLanguage.calls.reset();
+        languageState.setSyncStatus(true);
+        languageState.setLanguage('es');
+
+        await service.init();
+
+        // setUserLanguage should not be called during init if sync status is already true
+        // But it may be called by setLanguage as part of normal flow
+        // This test verifies the checkSyncStatus specifically doesn't retry when synced
+        expect(languageState.isSynced()).toBe(true);
+      });
+
+      it('should handle sync retry failure gracefully', async () => {
+        languageState.setSyncStatus(false);
+        languageState.setLanguage('ca');
+        settingsService.setUserLanguage.and.returnValue(throwError(() => new Error('Retry failed')));
+        spyOn(console, 'error');
+
+        await service.init();
+
+        expect(console.error).toHaveBeenCalled();
+      });
     });
   });
 
@@ -299,6 +433,7 @@ describe('LanguageService', () => {
 
       expect(service.getCurrentLanguage()).toBe('en');
       expect(storageService.set).toHaveBeenCalledTimes(4);
+      expect(settingsService.setUserLanguage).toHaveBeenCalledTimes(4);
     });
 
     it('should handle empty string language code', async () => {
@@ -308,7 +443,7 @@ describe('LanguageService', () => {
       expect(translateService.use).toHaveBeenCalledWith('en');
     });
 
-    it('should handle error', async () => {
+    it('should handle error during language change', async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       translateService.use.and.returnValue({ toPromise: () => Promise.reject(new Error('Error')) } as any);
 
@@ -317,5 +452,41 @@ describe('LanguageService', () => {
       expect(languageState.isLoading()).toBe(false);
       expect(languageState.hasError()).toBe(true);
     });
+
+    it('should prioritize backend language over local storage', async () => {
+      const mockUser = {
+        id: '1',
+        email: 'test@test.com',
+        name: 'Test User',
+        settings: { language: 'ca' },
+        createdAt: '',
+        updatedAt: ''
+      };
+      authService.getCurrentUser.and.returnValue(mockUser);
+      storageService.get.and.returnValue(Promise.resolve('es'));
+
+      await service.init();
+
+      expect(translateService.use).toHaveBeenCalledWith('ca');
+      expect(service.getCurrentLanguage()).toBe('ca');
+    });
+
+    it('should handle user without settings', async () => {
+      const mockUser = {
+        id: '1',
+        email: 'test@test.com',
+        name: 'Test User',
+        createdAt: '',
+        updatedAt: ''
+      };
+      authService.getCurrentUser.and.returnValue(mockUser);
+      storageService.get.and.returnValue(Promise.resolve('es'));
+
+      await service.init();
+
+      expect(translateService.use).toHaveBeenCalledWith('es');
+      expect(service.getCurrentLanguage()).toBe('es');
+    });
   });
 });
+

@@ -1,17 +1,21 @@
 import { Injectable, inject } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
+import { firstValueFrom } from 'rxjs';
 import { SUPPORTED_LANGUAGES, type Language } from '../models/language.model';
+import { AuthService } from './auth.service';
 import { LanguageState } from './language-state.service';
+import { SettingsService } from './settings.service';
 import { StorageService } from './storage.service';
 
 /**
  * Main coordinator service for language management across the application.
- * Orchestrates language changes, storage persistence, and TranslateService integration.
+ * Orchestrates language changes, storage persistence, backend sync, and TranslateService integration.
  * 
  * Responsibilities:
- * - Initialize language on app startup with fallback chain
+ * - Initialize language on app startup with fallback chain (backend → local → browser → default)
  * - Handle language changes with validation and state management
  * - Persist language preferences to Ionic Storage
+ * - Synchronize language preferences with backend when available
  * - Provide language metadata (current language, available languages, support checks)
  */
 @Injectable({
@@ -23,20 +27,33 @@ export class LanguageService {
   private translateService = inject(TranslateService);
   private storageService = inject(StorageService);
   private languageState = inject(LanguageState);
+  private authService = inject(AuthService);
+  private settingsService = inject(SettingsService);
 
   /**
    * Initialize language on app startup.
    * 
    * Priority chain:
-   * 1. Load saved preference from Ionic Storage
-   * 2. Detect browser/device language
-   * 3. Fallback to 'en'
+   * 1. Load from backend user settings (if authenticated)
+   * 2. Load saved preference from Ionic Storage
+   * 3. Detect browser/device language
+   * 4. Fallback to 'en'
    * 
    * Will set TranslateService, persist to storage, and update LanguageState
    */
   async init(): Promise<void> {
     try {
       this.languageState.setLoading(true);
+
+      // First, try to get language from authenticated user's backend settings
+      const user = this.authService.getCurrentUser();
+      if (user?.settings?.language) {
+        const userLanguage = user.settings.language;
+        if (this.isLanguageSupported(userLanguage)) {
+          await this.setLanguage(userLanguage);
+          return;
+        }
+      }
 
       // Attempt to load saved language preference from storage
       const savedLanguage = await this.storageService.get<string>(this.LANGUAGE_PREFERENCE_KEY);
@@ -50,6 +67,9 @@ export class LanguageService {
         const fallbackLang = this.isLanguageSupported(browserLang) ? browserLang : 'en';
         await this.setLanguage(fallbackLang);
       }
+
+      // Check if there are any unsynchronized changes and retry sync
+      await this.checkSyncStatus();
     } catch (error) {
       console.error('Failed to initialize language:', error);
       // Ultimate fallback to English
@@ -71,6 +91,7 @@ export class LanguageService {
    * 2. Update TranslateService (may trigger HTTP request for JSON)
    * 3. Persist to Ionic Storage
    * 4. Update LanguageState
+   * 5. Sync to backend (fire-and-forget)
    * 
    * @param languageCode - Language code to set ('en' | 'es' | 'ca')
    * @throws Does not throw - errors are logged and state is updated
@@ -95,8 +116,17 @@ export class LanguageService {
 
       // Update state
       this.languageState.setLanguage(targetLanguage);
-      this.languageState.setSyncStatus(false); // Will sync in Phase 4
       this.languageState.setError(null); // Clear any previous errors
+
+      // Sync to backend asynchronously (fire-and-forget)
+      try {
+        await this.syncWithBackend(targetLanguage);
+        this.languageState.setSyncStatus(true);
+      } catch (error) {
+        console.error('Backend sync failed:', error);
+        this.languageState.setSyncStatus(false);
+        // Continue - local storage is source of truth
+      }
     } catch (error) {
       console.error('Failed to set language:', error);
       this.languageState.setError(error as Error);
@@ -134,15 +164,43 @@ export class LanguageService {
   }
 
   /**
-   * Placeholder for backend synchronization.
+   * Check if there are any unsynchronized changes and retry sync
+   * Called during app initialization to ensure pending changes are persisted to backend
    * 
-   * Phase 4 feature: Will sync language preference with backend when implemented.
-   * For now, this is a no-op placeholder.
-   * 
-   * @returns Promise that resolves when sync is complete
+   * If sync status is false, attempts to sync the current language preference
    */
-  async syncWithBackend(): Promise<void> {
-    // Placeholder for Phase 4: Backend sync implementation
-    // Will be implemented when backend API is ready
+  private async checkSyncStatus(): Promise<void> {
+    if (!this.languageState.isSynced()) {
+      const currentLang = this.languageState.currentLanguage();
+      try {
+        await this.syncWithBackend(currentLang);
+      } catch (error) {
+        console.error('Failed to retry language sync on startup:', error);
+        // Continue - will retry on next app startup
+      }
+    }
+  }
+
+  /**
+   * Synchronize language preference with backend
+   * Fire-and-forget approach that doesn't block UI
+   * Updates LanguageState sync status and logs errors but doesn't throw
+   * 
+   * @param languageCode - Language code to sync
+   */
+  private async syncWithBackend(languageCode: string): Promise<void> {
+    try {
+      await firstValueFrom(
+        this.settingsService.setUserLanguage(languageCode)
+      );
+      this.languageState.setSyncStatus(true);
+      this.languageState.setError(null);
+    } catch (error) {
+      console.error('Failed to sync language with backend:', error);
+      this.languageState.setSyncStatus(false);
+      this.languageState.setError(error as Error);
+      // Don't throw - local storage is source of truth
+    }
   }
 }
+
