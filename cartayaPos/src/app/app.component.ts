@@ -123,6 +123,7 @@ export class AppComponent implements OnInit, OnDestroy {
   /**
    * Maps language codes to supported languages
    * Extracts the primary language code (e.g., 'es-MX' -> 'es')
+   * Supported languages: ['en', 'es', 'ca']
    */
   private mapLanguageCode(languageCode: string): string {
     if (!languageCode) return 'en';
@@ -134,7 +135,7 @@ export class AppComponent implements OnInit, OnDestroy {
     const supportedLanguages: { [key: string]: string } = {
       es: 'es',
       en: 'en',
-      // Add more mappings as needed (e.g., 'fr': 'fr', 'de': 'de')
+      ca: 'ca',
     };
 
     return supportedLanguages[primaryLanguage] || 'en';
