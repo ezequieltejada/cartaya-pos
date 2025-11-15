@@ -1,11 +1,12 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Device } from '@capacitor/device';
-import { IonApp, IonBadge, IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonMenu, IonMenuToggle, IonRouterOutlet, IonTitle, IonToolbar } from '@ionic/angular/standalone';
+import { IonApp, IonBadge, IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonMenu, IonMenuToggle, IonRouterOutlet, IonTitle, IonToolbar, Platform } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
 import { cartOutline, checkmarkCircleOutline, closeCircleOutline, cloudUploadOutline, gridOutline, homeOutline, imageOutline, logOutOutline, menu, receiptOutline, settingsOutline } from 'ionicons/icons';
 import { AuthService } from './core/services/auth.service';
+import { LanguageService } from './core/services/language.service';
 import { OrderQueueService } from './core/services/order-queue.service';
 import { PosService } from './core/services/pos.service';
 import { StorageService } from './core/services/storage.service';
@@ -18,8 +19,10 @@ import { TenantService } from './core/services/tenant.service';
   imports: [IonApp, IonRouterOutlet, IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonIcon, IonLabel, IonMenuToggle, RouterLink, RouterLinkActive, TranslateModule, IonBadge],
 })
 export class AppComponent implements OnInit, OnDestroy {
+  private platform = inject(Platform);
   private storageService = inject(StorageService);
   private authService = inject(AuthService);
+  private languageService = inject(LanguageService);
   private tenantService = inject(TenantService);
   private posService = inject(PosService);
   private syncCoordinator = inject(SyncCoordinatorService);
@@ -33,7 +36,10 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit() {
-    // Initialize storage first
+    // Wait for platform to be ready
+    await this.platform.ready();
+
+    // Initialize storage first (required by LanguageService)
     try {
       await this.storageService.init();
       
@@ -42,6 +48,14 @@ export class AppComponent implements OnInit, OnDestroy {
       await this.posService.restoreSelectedPos();
     } catch (error) {
       console.error('Failed to initialize storage:', error);
+    }
+
+    // Initialize language on app startup (depends on StorageService)
+    try {
+      await this.languageService.init();
+    } catch (error) {
+      console.error('Failed to initialize language:', error);
+      // Continue with app startup even if language init fails
     }
 
     // Initialize SyncCoordinator
@@ -116,7 +130,7 @@ export class AppComponent implements OnInit, OnDestroy {
    * Gets the browser language using navigator API
    */
   private getBrowserLanguage(): string | null {
-    const language = navigator.language || (navigator as any).userLanguage;
+    const language = navigator.language || (navigator as unknown as { userLanguage?: string }).userLanguage;
     return language || null;
   }
 
