@@ -31,6 +31,17 @@
   }
 }
 
+// Language Settings Card
+.language-card {
+  @extend %card-base;
+}
+
+.language-switcher-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 // Connection Status Card
 .status-card {
   @extend %card-base;

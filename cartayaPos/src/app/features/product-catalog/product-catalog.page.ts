@@ -1,6 +1,6 @@
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
@@ -11,7 +11,9 @@ import {
   IonContent,
   IonFab,
   IonFabButton,
-  IonGrid, IonIcon, IonRow,
+  IonGrid, IonIcon,
+  IonRouterOutlet,
+  IonRow,
   IonSearchbar,
   IonSpinner, ToastController
 } from '@ionic/angular/standalone';
@@ -76,7 +78,7 @@ import { ProductCardComponent } from './components/product-card/product-card.com
   templateUrl: './product-catalog.page.html',
   styleUrls: ['./product-catalog.page.scss'],
 })
-export class ProductCatalogPage implements OnInit {
+export class ProductCatalogPage implements OnInit, OnDestroy {
   private productService = inject(ProductService);
   private tenantService = inject(TenantService);
   private settingsService = inject(SettingsService);
@@ -88,6 +90,7 @@ export class ProductCatalogPage implements OnInit {
   protected printerService = inject(Printer);
   orderService = inject(OrderService);
   private authService = inject(AuthService);
+  private ionRouterOutlet = inject(IonRouterOutlet, { optional: true });
 
   constructor() {
     // Register ionicons for printer unavailable message
@@ -103,6 +106,13 @@ export class ProductCatalogPage implements OnInit {
   private modifierCheckCache = new Map<string, boolean>();
 
   ngOnInit(): void {
+    // Disable the swipe-back gesture on this page
+    // This prevents users from accidentally navigating back to the login page
+    // The side menu is still accessible via the menu button
+    if (this.ionRouterOutlet) {
+      this.ionRouterOutlet.swipeGesture = false;
+    }
+
     this.checkPosSelection();
     this.loadTenantSettings();
     this.loadProducts();
@@ -352,5 +362,12 @@ export class ProductCatalogPage implements OnInit {
    */
   navigateToSettings(): void {
     this.router.navigate(['/settings']);
+  }
+
+  ngOnDestroy(): void {
+    // Restore the swipe-back gesture when leaving this page
+    if (this.ionRouterOutlet) {
+      this.ionRouterOutlet.swipeGesture = true;
+    }
   }
 }

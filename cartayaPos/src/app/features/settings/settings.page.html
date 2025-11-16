@@ -2,6 +2,21 @@
 
 <ion-content class="ion-padding">
   <div class="settings-container">
+    <!-- Language Settings Section -->
+    <ion-card class="language-card">
+      <ion-card-header>
+        <ion-card-title>{{ 'COMMON.LANGUAGE' | translate }}</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="language-switcher-wrapper">
+          <app-language-switcher
+            displayMode="modal"
+            (languageChanged)="onLanguageChanged($event)">
+          </app-language-switcher>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
     <!-- Connection Status Section -->
     <ion-card class="status-card">
       <ion-card-header>

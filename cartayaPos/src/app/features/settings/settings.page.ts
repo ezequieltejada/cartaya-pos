@@ -23,6 +23,7 @@ import {
 } from 'ionicons/icons';
 import { OrderHistoryService } from '../../services/order-history.service';
 import { Printer } from '../../services/printer';
+import { LanguageSwitcherComponent } from '../../shared/components/language-switcher/language-switcher.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 @Component({
@@ -44,6 +45,7 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
     IonSpinner,
     IonBadge,
     PageHeaderComponent,
+    LanguageSwitcherComponent,
   ],
   templateUrl: './settings.page.html',
   styleUrls: ['./settings.page.scss'],
@@ -136,6 +138,15 @@ export class SettingsPage implements OnInit, OnDestroy {
 
   goBack(): void {
     this.router.navigate(['/products']);
+  }
+
+  /**
+   * Handle language change from LanguageSwitcher component
+   */
+  onLanguageChanged(languageCode: string): void {
+    console.log('Language changed to:', languageCode);
+    // The LanguageService already handles updating the app language
+    // No additional action needed here
   }
 
   /**
