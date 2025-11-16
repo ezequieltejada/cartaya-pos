@@ -168,10 +168,85 @@ All data-displaying pages follow this standardized refresher configuration: `pul
 
 ---
 
-## 10. Future Enhancements (Post-MVP)
+## 10. Internationalization (i18n) - Multi-Language Support
+
+The Cartaya POS application implements comprehensive internationalization support using **ngx-translate**, enabling the application to support multiple languages dynamically. This section provides an overview; for detailed development information, refer to `docs/I18N_GUIDE.md`.
+
+### 10.1 Supported Languages
+
+* **English** (`en`) - Default language
+* **Spanish** (`es`) - Español
+* **Catalan** (`ca`) - Català
+
+### 10.2 Architecture Overview
+
+The i18n system consists of:
+
+- **LanguageService** - Main coordinator for language changes, storage persistence, and backend sync
+- **LanguageState** - Signal-based reactive state management using Angular Signals
+- **LanguageSwitcher Component** - Reusable UI component for language selection
+- **TranslateService** - ngx-translate service for dynamic translation loading
+- **Translation Files** - JSON files in `src/assets/i18n/` organized by language code
+
+### 10.3 Language Initialization
+
+On app startup, the LanguageService follows this priority chain to determine the user's language:
+
+1. Load from backend user settings (if authenticated)
+2. Load saved preference from Ionic Storage
+3. Detect browser/device language
+4. Fallback to English ('en')
+
+### 10.4 Using Translations
+
+**In Templates (Pipe approach):**
+```html
+{{ 'COMMON.BUTTONS.CANCEL' | translate }}
+{{ 'PRODUCT_GRID.PRODUCT_COUNT' | translate: { count: products.length } }}
+```
+
+**In Components (Service approach):**
+```typescript
+const message = this.translate.instant('COMMON.SUCCESS');
+```
+
+### 10.5 Adding New Languages
+
+1. Create translation JSON file in `src/assets/i18n/` with all keys
+2. Update `SUPPORTED_LANGUAGES` in `src/app/core/models/language.model.ts`
+3. Test language switching and verify all translations
+4. Run validation tests: `npm run lint`
+
+### 10.6 Backend Sync
+
+User language preferences are synchronized with the backend:
+
+- **API Endpoint:** `PATCH /api/users/me/settings`
+- **Sync Strategy:** Local-first (stored immediately), backend as backup
+- **Error Handling:** Failures don't block UI; local storage is source of truth
+
+### 10.7 Translation Keys Organization
+
+Keys follow a hierarchical naming convention:
+
+```
+FEATURE_SECTION_KEY
+
+Examples:
+- COMMON.BUTTONS.CANCEL
+- AUTH.LOGIN.TITLE
+- PRODUCT_GRID.PRODUCT_COUNT
+- MODIFIERS.ITEM_ADDED
+```
+
+For comprehensive development guidelines including best practices, troubleshooting, and detailed code examples, see `docs/I18N_GUIDE.md`.
+
+---
+
+## 11. Future Enhancements (Post-MVP)
 
 * Offline mode with local order queue
 * Multi-user PoS sessions
 * Order history & reporting
 * Tip handling and payment type selection
-* Multi-language support
+* Additional language support (French, Portuguese, etc.)
