@@ -42,7 +42,8 @@ export class AppComponent implements OnInit, OnDestroy {
     // Initialize storage first (required by LanguageService)
     try {
       await this.storageService.init();
-      
+      await this.authService.loadTokensFromStorage();
+
       // After storage is initialized, restore tenant and PoS selections
       await this.tenantService.restoreSelectedTenant();
       await this.posService.restoreSelectedPos();

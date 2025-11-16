@@ -190,6 +190,13 @@ export class LanguageService {
    */
   private async syncWithBackend(languageCode: string): Promise<void> {
     try {
+      const accessToken = this.authService.getAccessToken();
+      if (!accessToken) {
+        // Skip backend sync when the user is not authenticated yet
+        this.languageState.setSyncStatus(false);
+        return;
+      }
+
       await firstValueFrom(
         this.settingsService.setUserLanguage(languageCode)
       );
