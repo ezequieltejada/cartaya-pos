@@ -1,21 +1,44 @@
 <ng-container>
-  <!-- Language Selector Button -->
-  <ion-button
-    (click)="openLanguageActionSheet()"
-    [disabled]="isLoading()"
-    [class]="'language-switcher-' + displayMode"
-    fill="outline"
-    size="default"
-    [attr.aria-label]="'Change language, currently ' + getCurrentLanguageName()">
-    <ion-icon name="language-outline" slot="start"></ion-icon>
-    {{ getCurrentLanguageName() }}
-  </ion-button>
+  <form [formGroup]="languageForm" (ngSubmit)="onSaveLanguage()" class="language-form">
+    <div class="language-select-container">
+      <!-- Language Select and Save Button Row -->
+      <div class="select-and-button">
+        <!-- Language Select Dropdown -->
+        <div class="form-group">
+          <ion-select
+            id="language-select"
+            formControlName="selectedLanguage"
+            [disabled]="isLoading()"
+            interface="popover"
+            placeholder="{{ 'COMMON.LANGUAGE' | translate }}">
+            <ion-select-option *ngFor="let lang of availableLanguages" [value]="lang.code">
+              {{ lang.name }}
+              <ion-icon 
+                *ngIf="currentLanguage() === lang.code" 
+                name="checkmark-circle" 
+                class="selected-icon">
+              </ion-icon>
+            </ion-select-option>
+          </ion-select>
+        </div>
 
-  <!-- Loading Indicator -->
-  <ion-loading
-    [isOpen]="isLoading()"
-    [message]="'COMMON.LOADING.MESSAGE' | translate"
-    [backdropDismiss]="false"
-    aria-live="polite">
-  </ion-loading>
+        <!-- Save Button -->
+        <ion-button
+          type="submit"
+          color="primary"
+          [disabled]="isLoading() || languageForm.invalid"
+          class="save-button">
+          <ion-icon name="checkmark-circle"></ion-icon>
+        </ion-button>
+      </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <ion-loading
+      [isOpen]="isLoading()"
+      [message]="'COMMON.LOADING.MESSAGE' | translate"
+      [backdropDismiss]="false"
+      aria-live="polite">
+    </ion-loading>
+  </form>
 </ng-container>

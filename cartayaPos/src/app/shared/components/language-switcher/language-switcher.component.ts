@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, inject, Input, Output, signal } from '@angular/core';
-import { ActionSheetButton, ActionSheetController, IonicModule } from '@ionic/angular';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { Component, EventEmitter, inject, Input, OnInit, Output } from '@angular/core';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { IonicModule } from '@ionic/angular';
+import { TranslateModule } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
-import { checkmarkCircleOutline, languageOutline } from 'ionicons/icons';
+import { checkmarkCircle, languageOutline } from 'ionicons/icons';
 import { SUPPORTED_LANGUAGES, type Language } from '../../../core/models/language.model';
 import { LanguageState } from '../../../core/services/language-state.service';
 import { LanguageService } from '../../../core/services/language.service';
@@ -12,18 +13,19 @@ import { LanguageService } from '../../../core/services/language.service';
  * Reusable language switcher component that allows users to change the application language.
  * 
  * Features:
- * - Displays language options in an action sheet
- * - Shows currently selected language with checkmark indicator
- * - Button to trigger the action sheet with current language label
- * - Emits languageChanged event when user selects a language
+ * - Displays language options in a select dropdown (reactive form)
+ * - Save button to apply language change
+ * - Shows currently selected language
+ * - Emits languageChanged event when user saves a language
  * - Shows loading spinner during language change
  * - Disables interaction while loading
  * - Keyboard accessible
+ * - iOS compatible (no action sheet)
  * 
  * Usage:
  * ```html
  * <app-language-switcher 
- *   [displayMode]="'menu'" 
+ *   [displayMode]="'modal'" 
  *   (languageChanged)="onLanguageChange($event)">
  * </app-language-switcher>
  * ```
@@ -34,15 +36,14 @@ import { LanguageService } from '../../../core/services/language.service';
 @Component({
   selector: 'app-language-switcher',
   standalone: true,
-  imports: [CommonModule, IonicModule, TranslateModule],
+  imports: [CommonModule, IonicModule, ReactiveFormsModule, TranslateModule],
   templateUrl: './language-switcher.component.html',
   styleUrls: ['./language-switcher.component.scss']
 })
-export class LanguageSwitcherComponent {
+export class LanguageSwitcherComponent implements OnInit {
   private languageService = inject(LanguageService);
   private languageState = inject(LanguageState);
-  private actionSheetController = inject(ActionSheetController);
-  private translateService = inject(TranslateService);
+  private formBuilder = inject(FormBuilder);
 
   /**
    * Display mode for styling purposes
@@ -53,23 +54,38 @@ export class LanguageSwitcherComponent {
   @Input() displayMode: 'menu' | 'modal' | 'popover' = 'menu';
 
   /**
-   * Event emitted when user selects a language
+   * Event emitted when user saves a language selection
    * Payload: language code (e.g., 'en', 'es', 'ca')
    */
   @Output() languageChanged = new EventEmitter<string>();
 
-  // Expose signals to template
+  // Expose to template
   readonly availableLanguages: Language[] = SUPPORTED_LANGUAGES;
   readonly currentLanguage = this.languageState.currentLanguage;
   readonly isLoading = this.languageState.isLoading;
-  readonly isActionSheetOpen = signal(false);
+
+  // Reactive form
+  languageForm!: FormGroup;
 
   constructor() {
-    addIcons({ checkmarkCircleOutline, languageOutline });
+    addIcons({ languageOutline, checkmarkCircle });
+  }
+
+  ngOnInit(): void {
+    this.initializeForm();
   }
 
   /**
-   * Get the name of the current language for the button label
+   * Initialize the reactive form with language selection
+   */
+  private initializeForm(): void {
+    this.languageForm = this.formBuilder.group({
+      selectedLanguage: [this.currentLanguage(), Validators.required]
+    });
+  }
+
+  /**
+   * Get the name of the current language for display
    */
   getCurrentLanguageName(): string {
     const currentLang = this.currentLanguage();
@@ -78,59 +94,23 @@ export class LanguageSwitcherComponent {
   }
 
   /**
-   * Open the action sheet with language options.
-   */
-  async openLanguageActionSheet(): Promise<void> {
-    const buttons: ActionSheetButton[] = this.availableLanguages.map(lang => ({
-      text: lang.name,
-      icon: this.currentLanguage() === lang.code ? 'checkmark-circle-outline' : undefined,
-      handler: () => {
-        this.selectLanguage(lang.code);
-        return true;
-      },
-      data: { code: lang.code }
-    }));
-
-    // Add dismiss button
-    const cancelText = await this.translateService.get('COMMON.BUTTONS.CANCEL').toPromise();
-    const headerText = await this.translateService.get('COMMON.LANGUAGE').toPromise();
-    
-    buttons.push({
-      text: cancelText,
-      role: 'cancel',
-      icon: 'close'
-    } as ActionSheetButton);
-
-    const actionSheet = await this.actionSheetController.create({
-      header: headerText,
-      buttons: buttons,
-      cssClass: `language-switcher-${this.displayMode}`,
-      animated: true,
-      keyboardClose: true
-    });
-
-    await actionSheet.present();
-
-    // Handle dismiss
-    await actionSheet.onDidDismiss();
-    this.isActionSheetOpen.set(false);
-  }
-
-  /**
-   * Handle language selection.
+   * Handle language save
    * 
    * Flow:
-   * 1. Check if selection is different from current language
-   * 2. Call LanguageService.setLanguage() (handles TranslateService, storage, and state update)
-   * 3. Emit languageChanged event
-   * 4. Parent component can then close menu/modal if needed
-   * 
-   * @param languageCode - Language code selected by user ('en' | 'es' | 'ca')
+   * 1. Get selected language from form
+   * 2. Check if selection is different from current language
+   * 3. Call LanguageService.setLanguage() (handles TranslateService, storage, and state update)
+   * 4. Emit languageChanged event
+   * 5. Parent component can then close menu/modal if needed
    */
-  private async selectLanguage(languageCode: string): Promise<void> {
-    if (languageCode !== this.currentLanguage()) {
-      await this.languageService.setLanguage(languageCode);
-      this.languageChanged.emit(languageCode);
+  async onSaveLanguage(): Promise<void> {
+    if (this.languageForm.valid) {
+      const selectedLanguage = this.languageForm.get('selectedLanguage')?.value;
+      
+      if (selectedLanguage && selectedLanguage !== this.currentLanguage()) {
+        await this.languageService.setLanguage(selectedLanguage);
+        this.languageChanged.emit(selectedLanguage);
+      }
     }
   }
 }
