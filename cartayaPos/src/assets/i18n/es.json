@@ -94,7 +94,7 @@
     "TOTAL": "Total",
     "ITEMS_COUNT": "Artículos: {count}",
     "CANCEL_ORDER": "Cancelar Pedido",
-    "CASH_ORDER": "Pagar en Efectivo",
+    "CASH_ORDER": "Confirmar Pedido",
     "EMPTY_CART": "Su carrito está vacío.",
     "DISCOUNT": "Descuento",
     "TAX": "Impuesto",
