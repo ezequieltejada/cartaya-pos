@@ -9,6 +9,9 @@ import {
   IonRefresherContent,
   IonSpinner, RefresherEventDetail
 } from '@ionic/angular/standalone';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { addIcons } from 'ionicons';
+import { alertCircleOutline, chevronDownCircleOutline, receiptOutline } from 'ionicons/icons';
 import { firstValueFrom } from 'rxjs';
 import { PosService } from '../../core/services/pos.service';
 import { TenantService } from '../../core/services/tenant.service';
@@ -21,6 +24,7 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
   standalone: true,
   imports: [
     CommonModule,
+    TranslateModule,
     IonContent,
     IonList,
     IonItem,
@@ -40,11 +44,16 @@ export class OrderHistoryPage implements OnInit {
   private posService = inject(PosService);
   private tenantService = inject(TenantService);
   private router = inject(Router);
+  private translate = inject(TranslateService);
 
   // Reactive state using signals
   orders = signal<Order[]>([]);
   isLoading = signal(false);
   error = signal<string | null>(null);
+
+  constructor() {
+    addIcons({alertCircleOutline,receiptOutline,chevronDownCircleOutline});
+  }
 
   ngOnInit(): void {
     this.loadOrders();
@@ -64,7 +73,7 @@ export class OrderHistoryPage implements OnInit {
       const selectedPos = this.posService.getSelectedPos();
 
       if (!tenantId || !selectedPos) {
-        this.error.set('Tenant or POS information is missing');
+        this.error.set(this.translate.instant('ORDER_HISTORY.ERROR_MISSING_INFO'));
         this.isLoading.set(false);
         return;
       }
@@ -85,7 +94,7 @@ export class OrderHistoryPage implements OnInit {
       this.orders.set(filteredOrders);
     } catch (err) {
       const errorMsg =
-        err instanceof Error ? err.message : 'Failed to load order history';
+        err instanceof Error ? err.message : this.translate.instant('ORDER_HISTORY.ERROR_LOAD_FAILED');
       this.error.set(errorMsg);
       console.error('Error loading orders:', err);
     } finally {

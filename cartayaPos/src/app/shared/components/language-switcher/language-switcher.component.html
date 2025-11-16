@@ -1,0 +1,21 @@
+<ng-container>
+  <!-- Language Selector Button -->
+  <ion-button
+    (click)="openLanguageActionSheet()"
+    [disabled]="isLoading()"
+    [class]="'language-switcher-' + displayMode"
+    fill="outline"
+    size="default"
+    [attr.aria-label]="'Change language, currently ' + getCurrentLanguageName()">
+    <ion-icon name="language-outline" slot="start"></ion-icon>
+    {{ getCurrentLanguageName() }}
+  </ion-button>
+
+  <!-- Loading Indicator -->
+  <ion-loading
+    [isOpen]="isLoading()"
+    [message]="'COMMON.LOADING.MESSAGE' | translate"
+    [backdropDismiss]="false"
+    aria-live="polite">
+  </ion-loading>
+</ng-container>

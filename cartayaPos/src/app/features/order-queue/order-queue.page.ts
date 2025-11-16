@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import {
   IonBadge,
   IonButton, IonContent, IonIcon,
@@ -10,6 +10,7 @@ import {
   IonSpinner, LoadingController,
   ToastController
 } from '@ionic/angular/standalone';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
 import { chevronDownCircleOutline, refreshOutline, syncOutline, trashOutline } from 'ionicons/icons';
 import { NetworkService } from '../../core/services/network.service';
@@ -22,6 +23,7 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
   standalone: true,
   imports: [
     CommonModule,
+    TranslateModule,
     IonContent,
     IonList,
     IonItem,
@@ -37,12 +39,13 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
   templateUrl: './order-queue.page.html',
   styleUrls: ['./order-queue.page.scss'],
 })
-export class OrderQueuePage implements OnInit {
+export class OrderQueuePage {
   queueService = inject(OrderQueueService);
   syncCoordinator = inject(SyncCoordinatorService);
   networkService = inject(NetworkService);
   private loadingCtrl = inject(LoadingController);
   private toastCtrl = inject(ToastController);
+  private translate = inject(TranslateService);
 
   // Icons
   refreshOutline = refreshOutline;
@@ -51,10 +54,6 @@ export class OrderQueuePage implements OnInit {
 
   constructor() {
     addIcons({ refreshOutline, syncOutline, trashOutline, chevronDownCircleOutline });
-  }
-
-  ngOnInit(): void {
-    // Queue already loaded by service
   }
 
   /**
@@ -161,6 +160,14 @@ export class OrderQueuePage implements OnInit {
       default:
         return 'medium';
     }
+  }
+
+  /**
+   * Get translated status text
+   */
+  getTranslatedStatus(status: QueuedOrder['status']): string {
+    const statusKey = `ORDER_QUEUE.STATUS.${status.toUpperCase().replace('-', '_')}`;
+    return this.translate.instant(statusKey);
   }
 
   /**

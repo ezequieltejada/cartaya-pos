@@ -69,7 +69,7 @@ export class OrderHistoryService {
     const since = new Date(now.getTime() - hours * 60 * 60 * 1000);
 
     // Build query parameters
-    let params = new HttpParams()
+    const params = new HttpParams()
       .set('dateFrom', since.toISOString())
       .set('dateTo', now.toISOString())
       .set('limit', limit.toString())
@@ -140,7 +140,7 @@ export class OrderHistoryService {
     }
 
     // Build query parameters
-    let params = new HttpParams()
+    const params = new HttpParams()
       .set('dateFrom', dateFrom)
       .set('dateTo', dateTo)
       .set('limit', limit.toString())
@@ -200,7 +200,7 @@ export class OrderHistoryService {
     const since = new Date(now.getTime() - hours * 60 * 60 * 1000);
 
     // Build query parameters
-    let params = new HttpParams()
+    const params = new HttpParams()
       .set('status', status)
       .set('dateFrom', since.toISOString())
       .set('dateTo', now.toISOString())

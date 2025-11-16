@@ -3,6 +3,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { IonButton, IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonContent, IonInput, IonSpinner, IonText, ToastController } from '@ionic/angular/standalone';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
@@ -11,6 +12,7 @@ import { AuthService } from '../../../core/services/auth.service';
   imports: [
     CommonModule,
     ReactiveFormsModule,
+    TranslateModule,
     IonContent,
     IonCard,
     IonCardHeader,
@@ -29,6 +31,7 @@ export class LoginPage implements OnInit {
   private router = inject(Router);
   private formBuilder = inject(FormBuilder);
   private toastController = inject(ToastController);
+  private translate = inject(TranslateService);
 
   loginForm!: FormGroup;
 
@@ -45,8 +48,9 @@ export class LoginPage implements OnInit {
 
   async onLogin(): Promise<void> {
     if (this.loginForm.invalid) {
+      const message = this.translate.instant('AUTH.LOGIN.VALIDATION.FILL_ALL_FIELDS');
       const toast = await this.toastController.create({
-        message: 'Please fill in all fields correctly.',
+        message,
         duration: 2000,
         position: 'bottom',
         color: 'warning',
@@ -62,13 +66,14 @@ export class LoginPage implements OnInit {
         this.router.navigate(['/pos-selection']);
       },
       error: async (error: unknown): Promise<void> => {
-        let message = 'Login failed. Please try again.';
+        let messageKey = 'AUTH.ERRORS.LOGIN_FAILED';
         if (error instanceof Object && 'status' in error && error.status === 401) {
-          message = 'Invalid email or password.';
+          messageKey = 'AUTH.ERRORS.INVALID_CREDENTIALS';
         } else if (!navigator.onLine) {
-          message = 'No internet connection.';
+          messageKey = 'AUTH.ERRORS.NO_INTERNET';
         }
 
+        const message = this.translate.instant(messageKey);
         const toast = await this.toastController.create({
           message,
           duration: 3000,

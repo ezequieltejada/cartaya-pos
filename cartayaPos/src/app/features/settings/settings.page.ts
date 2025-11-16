@@ -12,6 +12,7 @@ import {
   IonLabel,
   IonList, IonSpinner
 } from '@ionic/angular/standalone';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
 import {
   bluetoothOutline,
@@ -29,6 +30,7 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
   standalone: true,
   imports: [
     CommonModule,
+    TranslateModule,
     IonContent,
     IonCard,
     IonCardContent,
@@ -50,6 +52,7 @@ export class SettingsPage implements OnInit, OnDestroy {
   private router = inject(Router);
   protected printerService = inject(Printer);
   protected orderHistoryService = inject(OrderHistoryService);
+  private translate = inject(TranslateService);
 
   // Properties for testing order history service
   orderHistory: any[] = [];
@@ -94,11 +97,11 @@ export class SettingsPage implements OnInit, OnDestroy {
 
   get connectionStatus(): string {
     if (this.isConnected && this.selectedPrinter) {
-      return 'Connected';
+      return this.translate.instant('SETTINGS.CONNECTED');
     } else if (this.selectedPrinter && !this.isConnected) {
-      return 'Selected (Not Connected)';
+      return this.translate.instant('SETTINGS.SELECTED_NOT_CONNECTED');
     }
-    return 'No printer selected';
+    return this.translate.instant('SETTINGS.NO_PRINTER_SELECTED');
   }
 
   get statusColor(): string {

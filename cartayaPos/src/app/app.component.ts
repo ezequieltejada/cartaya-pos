@@ -1,47 +1,64 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Device } from '@capacitor/device';
-import { IonApp, IonBadge, IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonMenu, IonMenuToggle, IonRouterOutlet, IonTitle, IonToolbar } from '@ionic/angular/standalone';
+import { IonApp, IonBadge, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonItem, IonItemDivider, IonLabel, IonList, IonMenu, IonMenuToggle, IonRouterOutlet, IonTitle, IonToolbar, MenuController, Platform } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
-import { cartOutline, checkmarkCircleOutline, closeCircleOutline, cloudUploadOutline, gridOutline, homeOutline, imageOutline, logOutOutline, menu, receiptOutline, settingsOutline } from 'ionicons/icons';
+import { cartOutline, checkmarkCircleOutline, close, closeCircleOutline, cloudUploadOutline, gridOutline, homeOutline, imageOutline, logOutOutline, menu, receiptOutline, settingsOutline } from 'ionicons/icons';
 import { AuthService } from './core/services/auth.service';
+import { LanguageService } from './core/services/language.service';
 import { OrderQueueService } from './core/services/order-queue.service';
 import { PosService } from './core/services/pos.service';
 import { StorageService } from './core/services/storage.service';
 import { SyncCoordinatorService } from './core/services/sync-coordinator.service';
 import { TenantService } from './core/services/tenant.service';
+import { LanguageSwitcherComponent } from './shared/components/language-switcher/language-switcher.component';
 
 @Component({
   selector: 'app-root',
   templateUrl: 'app.component.html',
-  imports: [IonApp, IonRouterOutlet, IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonIcon, IonLabel, IonMenuToggle, RouterLink, RouterLinkActive, TranslateModule, IonBadge],
+  imports: [IonApp, IonRouterOutlet, IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonIcon, IonLabel, IonMenuToggle, RouterLink, RouterLinkActive, TranslateModule, IonBadge, IonItemDivider, LanguageSwitcherComponent, IonButtons, IonButton],
+  styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit, OnDestroy {
+  private platform = inject(Platform);
+  private menuController = inject(MenuController);
   private storageService = inject(StorageService);
   private authService = inject(AuthService);
+  private languageService = inject(LanguageService);
   private tenantService = inject(TenantService);
   private posService = inject(PosService);
   private syncCoordinator = inject(SyncCoordinatorService);
   queueService = inject(OrderQueueService);
   private router = inject(Router);
   private translate = inject(TranslateService);
-  currentLanguage = 'en';
 
   constructor() {
-    addIcons({ menu, imageOutline, cartOutline, checkmarkCircleOutline, logOutOutline, homeOutline, gridOutline, settingsOutline, closeCircleOutline, receiptOutline, cloudUploadOutline });
+    addIcons({ menu, imageOutline, cartOutline, checkmarkCircleOutline, logOutOutline, homeOutline, gridOutline, settingsOutline, closeCircleOutline, receiptOutline, cloudUploadOutline, close });
   }
 
   async ngOnInit() {
-    // Initialize storage first
+    // Wait for platform to be ready
+    await this.platform.ready();
+
+    // Initialize storage first (required by LanguageService)
     try {
       await this.storageService.init();
-      
+      await this.authService.loadTokensFromStorage();
+
       // After storage is initialized, restore tenant and PoS selections
       await this.tenantService.restoreSelectedTenant();
       await this.posService.restoreSelectedPos();
     } catch (error) {
       console.error('Failed to initialize storage:', error);
+    }
+
+    // Initialize language on app startup (depends on StorageService)
+    try {
+      await this.languageService.init();
+    } catch (error) {
+      console.error('Failed to initialize language:', error);
+      // Continue with app startup even if language init fails
     }
 
     // Initialize SyncCoordinator
@@ -63,14 +80,6 @@ export class AppComponent implements OnInit, OnDestroy {
         this.router.navigate(['/auth/login']);
       },
     });
-
-    // Initialize the translation service with default language
-    this.translate.setDefaultLang('en');
-
-    // Get device or browser language
-    const detectedLanguage = await this.getDetectedLanguage();
-    this.translate.use(detectedLanguage);
-    this.currentLanguage = detectedLanguage;
   }
 
   /**
@@ -116,13 +125,14 @@ export class AppComponent implements OnInit, OnDestroy {
    * Gets the browser language using navigator API
    */
   private getBrowserLanguage(): string | null {
-    const language = navigator.language || (navigator as any).userLanguage;
+    const language = navigator.language || (navigator as unknown as { userLanguage?: string }).userLanguage;
     return language || null;
   }
 
   /**
    * Maps language codes to supported languages
    * Extracts the primary language code (e.g., 'es-MX' -> 'es')
+   * Supported languages: ['en', 'es', 'ca']
    */
   private mapLanguageCode(languageCode: string): string {
     if (!languageCode) return 'en';
@@ -134,15 +144,22 @@ export class AppComponent implements OnInit, OnDestroy {
     const supportedLanguages: { [key: string]: string } = {
       es: 'es',
       en: 'en',
-      // Add more mappings as needed (e.g., 'fr': 'fr', 'de': 'de')
+      ca: 'ca',
     };
 
     return supportedLanguages[primaryLanguage] || 'en';
   }
 
-  switchLanguage(language: string) {
-    this.translate.use(language);
-    this.currentLanguage = language;
+  /**
+   * Handle language change from LanguageSwitcher component
+   * This method is called when the user selects a language from the menu
+   * 
+   * @param languageCode - The selected language code ('en', 'es', or 'ca')
+   */
+  onLanguageChanged(languageCode: string): void {
+    console.log('Language changed to:', languageCode);
+    // Optionally close menu after language change for better UX
+    // this.menuController.close('main-menu');
   }
 
   logout() {
@@ -151,5 +168,9 @@ export class AppComponent implements OnInit, OnDestroy {
         this.router.navigate(['/auth/login']);
       },
     });
+  }
+
+  closeMenu() {
+    this.menuController.close('main-menu');
   }
 }

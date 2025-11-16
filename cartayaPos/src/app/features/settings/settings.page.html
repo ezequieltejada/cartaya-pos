@@ -1,11 +1,11 @@
-<app-page-header title="Settings"></app-page-header>
+<app-page-header title="{{ 'SETTINGS.TITLE' | translate }}"></app-page-header>
 
 <ion-content class="ion-padding">
   <div class="settings-container">
     <!-- Connection Status Section -->
     <ion-card class="status-card">
       <ion-card-header>
-        <ion-card-title>Printer Connection</ion-card-title>
+        <ion-card-title>{{ 'SETTINGS.PRINTER_CONNECTION' | translate }}</ion-card-title>
       </ion-card-header>
       <ion-card-content>
         <div class="status-indicator">
@@ -22,13 +22,13 @@
         @if (selectedPrinter) {
           <div class="printer-info">
             <div class="info-item">
-              <span class="info-label">Printer:</span>
-              <span class="info-value">{{ selectedPrinter.name || 'Unknown Device' }}</span>
+              <span class="info-label">{{ 'SETTINGS.PRINTER_NAME' | translate }}</span>
+              <span class="info-value">{{ selectedPrinter.name || ('SETTINGS.UNKNOWN_DEVICE' | translate) }}</span>
             </div>
           </div>
         } @else {
           <div class="no-printer-selected">
-            <p>No printer selected</p>
+            <p>{{ 'SETTINGS.NO_PRINTER_SELECTED' | translate }}</p>
           </div>
         }
 
@@ -40,7 +40,7 @@
               expand="block"
               color="primary">
               <ion-icon slot="start" name="bluetooth-outline"></ion-icon>
-              Connect
+              {{ 'SETTINGS.CONNECT_BUTTON' | translate }}
             </ion-button>
           }
           @if (isConnected) {
@@ -49,7 +49,7 @@
               expand="block"
               color="danger">
               <ion-icon slot="start" name="close-circle-outline"></ion-icon>
-              Disconnect
+              {{ 'SETTINGS.DISCONNECT_BUTTON' | translate }}
             </ion-button>
           }
           @if (selectedPrinter) {
@@ -59,7 +59,7 @@
               color="medium"
               fill="outline">
               <ion-icon slot="start" name="close-circle-outline"></ion-icon>
-              Clear Selection
+              {{ 'SETTINGS.CLEAR_SELECTION' | translate }}
             </ion-button>
           }
         </div>
@@ -69,7 +69,7 @@
     <!-- Scan Section -->
     <ion-card class="scan-card">
       <ion-card-header>
-        <ion-card-title>Available Printers</ion-card-title>
+        <ion-card-title>{{ 'SETTINGS.AVAILABLE_PRINTERS' | translate }}</ion-card-title>
       </ion-card-header>
       <ion-card-content>
         <ion-button 
@@ -82,7 +82,7 @@
           } @else {
             <ion-icon slot="start" name="bluetooth-outline"></ion-icon>
           }
-          {{ isScanning ? 'Scanning...' : 'Scan for Printers' }}
+          {{ isScanning ? ('SETTINGS.SCANNING' | translate) : ('SETTINGS.SCAN_FOR_PRINTERS' | translate) }}
         </ion-button>
 
         <!-- Printers List -->
@@ -99,7 +99,7 @@
                   class="radio-icon">
                 </ion-icon>
                 <ion-label>
-                  <h3>{{ printer.name || 'Unknown Device' }}</h3>
+                  <h3>{{ printer.name || ('SETTINGS.UNKNOWN_DEVICE' | translate) }}</h3>
                 </ion-label>
                 @if (isConnected && selectedAddress === printer.address) {
                   <ion-icon slot="end" name="checkmark-circle" color="success"></ion-icon>
@@ -109,7 +109,7 @@
           </ion-list>
         } @else if (!isScanning) {
           <div class="empty-state">
-            <p>No printers found. Click "Scan for Printers" to search for available Bluetooth devices.</p>
+            <p>{{ 'SETTINGS.NO_PRINTERS_FOUND' | translate }}</p>
           </div>
         }
       </ion-card-content>

@@ -1,0 +1,179 @@
+{
+  "COMMON": {
+    "BUTTONS": {
+      "CANCEL": "Cancel·lar",
+      "CONFIRM": "Confirmar",
+      "SAVE": "Guardar",
+      "BACK": "Enrere",
+      "CONTINUE": "Continuar",
+      "DELETE": "Eliminar",
+      "EDIT": "Editar",
+      "OK": "D'acord",
+      "YES": "Sí",
+      "NO": "No"
+    },
+    "ERRORS": {
+      "NETWORK": "Error de xarxa. Si us plau, intenteu de nou.",
+      "GENERIC": "Quelcom ha anat malament. Si us plau, intenteu de nou.",
+      "VALIDATION": "Si us plau, comproveu la vostra entrada i intenteu de nou.",
+      "TIMEOUT": "La sol·licitud ha esgotat el temps d'espera. Si us plau, intenteu de nou."
+    },
+    "LOADING": {
+      "MESSAGE": "Carregant...",
+      "WAIT": "Si us plau, espereu..."
+    },
+    "LANGUAGE": "Idioma",
+    "ENGLISH": "English",
+    "SPANISH": "Español",
+    "CATALAN": "Català"
+  },
+  "AUTH": {
+    "LOGIN": {
+      "TITLE": "Cartaya POS",
+      "CARD_TITLE": "Iniciar Sessió",
+      "EMAIL_LABEL": "Correu Electrònic",
+      "PASSWORD_LABEL": "Contrasenya",
+      "LOGIN_BUTTON": "Iniciar Sessió",
+      "FORGOT_PASSWORD": "Heu oblidat la vostra contrasenya?",
+      "LOGGING_IN": "Iniciant sessió...",
+      "VALIDATION": {
+        "EMAIL_REQUIRED": "El correu electrònic és obligatori",
+        "EMAIL_INVALID": "Format de correu invàlid",
+        "PASSWORD_REQUIRED": "La contrasenya és obligatòria",
+        "PASSWORD_MIN_LENGTH": "La contrasenya ha de tenir almenys 8 caràcters",
+        "FILL_ALL_FIELDS": "Si us plau, ompliu tots els camps correctament."
+      }
+    },
+    "ERRORS": {
+      "LOGIN_FAILED": "Error en iniciar sessió. Si us plau, intenteu de nou.",
+      "INVALID_CREDENTIALS": "Correu o contrasenya invàlids.",
+      "SESSION_EXPIRED": "La vostra sessió ha expirat. Si us plau, inicieu sessió de nou.",
+      "NO_INTERNET": "Sense connexió a Internet."
+    }
+  },
+  "POS_SELECTION": {
+    "TITLE": "Seleccioneu Punt de Venda",
+    "SELECT_PROMPT": "Si us plau, seleccioneu un punt de venda per continuar",
+    "NO_POS_AVAILABLE": "No hi ha Punts de Venda Disponibles",
+    "NO_POS_MESSAGE": "No teniu punts de venda assignats. Si us plau, contacteu amb l'administrador.",
+    "LOADING_MESSAGE": "Carregant ubicacions disponibles...",
+    "CONTINUE_BUTTON": "Continuar"
+  },
+  "PRODUCT_GRID": {
+    "TITLE": "Productes",
+    "SEARCH_PLACEHOLDER": "Cercar productes...",
+    "NO_PRODUCTS": "No hi ha productes disponibles.",
+    "NO_SEARCH_RESULTS": "No s'han trobat productes per a",
+    "PRODUCT_COUNT": "Productes: {count}",
+    "RETRY_BUTTON": "Reintentar",
+    "PRINTER_UNAVAILABLE": "La impressora no està disponible. Si us plau, comproveu la connexió.",
+    "GO_TO_SETTINGS": "Anar a Configuració",
+    "CLEAR_SEARCH": "Netejar Recerca",
+    "PRODUCT_ADDED": "afegit a la comanda",
+    "LOADING": "Carregant..."
+  },
+  "MODIFIERS": {
+    "TITLE": "Opcions del Producte",
+    "LOADING": "Carregant opcions...",
+    "ERROR_TITLE": "No s'han pogut carregar les opcions",
+    "RETRY_BUTTON": "Reintentar",
+    "CONTINUE_WITHOUT": "Continuar sense opcions",
+    "NO_MODIFIERS": "Sense Opcions Disponibles",
+    "NO_MODIFIERS_MESSAGE": "Aquest producte no té opcions de personalització.",
+    "ADD_TO_ORDER": "Afegir a la Comanda",
+    "SELECT_LABEL": "Seleccioneu Opcions",
+    "CONFIRM_BUTTON": "Afegir al Carretó",
+    "BACK_BUTTON": "Enrere",
+    "TOTAL_LABEL": "Total",
+    "ITEM_ADDED": "Article afegit a la comanda",
+    "ITEM_UPDATED": "Article actualitzat"
+  },
+  "ORDER_SUMMARY": {
+    "TITLE": "Resum de la Comanda",
+    "SUBTOTAL": "Subtotal",
+    "TOTAL": "Total",
+    "ITEMS_COUNT": "Articles: {count}",
+    "CANCEL_ORDER": "Cancel·lar Comanda",
+    "CASH_ORDER": "Pagar en Efectiu",
+    "EMPTY_CART": "El vostre carretó està buit.",
+    "DISCOUNT": "Descompte",
+    "TAX": "Impost",
+    "NO_ITEMS": "Sense articles en la comanda",
+    "CANCEL_CONFIRMATION": "Cancel·lar Comanda",
+    "CANCEL_MESSAGE": "¿Esteu segur? Això esborrarà tots els articles.",
+    "COMPLETE_ORDER": "Completar Comanda",
+    "PROCESSING": "Processant...",
+    "ORDER_COMPLETED": "¡Comanda completada!",
+    "ORDER_COMPLETED_NO_PRINT": "¡Comanda completada! (Impressió omesa)",
+    "ORDER_FAILED": "La comanda ha fallat. Si us plau, intenteu de nou.",
+    "NO_PRINTER_SELECTED": "Sense impressora seleccionada. La comanda es guardarà sense imprimir.",
+    "PRINTER_DISCONNECTED": "La impressora va ser desconnectada manualment. La comanda es guardarà sense imprimir.",
+    "PRINT_FAILED": "Comanda guardada però la impressió ha fallat",
+    "ITEM_REMOVED": "Article eliminat",
+    "SELECT_POS_TENANT": "Si us plau, seleccioneu PdV i Inquilí"
+  },
+  "SETTINGS": {
+    "TITLE": "Configuració",
+    "PRINTER_SECTION": "Configuració de l'Impressora",
+    "LANGUAGE_SECTION": "Configuració d'Idioma",
+    "CONNECT_BUTTON": "Connectar",
+    "DISCONNECT_BUTTON": "Desconnectar",
+    "CONNECTION_STATUS": "Estat de la Connexió",
+    "CONNECTED": "Connectat",
+    "DISCONNECTED": "Desconnectat",
+    "CONNECTING": "Connectant...",
+    "TEST_PRINTER": "Provar Impressora",
+    "PRINTER_CONNECTION": "Connexió de l'Impressora",
+    "AVAILABLE_PRINTERS": "Impressores Disponibles",
+    "SCAN_FOR_PRINTERS": "Cercar Impressores",
+    "SCANNING": "Cercant...",
+    "NO_PRINTER_SELECTED": "Sense impressora seleccionada",
+    "SELECTED_NOT_CONNECTED": "Seleccionada (Sense connexió)",
+    "NO_PRINTERS_FOUND": "No s'han trobat impressores. Feu clic a \"Cercar Impressores\" per cercar dispositius Bluetooth disponibles.",
+    "PRINTER_NAME": "Impressora:",
+    "UNKNOWN_DEVICE": "Dispositiu Desconegut",
+    "CLEAR_SELECTION": "Netejar Selecció"
+  },
+  "CART": {
+    "TITLE": "Resum de la Comanda"
+  },
+  "ORDER_QUEUE": {
+    "TITLE": "Cua de Comandes",
+    "REFRESH_PULLING": "Llisca per actualitzar",
+    "REFRESH_REFRESHING": "Actualitzant...",
+    "OFFLINE_MESSAGE": "Esteu fora de línia. Les comandes es sincronitzaran quan es restableixi la connexió.",
+    "SYNCING_MESSAGE": "Sincronitzant comandes...",
+    "EMPTY_TITLE": "Cua Buida",
+    "EMPTY_MESSAGE": "Totes les comandes han estat sincronitzades",
+    "ORDER_PREFIX": "Comanda #",
+    "ITEMS_CONNECTOR": "articles ·",
+    "STATUS": {
+      "PENDING": "pendent",
+      "SYNCING": "sincronitzant",
+      "OUT_OF_SYNC": "fora de sincronia",
+      "SYNCED": "sincronitzat"
+    }
+  },
+  "ORDER_HISTORY": {
+    "TITLE": "Historial de Comandes",
+    "REFRESH_PULLING": "Llisca per actualitzar",
+    "REFRESH_REFRESHING": "Actualitzant...",
+    "LOADING_MESSAGE": "Carregant comandes...",
+    "RETRY_BUTTON": "Reintentar",
+    "EMPTY_MESSAGE": "No hi ha comandes en les últimes 24 hores",
+    "ORDER_PREFIX": "Comanda #",
+    "ERROR_MISSING_INFO": "Falta informació de l'inquilí o PdV",
+    "ERROR_LOAD_FAILED": "Error en carregar l'historial de comandes"
+  },
+  "MENU": {
+    "TITLE": "Menú",
+    "PRODUCTS": "Productes",
+    "ORDER_HISTORY": "Historial de Comandes",
+    "ORDER_QUEUE": "Cua de Comandes",
+    "SETTINGS": "Configuració",
+    "LANGUAGE": "Idioma",
+    "LOGOUT": "Tancar Sessió"
+  },
+  "HOME": "Inici",
+  "WELCOME": "Benvingut a Cartaya POS"
+}

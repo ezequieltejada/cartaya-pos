@@ -5,8 +5,10 @@ import {
   IonCardContent,
   IonCardHeader,
   IonCardTitle,
-  IonImg,
+  IonIcon
 } from '@ionic/angular/standalone';
+import { addIcons } from 'ionicons';
+import { imageOutline } from 'ionicons/icons';
 import { Modifier } from '../../../../core/models/modifier.model';
 import { Product } from '../../../../core/models/product.model';
 import { ModifierService } from '../../../../core/services/modifier.service';
@@ -36,7 +38,7 @@ import { TenantService } from '../../../../core/services/tenant.service';
     IonCardHeader,
     IonCardTitle,
     IonCardContent,
-    IonImg,
+    IonIcon
   ],
   templateUrl: './product-card.component.html',
   styleUrls: ['./product-card.component.scss'],
@@ -46,6 +48,10 @@ export class ProductCardComponent implements OnChanges {
   private modifierService = inject(ModifierService);
   private tenantService = inject(TenantService);
   private posService = inject(PosService);
+
+  constructor() {
+    addIcons({ imageOutline });
+  }
 
   /**
    * Product to display in the card

@@ -1265,6 +1265,55 @@ Deletes a price.
 
 **Response:** Paginated list of order objects
 
+## User Settings
+
+User settings allow authenticated users to store and retrieve personal preferences such as preferred language and theme. These settings are stored directly in the user record using Better Auth's additionalFields feature.
+
+### GET /api/users/me/settings
+
+Retrieves the current authenticated user's personal settings.
+
+**Authorization:** Authenticated user required
+
+**Purpose:** Allows users to retrieve their personal preferences like preferred language and theme. These settings can be used to customize the user experience across the application.
+
+**Response (200):**
+```json
+{
+  "preferredLanguage": "en",
+  "theme": "light"
+}
+```
+
+**Error Responses:**
+- `401`: User not authenticated
+
+---
+
+### PATCH /api/users/me/settings
+
+Updates the current authenticated user's personal settings.
+
+**Authorization:** Authenticated user required
+
+**Purpose:** Allows users to update their personal preferences. Only provided fields will be updated - other settings remain unchanged. This enables users to customize their experience without affecting other users.
+
+**Request Body:** (all fields optional)
+- `preferredLanguage` (string): User's preferred language code (e.g., "en", "es", "fr")
+- `theme` (string): User's preferred theme (e.g., "light", "dark")
+
+**Response (200):**
+```json
+{
+  "preferredLanguage": "es",
+  "theme": "dark"
+}
+```
+
+**Error Responses:**
+- `400`: Validation error (empty or invalid field values)
+- `401`: User not authenticated
+
 ## Stock
 
 ### POST /tenants/:tenantId/stock

@@ -1,5 +1,8 @@
 <ion-card (click)="onTap()">
-  <ion-img [src]="imageUrl" loading="lazy"></ion-img>
+  <!-- <ion-img [src]="imageUrl" loading="lazy"></ion-img> -->
+  <div class="imageContainer">
+    <ion-icon name="image-outline"></ion-icon>
+  </div>
   <ion-card-header>
     <ion-card-title>{{ product.name }}</ion-card-title>
   </ion-card-header>

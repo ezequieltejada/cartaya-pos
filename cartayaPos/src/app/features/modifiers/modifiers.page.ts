@@ -2,24 +2,25 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
-  IonBackButton,
-  IonButton,
-  IonButtons,
-  IonContent,
-  IonFab,
-  IonFabButton,
-  IonHeader,
-  IonIcon,
-  IonItem,
-  IonItemDivider,
-  IonLabel,
-  IonList,
-  IonSpinner,
-  IonText,
-  IonTitle,
-  IonToolbar,
-  ToastController,
+    IonBackButton,
+    IonButton,
+    IonButtons,
+    IonContent,
+    IonFab,
+    IonFabButton,
+    IonHeader,
+    IonIcon,
+    IonItem,
+    IonItemDivider,
+    IonLabel,
+    IonList,
+    IonSpinner,
+    IonText,
+    IonTitle,
+    IonToolbar,
+    ToastController,
 } from '@ionic/angular/standalone';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { add, checkmark, remove } from 'ionicons/icons';
 import { Subject, takeUntil } from 'rxjs';
 import { Modifier } from '../../core/models/modifier.model';
@@ -45,6 +46,7 @@ import { TenantService } from '../../core/services/tenant.service';
   standalone: true,
   imports: [
     CommonModule,
+    TranslateModule,
     IonHeader,
     IonToolbar,
     IonButtons,
@@ -76,38 +78,38 @@ import { TenantService } from '../../core/services/tenant.service';
       <!-- Loading State -->
       <div *ngIf="isLoading()" class="loading-container">
         <ion-spinner></ion-spinner>
-        <p>Loading modifiers...</p>
+        <p>{{ 'MODIFIERS.LOADING' | translate }}</p>
       </div>
 
       <!-- Error State -->
       <div *ngIf="error() && !isLoading()" class="error-container">
         <ion-text color="danger">
-          <h2>Unable to Load Modifiers</h2>
+          <h2>{{ 'MODIFIERS.ERROR_TITLE' | translate }}</h2>
           <p>{{ error() }}</p>
         </ion-text>
         <ion-button expand="block" (click)="retryFetchModifiers()">
-          Retry
+          {{ 'MODIFIERS.RETRY_BUTTON' | translate }}
         </ion-button>
         <ion-button expand="block" fill="outline" (click)="addWithoutModifiers()">
-          Continue Without Modifiers
+          {{ 'MODIFIERS.CONTINUE_WITHOUT' | translate }}
         </ion-button>
       </div>
 
       <!-- Empty State -->
       <div *ngIf="!isLoading() && !error() && modifiersList().length === 0" class="empty-state">
         <ion-text>
-          <h2>No Modifiers Available</h2>
-          <p>This product doesn't have any customization options.</p>
+          <h2>{{ 'MODIFIERS.NO_MODIFIERS' | translate }}</h2>
+          <p>{{ 'MODIFIERS.NO_MODIFIERS_MESSAGE' | translate }}</p>
         </ion-text>
         <ion-button expand="block" (click)="addWithoutModifiers()">
-          Add to Order
+          {{ 'MODIFIERS.ADD_TO_ORDER' | translate }}
         </ion-button>
       </div>
 
       <!-- Modifiers List -->
       <ion-list *ngIf="!isLoading() && !error() && modifiersList().length > 0">
         <ion-item-divider>
-          <ion-label>Select Modifiers</ion-label>
+          <ion-label>{{ 'MODIFIERS.SELECT_LABEL' | translate }}</ion-label>
         </ion-item-divider>
 
         <ion-item
@@ -239,6 +241,7 @@ export class ModifiersPage implements OnInit, OnDestroy {
   private posService = inject(PosService);
   private toastController = inject(ToastController);
   private menuService = inject(MenuService);
+  private translate = inject(TranslateService);
 
   private destroy$ = new Subject<void>();
 
@@ -553,7 +556,8 @@ export class ModifiersPage implements OnInit, OnDestroy {
    * Show success toast notification when item is added/updated in order
    */
   private async showSuccessToast(): Promise<void> {
-    const message = this.isEditing() ? 'Item updated' : 'Item added to order';
+    const messageKey = this.isEditing() ? 'MODIFIERS.ITEM_UPDATED' : 'MODIFIERS.ITEM_ADDED';
+    const message = this.translate.instant(messageKey);
     const toast = await this.toastController.create({
       message,
       duration: 2000,

@@ -1,9 +1,9 @@
-<app-page-header [title]="selectedPos?.name || 'Products'" id="product-catalog-content">
+<app-page-header [title]="selectedPos?.name || ('PRODUCT_GRID.TITLE' | translate)" id="product-catalog-content">
   <ion-searchbar 
     slot="secondary"
     [(ngModel)]="searchQuery"
     (ionInput)="onSearchInput($event)"
-    placeholder="Search products..."
+    [placeholder]="'PRODUCT_GRID.SEARCH_PLACEHOLDER' | translate"
     debounce="300"
     >
   </ion-searchbar>
@@ -19,7 +19,7 @@
           <p class="error-message">{{ errorMessage }}</p>
           <ion-button size="small" fill="outline" (click)="retry()">
             <ion-icon slot="start" name="refresh-outline"></ion-icon>
-            Retry
+            {{ 'PRODUCT_GRID.RETRY_BUTTON' | translate }}
           </ion-button>
         </div>
       </div>
@@ -32,10 +32,10 @@
       <div class="printer-unavailable-content">
         <ion-icon name="alert-circle-outline"></ion-icon>
         <div>
-          <p class="printer-message">Printer is unavailable. Please check the connection.</p>
+          <p class="printer-message">{{ 'PRODUCT_GRID.PRINTER_UNAVAILABLE' | translate }}</p>
           <ion-button size="small" fill="outline" (click)="navigateToSettings()">
             <ion-icon slot="start" name="settings-outline"></ion-icon>
-            Go to Settings
+            {{ 'PRODUCT_GRID.GO_TO_SETTINGS' | translate }}
           </ion-button>
         </div>
       </div>
@@ -89,7 +89,7 @@
     *ngIf="!isLoading && products.length === 0 && !searchQuery"
     class="empty-state"
   >
-    <p>No products available</p>
+    <p>{{ 'PRODUCT_GRID.NO_PRODUCTS' | translate }}</p>
   </div>
 
   <!-- Empty state for no search results -->
@@ -98,8 +98,8 @@
     class="empty-state"
   >
     <ion-icon name="search-outline" size="large"></ion-icon>
-    <p>No products found for "{{ searchQuery }}"</p>
-    <ion-button (click)="clearSearch()">Clear Search</ion-button>
+    <p>{{ 'PRODUCT_GRID.NO_SEARCH_RESULTS' | translate }} "{{ searchQuery }}"</p>
+    <ion-button (click)="clearSearch()">{{ 'PRODUCT_GRID.CLEAR_SEARCH' | translate }}</ion-button>
   </div>
 
   <!-- FAB Button for Cart (Fixed at end/bottom) -->

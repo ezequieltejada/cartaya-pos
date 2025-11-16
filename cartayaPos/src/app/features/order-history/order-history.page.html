@@ -1,13 +1,13 @@
-<app-page-header title="Order History"></app-page-header>
+<app-page-header title="{{ 'ORDER_HISTORY.TITLE' | translate }}"></app-page-header>
 
 <ion-content>
   <!-- Pull-to-Refresh -->
   <ion-refresher slot="fixed" (ionRefresh)="onRefresh($event)">
     <ion-refresher-content
       pullingIcon="chevron-down-circle-outline"
-      pullingText="Pull to refresh"
+      pullingText="{{ 'ORDER_HISTORY.REFRESH_PULLING' | translate }}"
       refreshingSpinner="circles"
-      refreshingText="Refreshing..."
+      refreshingText="{{ 'ORDER_HISTORY.REFRESH_REFRESHING' | translate }}"
     ></ion-refresher-content>
   </ion-refresher>
 
@@ -15,7 +15,7 @@
   @if (isLoading() && orders().length === 0) {
     <div class="state-container loading-state">
       <ion-spinner name="crescent"></ion-spinner>
-      <p>Loading orders...</p>
+      <p>{{ 'ORDER_HISTORY.LOADING_MESSAGE' | translate }}</p>
     </div>
   }
 
@@ -25,7 +25,7 @@
       <ion-icon name="alert-circle-outline"></ion-icon>
       <p>{{ error() }}</p>
       <ion-button expand="block" (click)="retryLoadOrders()">
-        Retry
+        {{ 'ORDER_HISTORY.RETRY_BUTTON' | translate }}
       </ion-button>
     </div>
   }
@@ -34,7 +34,7 @@
   @if (!isLoading() && !error() && orders().length === 0) {
     <div class="state-container empty-state">
       <ion-icon name="receipt-outline"></ion-icon>
-      <p>No orders in the last 24 hours</p>
+      <p>{{ 'ORDER_HISTORY.EMPTY_MESSAGE' | translate }}</p>
     </div>
   }
 
@@ -49,7 +49,7 @@
           class="order-item"
         >
           <div class="order-header" slot="start">
-            <h2 class="order-number">Order #{{ order.orderId || order.id }}</h2>
+            <h2 class="order-number">{{ 'ORDER_HISTORY.ORDER_PREFIX' | translate }}{{ order.orderId || order.id }}</h2>
             <p class="order-date">
               {{ order.createdAt | date: 'short' }}
             </p>
