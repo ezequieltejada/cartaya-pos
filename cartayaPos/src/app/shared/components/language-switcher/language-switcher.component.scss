@@ -7,6 +7,23 @@
   --language-radio-size: 44px;
 }
 
+// Action Sheet Button Consistency
+::ng-deep {
+  .language-switcher-menu,
+  .language-switcher-modal,
+  .language-switcher-popover {
+    ion-action-sheet {
+      .action-sheet-button {
+        // Ensure consistent button sizing and alignment
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+    }
+  }
+}
+
 ion-list {
   background: transparent;
   padding: 0;

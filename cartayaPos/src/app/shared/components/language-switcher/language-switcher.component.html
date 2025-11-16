@@ -1,26 +1,15 @@
 <ng-container>
-  <!-- Language Selection Radio Group -->
-  <ion-list [class]="'language-switcher-' + displayMode">
-    <ion-list-header>
-      <ion-label>{{ 'COMMON.LANGUAGE' | translate }}</ion-label>
-    </ion-list-header>
-
-    <!-- Radio Group for Language Selection -->
-    <ion-radio-group
-      [value]="currentLanguage()"
-      (ionChange)="onLanguageSelect($event.detail.value)"
-      aria-label="Select language">
-      
-      <ion-item *ngFor="let lang of availableLanguages" [disabled]="isLoading()">
-        <ion-radio
-          [value]="lang.code"
-          [disabled]="isLoading()"
-          [attr.aria-label]="'Select ' + lang.name">
-          {{ lang.name }}
-        </ion-radio>
-      </ion-item>
-    </ion-radio-group>
-  </ion-list>
+  <!-- Language Selector Button -->
+  <ion-button
+    (click)="openLanguageActionSheet()"
+    [disabled]="isLoading()"
+    [class]="'language-switcher-' + displayMode"
+    fill="outline"
+    size="default"
+    [attr.aria-label]="'Change language, currently ' + getCurrentLanguageName()">
+    <ion-icon name="language-outline" slot="start"></ion-icon>
+    {{ getCurrentLanguageName() }}
+  </ion-button>
 
   <!-- Loading Indicator -->
   <ion-loading
