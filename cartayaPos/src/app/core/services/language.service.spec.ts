@@ -490,3 +490,106 @@ describe('LanguageService', () => {
   });
 });
 
+// Helper functions for translation validation
+function getAllKeys(obj: Record<string, unknown>, prefix = ''): string[] {
+  let keys: string[] = [];
+
+  for (const key in obj) {
+    const fullKey = prefix ? `${prefix}.${key}` : key;
+
+    if (typeof obj[key] === 'object' && !Array.isArray(obj[key]) && obj[key] !== null) {
+      keys = keys.concat(getAllKeys(obj[key] as Record<string, unknown>, fullKey));
+    } else {
+      keys.push(fullKey);
+    }
+  }
+
+  return keys;
+}
+
+function findEmptyValues(obj: Record<string, unknown>, prefix = ''): string[] {
+  let emptyKeys: string[] = [];
+
+  for (const key in obj) {
+    const fullKey = prefix ? `${prefix}.${key}` : key;
+
+    if (typeof obj[key] === 'object' && !Array.isArray(obj[key]) && obj[key] !== null) {
+      emptyKeys = emptyKeys.concat(findEmptyValues(obj[key] as Record<string, unknown>, fullKey));
+    } else if (obj[key] === '') {
+      emptyKeys.push(fullKey);
+    }
+  }
+
+  return emptyKeys;
+}
+
+describe('Translation Files Validation', () => {
+  const languages = ['en', 'es', 'ca'];
+  const translationFiles: Record<string, Record<string, unknown>> = {};
+
+  beforeAll(async () => {
+    // Load all translation files
+    for (const lang of languages) {
+      const response = await fetch(`/assets/i18n/${lang}.json`);
+      if (!response.ok) {
+        throw new Error(`Failed to load translation file for language: ${lang}`);
+      }
+      translationFiles[lang] = await response.json();
+    }
+  });
+
+  it('should have all translation files available', () => {
+    languages.forEach(lang => {
+      expect(translationFiles[lang]).toBeDefined();
+      expect(Object.keys(translationFiles[lang]).length).toBeGreaterThan(0);
+    });
+  });
+
+  it('should have the same keys in all language files', () => {
+    const enKeys = getAllKeys(translationFiles['en']).sort();
+    const esKeys = getAllKeys(translationFiles['es']).sort();
+    const caKeys = getAllKeys(translationFiles['ca']).sort();
+
+    expect(esKeys).toEqual(enKeys);
+    expect(caKeys).toEqual(enKeys);
+  });
+
+  it('should not have empty translation values', () => {
+    languages.forEach(lang => {
+      const emptyKeys = findEmptyValues(translationFiles[lang]);
+      expect(emptyKeys).toEqual([], `Language "${lang}" has empty values for keys: ${emptyKeys.join(', ')}`);
+    });
+  });
+
+  it('should follow UPPERCASE key naming convention', () => {
+    const keys = getAllKeys(translationFiles['en']);
+    const invalidKeys: string[] = [];
+
+    keys.forEach(key => {
+      const lastPart = key.split('.').pop();
+      if (lastPart && lastPart !== lastPart.toUpperCase()) {
+        invalidKeys.push(key);
+      }
+    });
+
+    expect(invalidKeys).toEqual([], `Invalid key naming convention for: ${invalidKeys.join(', ')}`);
+  });
+
+  it('should not have duplicate keys within any language file', () => {
+    languages.forEach(lang => {
+      const keys = getAllKeys(translationFiles[lang]);
+      const uniqueKeys = new Set(keys);
+      expect(keys.length).toBe(uniqueKeys.size, `Language "${lang}" has duplicate keys`);
+    });
+  });
+
+  it('should have consistent nested structure across all language files', () => {
+    const enStructure = Object.keys(translationFiles['en']).sort();
+    const esStructure = Object.keys(translationFiles['es']).sort();
+    const caStructure = Object.keys(translationFiles['ca']).sort();
+
+    expect(esStructure).toEqual(enStructure);
+    expect(caStructure).toEqual(enStructure);
+  });
+});
+
