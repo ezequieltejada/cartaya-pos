@@ -1,10 +1,10 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Device } from '@capacitor/device';
-import { IonApp, IonBadge, IonContent, IonHeader, IonIcon, IonItem, IonItemDivider, IonLabel, IonList, IonMenu, IonMenuToggle, IonRouterOutlet, IonTitle, IonToolbar, Platform } from '@ionic/angular/standalone';
+import { IonApp, IonBadge, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonItem, IonItemDivider, IonLabel, IonList, IonMenu, IonMenuToggle, IonRouterOutlet, IonTitle, IonToolbar, MenuController, Platform } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
-import { cartOutline, checkmarkCircleOutline, closeCircleOutline, cloudUploadOutline, gridOutline, homeOutline, imageOutline, logOutOutline, menu, receiptOutline, settingsOutline } from 'ionicons/icons';
+import { cartOutline, checkmarkCircleOutline, close, closeCircleOutline, cloudUploadOutline, gridOutline, homeOutline, imageOutline, logOutOutline, menu, receiptOutline, settingsOutline } from 'ionicons/icons';
 import { AuthService } from './core/services/auth.service';
 import { LanguageService } from './core/services/language.service';
 import { OrderQueueService } from './core/services/order-queue.service';
@@ -17,11 +17,12 @@ import { LanguageSwitcherComponent } from './shared/components/language-switcher
 @Component({
   selector: 'app-root',
   templateUrl: 'app.component.html',
-  imports: [IonApp, IonRouterOutlet, IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonIcon, IonLabel, IonMenuToggle, RouterLink, RouterLinkActive, TranslateModule, IonBadge, IonItemDivider, LanguageSwitcherComponent],
+  imports: [IonApp, IonRouterOutlet, IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonIcon, IonLabel, IonMenuToggle, RouterLink, RouterLinkActive, TranslateModule, IonBadge, IonItemDivider, LanguageSwitcherComponent, IonButtons, IonButton],
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit, OnDestroy {
   private platform = inject(Platform);
+  private menuController = inject(MenuController);
   private storageService = inject(StorageService);
   private authService = inject(AuthService);
   private languageService = inject(LanguageService);
@@ -33,7 +34,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private translate = inject(TranslateService);
 
   constructor() {
-    addIcons({ menu, imageOutline, cartOutline, checkmarkCircleOutline, logOutOutline, homeOutline, gridOutline, settingsOutline, closeCircleOutline, receiptOutline, cloudUploadOutline });
+    addIcons({ menu, imageOutline, cartOutline, checkmarkCircleOutline, logOutOutline, homeOutline, gridOutline, settingsOutline, closeCircleOutline, receiptOutline, cloudUploadOutline, close });
   }
 
   async ngOnInit() {
@@ -174,5 +175,9 @@ export class AppComponent implements OnInit, OnDestroy {
         this.router.navigate(['/auth/login']);
       },
     });
+  }
+
+  closeMenu() {
+    this.menuController.close('main-menu');
   }
 }
