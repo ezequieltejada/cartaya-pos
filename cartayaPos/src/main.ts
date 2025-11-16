@@ -10,6 +10,7 @@ import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
 import { CustomMissingTranslationHandler } from './app/core/handlers/missing-translation.handler';
 import { authInterceptor } from './app/core/interceptors/auth.interceptor';
+import { languageHeaderInterceptor } from './app/core/interceptors/language-header.interceptor';
 import { offlineInterceptor } from './app/core/interceptors/offline.interceptor';
 
 bootstrapApplication(AppComponent, {
@@ -17,7 +18,7 @@ bootstrapApplication(AppComponent, {
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     provideIonicAngular(),
     provideRouter(routes, withPreloading(PreloadAllModules)),
-    provideHttpClient(withInterceptors([offlineInterceptor, authInterceptor])),
+    provideHttpClient(withInterceptors([languageHeaderInterceptor, offlineInterceptor, authInterceptor])),
     Storage,
     {
       provide: MissingTranslationHandler,
