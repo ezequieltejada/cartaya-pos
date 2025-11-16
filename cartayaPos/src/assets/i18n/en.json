@@ -146,6 +146,34 @@
   "CART": {
     "TITLE": "Order Summary"
   },
+  "ORDER_QUEUE": {
+    "TITLE": "Order Queue",
+    "REFRESH_PULLING": "Pull to refresh",
+    "REFRESH_REFRESHING": "Refreshing...",
+    "OFFLINE_MESSAGE": "You're offline. Orders will sync when connection is restored.",
+    "SYNCING_MESSAGE": "Syncing orders...",
+    "EMPTY_TITLE": "Queue is Empty",
+    "EMPTY_MESSAGE": "All orders have been synced",
+    "ORDER_PREFIX": "Order #",
+    "ITEMS_CONNECTOR": "items ·",
+    "STATUS": {
+      "PENDING": "pending",
+      "SYNCING": "syncing",
+      "OUT_OF_SYNC": "out-of-sync",
+      "SYNCED": "synced"
+    }
+  },
+  "ORDER_HISTORY": {
+    "TITLE": "Order History",
+    "REFRESH_PULLING": "Pull to refresh",
+    "REFRESH_REFRESHING": "Refreshing...",
+    "LOADING_MESSAGE": "Loading orders...",
+    "RETRY_BUTTON": "Retry",
+    "EMPTY_MESSAGE": "No orders in the last 24 hours",
+    "ORDER_PREFIX": "Order #",
+    "ERROR_MISSING_INFO": "Tenant or POS information is missing",
+    "ERROR_LOAD_FAILED": "Failed to load order history"
+  },
   "HOME": "Home",
   "WELCOME": "Welcome to Cartaya POS"
 }

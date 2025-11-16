@@ -137,6 +137,34 @@
   "CART": {
     "TITLE": "Resum de la Comanda"
   },
+  "ORDER_QUEUE": {
+    "TITLE": "Cua de Comandes",
+    "REFRESH_PULLING": "Llisca per actualitzar",
+    "REFRESH_REFRESHING": "Actualitzant...",
+    "OFFLINE_MESSAGE": "Esteu fora de línia. Les comandes es sincronitzaran quan es restableixi la connexió.",
+    "SYNCING_MESSAGE": "Sincronitzant comandes...",
+    "EMPTY_TITLE": "Cua Buida",
+    "EMPTY_MESSAGE": "Totes les comandes han estat sincronitzades",
+    "ORDER_PREFIX": "Comanda #",
+    "ITEMS_CONNECTOR": "articles ·",
+    "STATUS": {
+      "PENDING": "pendent",
+      "SYNCING": "sincronitzant",
+      "OUT_OF_SYNC": "fora de sincronia",
+      "SYNCED": "sincronitzat"
+    }
+  },
+  "ORDER_HISTORY": {
+    "TITLE": "Historial de Comandes",
+    "REFRESH_PULLING": "Llisca per actualitzar",
+    "REFRESH_REFRESHING": "Actualitzant...",
+    "LOADING_MESSAGE": "Carregant comandes...",
+    "RETRY_BUTTON": "Reintentar",
+    "EMPTY_MESSAGE": "No hi ha comandes en les últimes 24 hores",
+    "ORDER_PREFIX": "Comanda #",
+    "ERROR_MISSING_INFO": "Falta informació de l'inquilí o PdV",
+    "ERROR_LOAD_FAILED": "Error en carregar l'historial de comandes"
+  },
   "MENU": {
     "TITLE": "Menú",
     "PRODUCTS": "Productes",

@@ -32,6 +32,18 @@ ion-img {
   display: block;
 }
 
+.imageContainer {
+  aspect-ratio: 16 / 9;
+  min-height: 140px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  color: var(--ion-color-medium, #92949c);
+  font-size: 40px;
+}
+
 ion-card-header {
   padding: 12px 12px 8px 12px;
   flex-shrink: 0;

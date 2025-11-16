@@ -80,13 +80,6 @@ export class AppComponent implements OnInit, OnDestroy {
         this.router.navigate(['/auth/login']);
       },
     });
-
-    // Initialize the translation service with default language
-    this.translate.setDefaultLang('en');
-
-    // Get device or browser language
-    const detectedLanguage = await this.getDetectedLanguage();
-    this.translate.use(detectedLanguage);
   }
 
   /**

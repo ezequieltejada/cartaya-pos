@@ -137,6 +137,34 @@
   "CART": {
     "TITLE": "Resumen del Pedido"
   },
+  "ORDER_QUEUE": {
+    "TITLE": "Cola de Pedidos",
+    "REFRESH_PULLING": "Deslizar para actualizar",
+    "REFRESH_REFRESHING": "Actualizando...",
+    "OFFLINE_MESSAGE": "Estás desconectado. Los pedidos se sincronizarán cuando se restaure la conexión.",
+    "SYNCING_MESSAGE": "Sincronizando pedidos...",
+    "EMPTY_TITLE": "Cola Vacía",
+    "EMPTY_MESSAGE": "Todos los pedidos han sido sincronizados",
+    "ORDER_PREFIX": "Pedido #",
+    "ITEMS_CONNECTOR": "artículos ·",
+    "STATUS": {
+      "PENDING": "pendiente",
+      "SYNCING": "sincronizando",
+      "OUT_OF_SYNC": "fuera de sincronía",
+      "SYNCED": "sincronizado"
+    }
+  },
+  "ORDER_HISTORY": {
+    "TITLE": "Historial de Pedidos",
+    "REFRESH_PULLING": "Deslizar para actualizar",
+    "REFRESH_REFRESHING": "Actualizando...",
+    "LOADING_MESSAGE": "Cargando pedidos...",
+    "RETRY_BUTTON": "Reintentar",
+    "EMPTY_MESSAGE": "No hay pedidos en las últimas 24 horas",
+    "ORDER_PREFIX": "Pedido #",
+    "ERROR_MISSING_INFO": "Falta información del inquilino o PdV",
+    "ERROR_LOAD_FAILED": "Error al cargar el historial de pedidos"
+  },
   "MENU": {
     "TITLE": "Menú",
     "PRODUCTS": "Productos",

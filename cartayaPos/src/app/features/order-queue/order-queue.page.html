@@ -1,4 +1,4 @@
-<app-page-header title="Order Queue">
+<app-page-header title="{{ 'ORDER_QUEUE.TITLE' | translate }}">
   <ion-button slot="end" (click)="retryAll()" [disabled]="!networkService.getIsOnline() || queueService.totalQueueSize() === 0">
     <ion-icon slot="icon-only" [icon]="syncOutline"></ion-icon>
   </ion-button>
@@ -8,38 +8,38 @@
   <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
     <ion-refresher-content
       pullingIcon="chevron-down-circle-outline"
-      pullingText="Pull to refresh"
+      pullingText="{{ 'ORDER_QUEUE.REFRESH_PULLING' | translate }}"
       refreshingSpinner="circles"
-      refreshingText="Refreshing..."
+      refreshingText="{{ 'ORDER_QUEUE.REFRESH_REFRESHING' | translate }}"
     ></ion-refresher-content>
   </ion-refresher>
 
   @if (!networkService.isOnline()) {
     <div class="offline-banner">
-      <p>You're offline. Orders will sync when connection is restored.</p>
+      <p>{{ 'ORDER_QUEUE.OFFLINE_MESSAGE' | translate }}</p>
     </div>
   }
 
   @if (syncCoordinator.syncState().isSyncing) {
     <div class="sync-status">
       <ion-spinner name="crescent"></ion-spinner>
-      <p>Syncing orders...</p>
+      <p>{{ 'ORDER_QUEUE.SYNCING_MESSAGE' | translate }}</p>
     </div>
   }
 
   @if (queueService.totalQueueSize() === 0) {
     <div class="empty-state">
       <ion-icon [icon]="refreshOutline"></ion-icon>
-      <h2>Queue is Empty</h2>
-      <p>All orders have been synced</p>
+      <h2>{{ 'ORDER_QUEUE.EMPTY_TITLE' | translate }}</h2>
+      <p>{{ 'ORDER_QUEUE.EMPTY_MESSAGE' | translate }}</p>
     </div>
   } @else {
     <ion-list>
       @for (order of queueService.queuedOrders(); track order.id) {
         <ion-item>
           <ion-label>
-            <h2>Order #{{ order.metadata?.orderNumber || order.id.slice(-6) }}</h2>
-            <p>{{ order.metadata?.itemCount || 0 }} items · {{ order.metadata?.total || 0 | currency }}</p>
+            <h2>{{ 'ORDER_QUEUE.ORDER_PREFIX' | translate }}{{ order.metadata?.orderNumber || order.id.slice(-6) }}</h2>
+            <p>{{ order.metadata?.itemCount || 0 }} {{ 'ORDER_QUEUE.ITEMS_CONNECTOR' | translate }} {{ order.metadata?.total || 0 | currency }}</p>
             <p class="timestamp">{{ formatDate(order.createdAt) }}</p>
             @if (order.error) {
               <p class="error-text">{{ order.error }}</p>
@@ -47,7 +47,7 @@
           </ion-label>
 
           <ion-badge [color]="getStatusColor(order.status)" slot="end">
-            {{ order.status }}
+            {{ getTranslatedStatus(order.status) }}
           </ion-badge>
 
           @if (order.status !== 'synced' && order.status !== 'syncing') {
