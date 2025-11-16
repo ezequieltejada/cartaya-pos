@@ -1,10 +1,12 @@
 /**
  * User Settings
- * Represents user-specific settings (language preferences, etc.)
+ * Represents user-specific settings (language preferences, theme, etc.)
+ * Synced with backend /api/users/me/settings endpoint
  */
 export interface UserSettings {
-  language: string; // 'en' | 'es' | 'ca'
-  // Future: theme, notifications, etc.
+  preferredLanguage?: string; // 'en' | 'es' | 'ca'
+  theme?: string; // 'light' | 'dark'
+  // Future: additional user preferences
 }
 
 /**

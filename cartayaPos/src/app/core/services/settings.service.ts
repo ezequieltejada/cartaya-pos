@@ -90,7 +90,7 @@ export class SettingsService {
    * Returns the language code from user settings or null if not set
    */
   getUserLanguage(): string | null {
-    return this.userSettings()?.language ?? null;
+    return this.userSettings()?.preferredLanguage ?? null;
   }
 
   /**
@@ -102,11 +102,11 @@ export class SettingsService {
    */
   setUserLanguage(language: string): Observable<UserSettings> {
     return this.httpClient
-      .patch<UserSettings>(`${this.API_URL}/users/me/settings`, { language })
+      .patch<UserSettings>(`${this.API_URL}/users/me/settings`, { preferredLanguage: language })
       .pipe(
         tap((settings) => {
-          const currentSettings = this.userSettings() ?? { language: 'en' };
-          this.userSettings.set({ ...currentSettings, language: settings.language });
+          const currentSettings = this.userSettings() ?? {};
+          this.userSettings.set({ ...currentSettings, preferredLanguage: settings.preferredLanguage });
         }),
         catchError((error) => {
           console.error('Failed to update user language preference:', error);

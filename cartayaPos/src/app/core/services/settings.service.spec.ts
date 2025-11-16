@@ -130,7 +130,7 @@ describe('SettingsService', () => {
   describe('User Settings', () => {
     describe('getUserLanguage()', () => {
       it('should return language from user settings', () => {
-        service.userSettings.set({ language: 'es' });
+        service.userSettings.set({ preferredLanguage: 'es' });
 
         expect(service.getUserLanguage()).toBe('es');
       });
@@ -142,16 +142,16 @@ describe('SettingsService', () => {
       });
 
       it('should return null when language not set', () => {
-        service.userSettings.set({ language: '' });
+        service.userSettings.set({});
 
-        expect(service.getUserLanguage()).toBe('');
+        expect(service.getUserLanguage()).toBeUndefined();
       });
     });
 
     describe('setUserLanguage()', () => {
       it('should send PATCH request to update user language', () => {
         const newLanguage = 'es';
-        const mockResponse: UserSettings = { language: newLanguage };
+        const mockResponse: UserSettings = { preferredLanguage: newLanguage };
 
         service.setUserLanguage(newLanguage).subscribe((settings) => {
           expect(settings).toEqual(mockResponse);
@@ -160,13 +160,13 @@ describe('SettingsService', () => {
 
         const req = httpMock.expectOne(`${apiUrl}/users/me/settings`);
         expect(req.request.method).toBe('PATCH');
-        expect(req.request.body).toEqual({ language: newLanguage });
+        expect(req.request.body).toEqual({ preferredLanguage: newLanguage });
         req.flush(mockResponse);
       });
 
       it('should update user settings signal on success', () => {
         const newLanguage = 'ca';
-        const mockResponse: UserSettings = { language: newLanguage };
+        const mockResponse: UserSettings = { preferredLanguage: newLanguage };
 
         service.setUserLanguage(newLanguage).subscribe();
 
@@ -177,10 +177,10 @@ describe('SettingsService', () => {
       });
 
       it('should merge new language with existing settings', () => {
-        service.userSettings.set({ language: 'en' });
+        service.userSettings.set({ preferredLanguage: 'en' });
 
         const newLanguage = 'es';
-        const mockResponse: UserSettings = { language: newLanguage };
+        const mockResponse: UserSettings = { preferredLanguage: newLanguage };
 
         service.setUserLanguage(newLanguage).subscribe();
 
@@ -235,7 +235,7 @@ describe('SettingsService', () => {
 
     describe('fetchUserSettings()', () => {
       it('should fetch user settings from the backend', () => {
-        const mockSettings: UserSettings = { language: 'es' };
+        const mockSettings: UserSettings = { preferredLanguage: 'es' };
 
         service.fetchUserSettings().subscribe((settings) => {
           expect(settings).toEqual(mockSettings);
@@ -248,7 +248,7 @@ describe('SettingsService', () => {
       });
 
       it('should update user settings signal on success', () => {
-        const mockSettings: UserSettings = { language: 'ca' };
+        const mockSettings: UserSettings = { preferredLanguage: 'ca' };
 
         service.fetchUserSettings().subscribe();
 
@@ -290,7 +290,7 @@ describe('SettingsService', () => {
 
     describe('getUserSettings()', () => {
       it('should return current user settings', () => {
-        const mockSettings: UserSettings = { language: 'es' };
+        const mockSettings: UserSettings = { preferredLanguage: 'es' };
         service.userSettings.set(mockSettings);
 
         expect(service.getUserSettings()).toEqual(mockSettings);
@@ -307,7 +307,7 @@ describe('SettingsService', () => {
   describe('Signal-based state management', () => {
     it('should maintain separate tenant and user settings signals', () => {
       const tenantSettings: TenantSettings = { timezone: 'UTC', currency: 'EUR' };
-      const userSettings: UserSettings = { language: 'es' };
+      const userSettings: UserSettings = { preferredLanguage: 'es' };
 
       service.tenantSettings.set(tenantSettings);
       service.userSettings.set(userSettings);
@@ -348,7 +348,7 @@ describe('SettingsService', () => {
 
   describe('Backward compatibility', () => {
     it('should work with user settings containing only language field', () => {
-      const settings: UserSettings = { language: 'en' };
+      const settings: UserSettings = { preferredLanguage: 'en' };
       service.userSettings.set(settings);
 
       expect(service.getUserLanguage()).toBe('en');
@@ -371,7 +371,7 @@ describe('SettingsService', () => {
         service.setUserLanguage(lang).subscribe();
 
         const req = httpMock.expectOne(`${apiUrl}/users/me/settings`);
-        req.flush({ language: lang });
+        req.flush({ preferredLanguage: lang });
         callCount++;
 
         expect(service.getUserLanguage()).toBe(lang);
@@ -387,8 +387,8 @@ describe('SettingsService', () => {
       const reqs = httpMock.match(`${apiUrl}/users/me/settings`);
       expect(reqs.length).toBe(2);
 
-      reqs[0].flush({ language: 'en' });
-      reqs[1].flush({ language: 'es' });
+      reqs[0].flush({ preferredLanguage: 'en' });
+      reqs[1].flush({ preferredLanguage: 'es' });
 
       expect(service.getUserLanguage()).toBe('es');
     });

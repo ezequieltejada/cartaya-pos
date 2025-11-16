@@ -47,8 +47,8 @@ export class LanguageService {
 
       // First, try to get language from authenticated user's backend settings
       const user = this.authService.getCurrentUser();
-      if (user?.settings?.language) {
-        const userLanguage = user.settings.language;
+      if (user?.settings?.preferredLanguage) {
+        const userLanguage = user.settings.preferredLanguage;
         if (this.isLanguageSupported(userLanguage)) {
           await this.setLanguage(userLanguage);
           return;

@@ -59,7 +59,7 @@ describe('LanguageService', () => {
         id: '1',
         email: 'test@test.com',
         name: 'Test User',
-        settings: { language: 'es' },
+        settings: { preferredLanguage: 'es' },
         createdAt: '',
         updatedAt: ''
       };
@@ -200,7 +200,7 @@ describe('LanguageService', () => {
     });
 
     it('should update sync status to true on successful backend sync', async () => {
-      settingsService.setUserLanguage.and.returnValue(of({ language: 'es' }));
+      settingsService.setUserLanguage.and.returnValue(of({ preferredLanguage: 'es' }));
 
       await service.setLanguage('es');
 
@@ -353,7 +353,7 @@ describe('LanguageService', () => {
       });
 
       it('should set isSynced to true on successful sync', async () => {
-        settingsService.setUserLanguage.and.returnValue(of({ language: 'es' }));
+        settingsService.setUserLanguage.and.returnValue(of({ preferredLanguage: 'es' }));
         await service.setLanguage('es');
         expect(languageState.isSynced()).toBe(true);
       });
@@ -390,7 +390,7 @@ describe('LanguageService', () => {
       it('should retry sync if isSynced is false', async () => {
         languageState.setSyncStatus(false);
         languageState.setLanguage('es');
-        settingsService.setUserLanguage.and.returnValue(of({ language: 'es' }));
+        settingsService.setUserLanguage.and.returnValue(of({ preferredLanguage: 'es' }));
 
         await service.init();
 
@@ -458,7 +458,7 @@ describe('LanguageService', () => {
         id: '1',
         email: 'test@test.com',
         name: 'Test User',
-        settings: { language: 'ca' },
+        settings: { preferredLanguage: 'ca' },
         createdAt: '',
         updatedAt: ''
       };
