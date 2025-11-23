@@ -10,7 +10,7 @@
   margin-bottom: 1.5rem;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,.08);
-  border: 1px solid var(--ion-color-light);
+  border: 1px solid var(--ion-color-medium);
   overflow: hidden;
   
   ion-card-header {
@@ -281,6 +281,7 @@
     padding: 12px 12px 1.5rem;
   }
 
+  .language-card,
   .status-card,
   .scan-card {
     margin: 1.25rem 0;
@@ -378,10 +379,11 @@
 
 // Dark Mode Support
 @media (prefers-color-scheme: dark) {
+  .language-card,
   .status-card,
   .scan-card {
     background: var(--ion-color-step-150);
-    border-color: var(--ion-color-step-200);
+    border-color: var(--ion-color-medium);
   }
 
   .printer-info {
