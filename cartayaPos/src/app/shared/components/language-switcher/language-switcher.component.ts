@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, inject, Input, OnInit, Output } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { IonicModule } from '@ionic/angular';
+import { IonButton, IonIcon, IonItem, IonLoading, IonSelect, IonSelectOption } from '@ionic/angular/standalone';
 import { TranslateModule } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
 import { checkmarkCircle, languageOutline } from 'ionicons/icons';
@@ -36,7 +36,7 @@ import { LanguageService } from '../../../core/services/language.service';
 @Component({
   selector: 'app-language-switcher',
   standalone: true,
-  imports: [CommonModule, IonicModule, ReactiveFormsModule, TranslateModule],
+  imports: [CommonModule, ReactiveFormsModule, TranslateModule, IonItem, IonSelect, IonIcon, IonSelectOption, IonLoading, IonButton],
   templateUrl: './language-switcher.component.html',
   styleUrls: ['./language-switcher.component.scss']
 })
