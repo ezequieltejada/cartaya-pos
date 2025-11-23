@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, inject, Input, OnInit, Output } from '@angular/core';
+import { Component, effect, EventEmitter, inject, Injector, Input, OnInit, Output } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { IonButton, IonIcon, IonLoading, IonSelect, IonSelectOption } from '@ionic/angular/standalone';
 import { TranslateModule } from '@ngx-translate/core';
@@ -44,6 +44,7 @@ export class LanguageSwitcherComponent implements OnInit {
   private languageService = inject(LanguageService);
   private languageState = inject(LanguageState);
   private formBuilder = inject(FormBuilder);
+  private injector = inject(Injector);
 
   /**
    * Display mode for styling purposes
@@ -69,6 +70,21 @@ export class LanguageSwitcherComponent implements OnInit {
 
   constructor() {
     addIcons({ languageOutline, checkmarkCircle });
+
+    // Setup effect to watch loading state changes
+    effect(() => {
+      if (this.languageForm) {
+        const isLoading = this.isLoading();
+        const control = this.languageForm.get('selectedLanguage');
+        if (control) {
+          if (isLoading) {
+            control.disable({ emitEvent: false });
+          } else {
+            control.enable({ emitEvent: false });
+          }
+        }
+      }
+    }, { injector: this.injector });
   }
 
   ngOnInit(): void {
@@ -80,7 +96,10 @@ export class LanguageSwitcherComponent implements OnInit {
    */
   private initializeForm(): void {
     this.languageForm = this.formBuilder.group({
-      selectedLanguage: [this.currentLanguage(), Validators.required]
+      selectedLanguage: [{
+        value: this.currentLanguage(),
+        disabled: this.isLoading()
+      }, Validators.required]
     });
   }
 

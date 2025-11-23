@@ -8,7 +8,6 @@
           <ion-select
             id="language-select"
             formControlName="selectedLanguage"
-            [disabled]="isLoading()"
             interface="popover"
             placeholder="{{ 'COMMON.LANGUAGE' | translate }}">
             <ion-select-option *ngFor="let lang of availableLanguages" [value]="lang.code">
