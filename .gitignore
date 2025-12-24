@@ -2,3 +2,15 @@
 .github/prompts
 *.keystore
 cartaya-pos-release.keystore
+keystore.properties
+
+# Android build outputs
+cartayaPos/android/app/build/
+cartayaPos/android/build/
+cartayaPos/android/.gradle/
+cartayaPos/android/.idea/
+cartayaPos/android/gradle/caches/
+cartayaPos/android/gradle/daemon/
+cartayaPos/android/gradle/native/
+cartayaPos/android/gradle/wrapper/dists/
+cartayaPos/android/gradle/android/
