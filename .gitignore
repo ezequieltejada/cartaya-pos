@@ -1,2 +1,4 @@
 .vscode
 .github/prompts
+*.keystore
+cartaya-pos-release.keystore
