@@ -189,10 +189,10 @@ EOF
                                             -scheme App \
                                             -configuration Debug \
                                             -sdk iphonesimulator \
-                                            -destination 'platform=iOS Simulator,name=iPhone 16' \
+                                            -destination 'platform=iOS Simulator,name=iPhone SE' \
                                             -derivedDataPath build \
                                             clean build
-                                    '''
+                                     '''
                                 }
 
                                 echo "--- Zipping App Bundle ---"
