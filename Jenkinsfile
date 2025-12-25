@@ -17,6 +17,9 @@ pipeline {
                     echo "--- Checking Build Environment ---"
                     sh 'node -v && npm -v'
                     sh 'java -version 2>&1 || echo "Java not required for web build"'
+
+                    // Helpful diagnostics for Android builds on Linux agents
+                    sh 'echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-}" && echo "ANDROID_HOME=${ANDROID_HOME:-}"'
                 }
             }
         }
@@ -56,6 +59,12 @@ pipeline {
                 stage('Android (APK)') {
                     agent { label 'linux' }
 
+                    environment {
+                        // Prefer Jenkins-managed ANDROID_SDK_ROOT/ANDROID_HOME, otherwise fall back to the repo default.
+                        ANDROID_SDK_ROOT = "${env.ANDROID_SDK_ROOT ?: env.ANDROID_HOME ?: '/usr/local/lib/android'}"
+                        ANDROID_HOME = "${env.ANDROID_HOME ?: env.ANDROID_SDK_ROOT ?: '/usr/local/lib/android'}"
+                    }
+
                     steps {
                         dir('cartayaPos') {
                             script {
@@ -63,6 +72,16 @@ pipeline {
                                 // Unstash configuration to ensure consistency
                                 unstash 'config-files'
                                 unstash 'web-dist'
+
+                                // Ensure the Android SDK is discoverable by Gradle on the Linux agent.
+                                // The failure in build #16 was: "SDK location not found".
+                                dir('android') {
+                                    sh '''
+                                        cat > local.properties <<'EOF'
+sdk.dir=/usr/local/lib/android
+EOF
+                                    '''
+                                }
 
                                 // Install dependencies (needed for Capacitor CLI)
                                 sh 'npm ci'
@@ -133,6 +152,14 @@ EOF
                                 unstash 'config-files'
                                 unstash 'web-dist'
 
+                                // The iOS failure in build #16 was during `npx cap sync ios` when it ran:
+                                // `xcodebuild -project App.xcodeproj clean`
+                                // and Xcode refused to delete `ios/App/build` because it wasn't created by the build system.
+                                // Clear it proactively so `cap sync` can clean safely.
+                                dir('ios/App') {
+                                    sh 'rm -rf build || true'
+                                }
+
                                 // Install dependencies (recompiles native modules for M1/M2)
                                 sh 'npm ci'
 
@@ -162,7 +189,7 @@ EOF
                                             -scheme App \
                                             -configuration Debug \
                                             -sdk iphonesimulator \
-                                            -destination 'platform=iOS Simulator,name=iPhone 15' \
+                                            -destination 'platform=iOS Simulator,name=iPhone 16' \
                                             -derivedDataPath build \
                                             clean build
                                     '''
