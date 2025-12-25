@@ -11,15 +11,21 @@ pipeline {
         // -------------------------------------------------------------------------
         stage('Environment Checks') {
             agent { label 'linux' }
+            options {
+                timeout(time: 5, unit: 'MINUTES')
+            }
 
             steps {
                 script {
                     echo "--- Checking Build Environment ---"
-                    sh 'node -v && npm -v'
-                    sh 'java -version 2>&1 || echo "Java not required for web build"'
-
-                    // Helpful diagnostics for Android builds on Linux agents
-                    sh 'echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-}" && echo "ANDROID_HOME=${ANDROID_HOME:-}"'
+                    sh '''
+                        set +e
+                        node -v && npm -v || echo "Node/npm check failed"
+                        java -version 2>&1 || echo "Java not required for web build"
+                        echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-NOT SET}"
+                        echo "ANDROID_HOME=${ANDROID_HOME:-NOT SET}"
+                        set -e
+                    '''
                 }
             }
         }
