@@ -77,15 +77,24 @@ pipeline {
                                 // The failure in build #16 was: "SDK location not found".
                                 echo "--- Validating Android SDK Environment ---"
                                 sh '''
-                                    # Check if SDK exists
-                                    if [ ! -d "$ANDROID_SDK_ROOT" ]; then
-                                        echo "ERROR: Android SDK not found at $ANDROID_SDK_ROOT"
-                                        echo "Current user: $(whoami)"
+                                    echo "Current user: $(whoami)"
+                                    echo "Current group: $(id)"
+                                    echo "ANDROID_SDK_ROOT: ${ANDROID_SDK_ROOT:-NOT SET}"
+                                    echo "ANDROID_HOME: ${ANDROID_HOME:-NOT SET}"
+                                    echo ""
+                                    echo "Checking /home/circleci permissions:"
+                                    stat /home/circleci 2>/dev/null || echo "Cannot stat /home/circleci"
+                                    echo ""
+                                    echo "Checking SDK directory:"
+                                    if [ -d "$ANDROID_SDK_ROOT" ]; then
+                                        echo "✓ Android SDK found at: $ANDROID_SDK_ROOT"
+                                        stat "$ANDROID_SDK_ROOT"
+                                    else
+                                        echo "✗ Android SDK not found at: $ANDROID_SDK_ROOT"
+                                        echo "Checking if path exists with different permissions:"
+                                        test -e "$ANDROID_SDK_ROOT" && echo "Path exists but no read permission" || echo "Path does not exist"
                                         exit 1
                                     fi
-                                    echo "✓ Android SDK found at: $ANDROID_SDK_ROOT"
-                                    echo "Checking SDK permissions..."
-                                    stat "$ANDROID_SDK_ROOT" || true
                                 '''
                                 
                                 dir('android') {
@@ -94,7 +103,7 @@ pipeline {
 sdk.dir=/home/circleci/android-sdk
 EOF
                                     '''
-                                    echo "✓ local.properties created with SDK path"
+                                    echo "✓ local.properties created"
                                 }
 
                                 // Install dependencies (needed for Capacitor CLI)
