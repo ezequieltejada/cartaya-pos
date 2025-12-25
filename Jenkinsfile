@@ -1,23 +1,12 @@
 pipeline {
     agent none
 
-    environment {
-        // --- Global Environment Variables ---
-        // Adjust these as needed for your specific setup
-        // NODE_ENV = 'production' (Optional: forces production build behavior in some tools)
-    }
-
     stages {
         // -------------------------------------------------------------------------
         // Stage 1: Build Web Assets (Angular/Ionic)
         // -------------------------------------------------------------------------
         stage('Build Web App') {
             agent { label 'linux' } // Uses the Linux (amd64) agent
-            
-            environment {
-                // Ensure the path includes standard locations if needed, or rely on agent config
-                // PATH = "/usr/local/bin:$PATH" 
-            }
 
             steps {
                 script {
@@ -45,11 +34,6 @@ pipeline {
                 // --- Android Build (Linux Agent) ---
                 stage('Android (APK)') {
                     agent { label 'linux' }
-                    
-                    environment {
-                        // Ensure JAVA_HOME and ANDROID_HOME are set on the agent or here
-                        // JAVA_HOME = "/path/to/java"
-                    }
 
                     steps {
                         script {
@@ -87,11 +71,6 @@ pipeline {
                 // --- iOS Build (Mac Agent) ---
                 stage('iOS (Simulator)') {
                     agent { label 'mac' } // Uses the Mac OS X (aarch64) agent
-                    
-                    environment {
-                        // Ensure CocoaPods/Xcode tools are in PATH if not default
-                        // PATH = "/usr/local/bin:/opt/homebrew/bin:$PATH"
-                    }
 
                     steps {
                         script {
