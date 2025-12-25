@@ -7,6 +7,21 @@ pipeline {
 
     stages {
         // -------------------------------------------------------------------------
+        // Stage 0: Environment Checks (Fail-Fast)
+        // -------------------------------------------------------------------------
+        stage('Environment Checks') {
+            agent { label 'linux' }
+
+            steps {
+                script {
+                    echo "--- Checking Build Environment ---"
+                    sh 'node -v && npm -v'
+                    sh 'java -version 2>&1 || echo "Java not required for web build"'
+                }
+            }
+        }
+
+        // -------------------------------------------------------------------------
         // Stage 1: Build Web Assets (Angular/Ionic)
         // -------------------------------------------------------------------------
         stage('Build Web App') {
@@ -55,12 +70,39 @@ pipeline {
                                 echo "--- Syncing Capacitor Android ---"
                                 sh 'npx cap sync android'
 
-                                echo "--- Building APK ---"
+                                echo "--- Creating Debug Keystore & Properties ---"
+                                dir('android') {
+                                    // Create a debug keystore (if it doesn't exist) for signing Debug APK
+                                    // This prevents the "path may not be null" error in build.gradle:27
+                                    sh '''
+                                        if [ ! -f app/debug.keystore ]; then
+                                            echo "Generating debug keystore..."
+                                            keytool -genkey -v -keystore app/debug.keystore \
+                                                -keyalg RSA -keysize 2048 -validity 10000 \
+                                                -alias androiddebugkey -keypass android -storepass android \
+                                                -dname "CN=Android Debug,O=Android,C=US"
+                                        else
+                                            echo "Debug keystore already exists."
+                                        fi
+                                    '''
+                                    
+                                    // Create keystore.properties pointing to the debug keystore
+                                    sh '''
+                                        cat > keystore.properties <<EOF
+storeFile=app/debug.keystore
+storePassword=android
+keyAlias=androiddebugkey
+keyPassword=android
+EOF
+                                    '''
+                                }
+
+                                echo "--- Building Debug APK ---"
                                 dir('android') {
                                     // Ensure Gradle wrapper is executable
                                     sh 'chmod +x gradlew'
-                                    // Build Debug APK
-                                    sh './gradlew assembleDebug'
+                                    // Build Debug APK (no signing config requirements for Debug)
+                                    sh './gradlew :app:assembleDebug --no-daemon --stacktrace'
                                 }
                             }
                         }
@@ -98,15 +140,29 @@ pipeline {
                                 // Updates native ios project with web assets and plugins
                                 sh 'npx cap sync ios'
 
+                                echo "--- Installing CocoaPods Dependencies ---"
+                                dir('ios/App') {
+                                    sh 'pod install'
+                                }
+
                                 echo "--- Building iOS Simulator App ---"
                                 dir('ios/App') {
-                                    // 'generic/platform=iOS Simulator' builds for the simulator architecture (x86_64 or arm64 sim)
-                                    // derivedDataPath ensures we know exactly where the output goes
+                                    // Xcode 26.2 with explicit simulator SDK and destination.
+                                    // -sdk iphonesimulator: force simulator SDK (overrides device-only SDKROOT settings)
+                                    // -destination: specify explicit simulator (iPhone 15 is widely available in Xcode 26.2)
+                                    // Add arm64e exclusion if needed for older simulators on Apple Silicon
                                     sh '''
+                                        set -e
+                                        echo "Available simulators:"
+                                        xcrun simctl list devices available || true
+                                        
+                                        echo ""
+                                        echo "Building for simulator..."
                                         xcodebuild -workspace App.xcworkspace \
                                             -scheme App \
                                             -configuration Debug \
-                                            -destination 'generic/platform=iOS Simulator' \
+                                            -sdk iphonesimulator \
+                                            -destination 'platform=iOS Simulator,name=iPhone 15' \
                                             -derivedDataPath build \
                                             clean build
                                     '''
@@ -125,7 +181,22 @@ pipeline {
                             archiveArtifacts artifacts: 'cartayaPos/ios/App/build/Build/Products/Debug-iphonesimulator/App-Simulator.zip', fingerprint: true
                         }
                         failure {
-                            echo "iOS build failed."
+                            echo "iOS build failed. Collecting diagnostics..."
+                            dir('cartayaPos/ios/App') {
+                                sh '''
+                                    echo "=== Xcode Version ==="
+                                    xcodebuild -version
+                                    echo ""
+                                    echo "=== Available Simulators ==="
+                                    xcrun simctl list devices available || true
+                                    echo ""
+                                    echo "=== Workspace Info ==="
+                                    xcodebuild -list -workspace App.xcworkspace || true
+                                    echo ""
+                                    echo "=== Pod Status ==="
+                                    ls -la Pods/ || echo "Pods directory not found"
+                                ''' as String
+                            }
                         }
                     }
                 }
