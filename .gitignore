@@ -1,4 +1,6 @@
 .vscode
+.opencode
+opencode.jsonc
 .github/prompts
 *.keystore
 cartaya-pos-release.keystore
