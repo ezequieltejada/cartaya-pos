@@ -77,15 +77,15 @@ pipeline {
                                 // The failure in build #16 was: "SDK location not found".
                                 echo "--- Validating Android SDK Environment ---"
                                 sh '''
+                                    # Check if SDK exists
                                     if [ ! -d "$ANDROID_SDK_ROOT" ]; then
                                         echo "ERROR: Android SDK not found at $ANDROID_SDK_ROOT"
-                                        echo "Available directories in parent:"
-                                        ls -la "$(dirname $ANDROID_SDK_ROOT)" || true
+                                        echo "Current user: $(whoami)"
                                         exit 1
                                     fi
                                     echo "✓ Android SDK found at: $ANDROID_SDK_ROOT"
-                                    echo "SDK contents:"
-                                    ls -la "$ANDROID_SDK_ROOT" | head -20
+                                    echo "Checking SDK permissions..."
+                                    stat "$ANDROID_SDK_ROOT" || true
                                 '''
                                 
                                 dir('android') {
@@ -94,8 +94,7 @@ pipeline {
 sdk.dir=/home/circleci/android-sdk
 EOF
                                     '''
-                                    echo "✓ local.properties created:"
-                                    sh 'cat local.properties'
+                                    echo "✓ local.properties created with SDK path"
                                 }
 
                                 // Install dependencies (needed for Capacitor CLI)
