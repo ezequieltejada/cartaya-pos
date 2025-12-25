@@ -61,8 +61,8 @@ pipeline {
 
                     environment {
                         // Prefer Jenkins-managed ANDROID_SDK_ROOT/ANDROID_HOME, otherwise fall back to the repo default.
-                        ANDROID_SDK_ROOT = "${env.ANDROID_SDK_ROOT ?: env.ANDROID_HOME ?: '/usr/local/lib/android'}"
-                        ANDROID_HOME = "${env.ANDROID_HOME ?: env.ANDROID_SDK_ROOT ?: '/usr/local/lib/android'}"
+                        ANDROID_SDK_ROOT = "${env.ANDROID_HOME ?: '/home/circleci/android-sdk'}"
+                        ANDROID_HOME = "${env.ANDROID_HOME ?: '/home/circleci/android-sdk'}"
                     }
 
                     steps {
@@ -75,12 +75,27 @@ pipeline {
 
                                 // Ensure the Android SDK is discoverable by Gradle on the Linux agent.
                                 // The failure in build #16 was: "SDK location not found".
+                                echo "--- Validating Android SDK Environment ---"
+                                sh '''
+                                    if [ ! -d "$ANDROID_SDK_ROOT" ]; then
+                                        echo "ERROR: Android SDK not found at $ANDROID_SDK_ROOT"
+                                        echo "Available directories in parent:"
+                                        ls -la "$(dirname $ANDROID_SDK_ROOT)" || true
+                                        exit 1
+                                    fi
+                                    echo "✓ Android SDK found at: $ANDROID_SDK_ROOT"
+                                    echo "SDK contents:"
+                                    ls -la "$ANDROID_SDK_ROOT" | head -20
+                                '''
+                                
                                 dir('android') {
                                     sh '''
                                         cat > local.properties <<'EOF'
-sdk.dir=/usr/local/lib/android
+sdk.dir=/home/circleci/android-sdk
 EOF
                                     '''
+                                    echo "✓ local.properties created:"
+                                    sh 'cat local.properties'
                                 }
 
                                 // Install dependencies (needed for Capacitor CLI)
