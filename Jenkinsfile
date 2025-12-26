@@ -224,7 +224,7 @@ EOF
                                 
                                 echo "--- Verify Capacitor Config ---"
                                 sh 'cat ios/App/App/capacitor.config.json | head -30'
-                                }
+                                
 
                                 echo "--- Building iOS Simulator App ---"
                                 dir('ios/App') {
