@@ -207,21 +207,21 @@ EOF
                                     // -sdk iphonesimulator: force simulator SDK (overrides device-only SDKROOT settings)
                                     // -destination: specify explicit simulator (iPhone 15 is widely available in Xcode 26.2)
                                     // Add arm64e exclusion if needed for older simulators on Apple Silicon
-                                    sh '''
-                                        set -e
-                                        echo "Available simulators:"
-                                        xcrun simctl list devices available || true
-                                        
-                                        echo ""
-                                        echo "Building for simulator..."
-                                        xcodebuild -workspace App.xcworkspace \
-                                            -scheme App \
-                                            -configuration Debug \
-                                            -sdk iphonesimulator \
-                                            -destination 'platform=iOS Simulator,OS=18.5,name=iPhone 16' \
-                                            -derivedDataPath build \
-                                            clean build
-                                     '''
+                                     sh '''
+                                         set -e
+                                         echo "Available simulators:"
+                                         xcrun simctl list devices available || true
+                                         
+                                         echo ""
+                                         echo "Building for simulator..."
+                                         xcodebuild -workspace App.xcworkspace \
+                                             -scheme App \
+                                             -configuration Debug \
+                                             -sdk iphonesimulator \
+                                             -destination 'platform=iOS Simulator,OS=26.1,name=iPhone 17' \
+                                             -derivedDataPath build \
+                                             clean build
+                                      '''
                                 }
 
                                 echo "--- Zipping App Bundle ---"
