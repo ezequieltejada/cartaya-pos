@@ -218,7 +218,7 @@ EOF
                                             -scheme App \
                                             -configuration Debug \
                                             -sdk iphonesimulator \
-                                            -destination 'platform=iOS Simulator,name=iPhone 16' \
+                                            -destination 'platform=iOS Simulator,OS=18.5,name=iPhone 16' \
                                             -derivedDataPath build \
                                             clean build
                                      '''
