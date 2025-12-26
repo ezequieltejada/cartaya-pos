@@ -375,6 +375,135 @@ rm -rf .gradle
 cd ..
 ```
 
+## Advanced: Simulator-Incompatible Plugins
+
+Some Capacitor plugins contain native code that is only compiled for physical device architectures (e.g., `arm64`, `armv7s`) and lack simulator architectures (`x86_64`, `arm64e`). This causes build failures when attempting to run simulator builds in CI.
+
+### Example: capacitor-thermal-printer
+
+The `capacitor-thermal-printer` plugin includes a vendored static library (`libRTPrinterSDK.a`) that does not have simulator slices, causing linker errors during simulator builds:
+
+```
+ld: building for iOS Simulator, but linking in object file built for iOS
+```
+
+### Solution: Conditional Pod Installation + Plugin Registration
+
+#### Step 1: Add Environment Variable Gate to Podfile
+
+**File**: `ios/App/Podfile`
+
+Wrap the plugin pod in a conditional check that respects an environment variable:
+
+```ruby
+def capacitor_pods
+  pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
+  # ... other pods ...
+  pod 'CapacitorStatusBar', :path => '../../node_modules/@capacitor/status-bar'
+  
+  # Only install thermal printer for device builds (not simulator)
+  if ENV.fetch('CAPACITOR_THERMAL_PRINTER_ENABLED', '1') == '1'
+    pod 'CapacitorThermalPrinter', :path => '../../node_modules/capacitor-thermal-printer'
+  end
+end
+```
+
+**Key points:**
+- Default value is `'1'` (enabled), so local device builds work without any env var setup
+- Set to `'0'` in simulator builds to skip the pod entirely, preventing linker errors
+- The env var name should be descriptive: `CAPACITOR_{PLUGIN_NAME}_ENABLED`
+
+#### Step 2: Exclude Plugin from CocoaPods in CI Simulator Build
+
+**File**: `Jenkinsfile` (or your CI configuration)
+
+Before running `pod install` in the simulator build stage, export the environment variable:
+
+```groovy
+echo "--- Installing CocoaPods Dependencies (Simulator) ---"
+dir('ios/App') {
+    sh '''
+        export CAPACITOR_THERMAL_PRINTER_ENABLED=0
+        pod install
+    '''
+}
+```
+
+#### Step 3: Remove Plugin from Capacitor Runtime Registry (Optional but Recommended)
+
+After `npx cap sync ios`, remove the plugin class from the `packageClassList` in the generated `capacitor.config.json` to prevent registration attempts:
+
+```groovy
+echo "--- Removing Thermal Printer from Plugin Registry (Simulator) ---"
+sh '''
+    if [ -f "ios/App/App/capacitor.config.json" ]; then
+        node -e "
+        const fs = require('fs');
+        const path = 'ios/App/App/capacitor.config.json';
+        const config = JSON.parse(fs.readFileSync(path, 'utf8'));
+        if (config.ios && config.ios.capacitorPlugins) {
+          config.ios.capacitorPlugins.packageClassList = config.ios.capacitorPlugins.packageClassList.filter(p => p !== 'CapacitorThermalPrinterPlugin');
+          fs.writeFileSync(path, JSON.stringify(config, null, 2));
+          console.log('Removed CapacitorThermalPrinterPlugin from packageClassList');
+        }
+        "
+    else
+        echo "capacitor.config.json not found, skipping plugin registry patch"
+    fi
+'''
+```
+
+### Result
+
+- **Local Xcode device builds**: Plugin is enabled and available (env var defaults to `'1'`)
+- **CI simulator builds**: Plugin is excluded from both CocoaPods linking and Capacitor runtime registration
+- **No app code changes**: If your app already implements fallback handling for unavailable plugins, no changes are needed
+- **No impact on device CI builds**: Only the simulator stage sets the env var; device/archive stages remain unchanged
+
+### Implementation Example
+
+Use this pattern in your app code to gracefully handle plugins that may not be available on simulator:
+
+```typescript
+import { ThermalPrinterPlugin } from 'capacitor-thermal-printer';
+
+export class PrinterService {
+  async printReceipt(data: string): Promise<void> {
+    try {
+      // Try native plugin first
+      await ThermalPrinterPlugin.print({ content: data });
+      console.log('Printed via thermal printer');
+    } catch (error: any) {
+      // Fallback for simulator or when plugin is unavailable
+      if (error?.code === 'UNIMPLEMENTED') {
+        console.warn('Thermal printer unavailable (simulator?), using print preview instead');
+        this.showPrintPreview(data);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  private showPrintPreview(data: string): void {
+    // Web-based fallback (e.g., window.print())
+    const printWindow = window.open('', '', 'height=400,width=600');
+    if (printWindow) {
+      printWindow.document.write('<pre>' + data + '</pre>');
+      printWindow.print();
+    }
+  }
+}
+```
+
+### Applying to Other Device-Only Plugins
+
+This pattern can be applied to any native plugin with device-only libraries. Simply:
+
+1. Replace `CAPACITOR_THERMAL_PRINTER_ENABLED` with `CAPACITOR_{PLUGIN_NAME}_ENABLED`
+2. Replace `CapacitorThermalPrinter` with your plugin pod name
+3. Replace `CapacitorThermalPrinterPlugin` with the actual plugin class name
+4. Ensure your app handles the `UNIMPLEMENTED` error gracefully
+
 ## Verification Checklist
 
 Before considering the plugin ready:

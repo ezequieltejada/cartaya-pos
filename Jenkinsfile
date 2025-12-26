@@ -196,9 +196,34 @@ EOF
                                 // Updates native ios project with web assets and plugins
                                 sh 'npx cap sync ios'
 
-                                echo "--- Installing CocoaPods Dependencies ---"
+                                echo "--- Installing CocoaPods Dependencies (Simulator) ---"
                                 dir('ios/App') {
-                                    sh 'pod install'
+                                    sh '''
+                                        export CAPACITOR_THERMAL_PRINTER_ENABLED=0
+                                        pod install
+                                    '''
+                                }
+
+                                echo "--- Removing Thermal Printer from Plugin Registry (Simulator) ---"
+                                sh '''
+                                    if [ -f "ios/App/App/capacitor.config.json" ]; then
+                                        node -e "
+                                        const fs = require('fs');
+                                        const path = 'ios/App/App/capacitor.config.json';
+                                        const config = JSON.parse(fs.readFileSync(path, 'utf8'));
+                                        if (config.ios && config.ios.capacitorPlugins) {
+                                          config.ios.capacitorPlugins.packageClassList = config.ios.capacitorPlugins.packageClassList.filter(p => p !== 'CapacitorThermalPrinterPlugin');
+                                          fs.writeFileSync(path, JSON.stringify(config, null, 2));
+                                          console.log('Removed CapacitorThermalPrinterPlugin from packageClassList');
+                                        }
+                                        "
+                                    else
+                                        echo "capacitor.config.json not found, skipping plugin registry patch"
+                                    fi
+                                '''
+                                
+                                echo "--- Verify Capacitor Config ---"
+                                sh 'cat ios/App/App/capacitor.config.json | head -30'
                                 }
 
                                 echo "--- Building iOS Simulator App ---"
