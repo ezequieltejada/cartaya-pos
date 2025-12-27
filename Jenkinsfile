@@ -216,8 +216,9 @@ EOF
                                 echo "--- Removing Thermal Printer from Plugin Registry (Simulator) ---"
                                 // Capacitor writes plugin registry to ios/App/App/capacitor.config.json.
                                 // The list is top-level: config.packageClassList
-                                sh '''
-                                    cat > /tmp/remove_plugin.js <<'SCRIPT'
+                                dir('ios/App') {
+                                    sh '''
+                                        cat > /tmp/remove_plugin.js <<'SCRIPT'
 const fs = require("fs");
 const path = "ios/App/App/capacitor.config.json";
 const plugin = "CapacitorThermalPrinterPlugin";
@@ -249,8 +250,15 @@ if (changed) {
   console.log("No " + plugin + " entry found in capacitor.config.json");
 }
 SCRIPT
-                                    node /tmp/remove_plugin.js
-                                '''
+                                        node /tmp/remove_plugin.js
+
+                                        echo "--- Removing Thermal Printer from Podfile ---"
+                                        sed -i '' '/CapacitorThermalPrinter/d' Podfile
+
+                                        echo "--- Cleaning Pods to force regeneration without Thermal Printer ---"
+                                        rm -rf Pods Podfile.lock
+                                    '''
+                                }
 
                                 echo "--- Installing CocoaPods Dependencies (Simulator) ---"
                                 dir('ios/App') {
@@ -258,9 +266,14 @@ SCRIPT
                                         set -e
                                         echo "CAPACITOR_THERMAL_PRINTER_ENABLED=${CAPACITOR_THERMAL_PRINTER_ENABLED}"
                                         pod install
-                                        if [ -f Podfile.lock ] && grep -q "CapacitorThermalPrinter" Podfile.lock; then
+
+                                        echo "--- Verifying Thermal Printer not in Podfile.lock ---"
+                                        if grep -q "CapacitorThermalPrinter" Podfile.lock; then
                                             echo "ERROR: CapacitorThermalPrinter still present in Podfile.lock"
+                                            grep "CapacitorThermalPrinter" Podfile.lock
                                             exit 1
+                                        else
+                                            echo "SUCCESS: Thermal Printer not found in Podfile.lock"
                                         fi
                                     '''
                                 }
