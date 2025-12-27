@@ -39,9 +39,21 @@ pipeline {
             steps {
                 dir('cartayaPos') {
                     script {
-                        echo "--- Installing Dependencies ---"
-                        sh 'rm -rf node_modules || true'
-                        sh 'npm ci'
+                        echo "--- Installing Dependencies with npm cache ---"
+                        sh '''
+                            CACHE_KEY=$(md5sum package-lock.json | cut -d" " -f1)
+                            CACHE_DIR="$HOME/.npm-cache/node/$CACHE_KEY"
+                            if [ -d "$CACHE_DIR/node_modules" ]; then
+                                echo "Restoring node_modules from cache"
+                                cp -r "$CACHE_DIR/node_modules" ./
+                            else
+                                echo "Cache miss, installing dependencies"
+                                rm -rf node_modules
+                                npm ci
+                                mkdir -p "$CACHE_DIR"
+                                cp -r node_modules "$CACHE_DIR/"
+                            fi
+                        '''
 
                         echo "--- Building Angular App ---"
                         // Generates the 'www' directory
@@ -114,7 +126,20 @@ EOF
                                 }
 
                                 // Install dependencies (needed for Capacitor CLI)
-                                sh 'npm ci'
+                                sh '''
+                                    CACHE_KEY=$(md5sum package-lock.json | cut -d" " -f1)
+                                    CACHE_DIR="$HOME/.npm-cache/node-android/$CACHE_KEY"
+                                    if [ -d "$CACHE_DIR/node_modules" ]; then
+                                        echo "Restoring node_modules from cache"
+                                        cp -r "$CACHE_DIR/node_modules" ./
+                                    else
+                                        echo "Cache miss, installing dependencies"
+                                        rm -rf node_modules
+                                        npm ci
+                                        mkdir -p "$CACHE_DIR"
+                                        cp -r node_modules "$CACHE_DIR/"
+                                    fi
+                                '''
 
                                 echo "--- Syncing Capacitor Android ---"
                                 sh 'npx cap sync android'
@@ -151,7 +176,7 @@ EOF
                                     // Ensure Gradle wrapper is executable
                                     sh 'chmod +x gradlew'
                                     // Build Debug APK (no signing config requirements for Debug)
-                                    sh './gradlew :app:assembleDebug --no-daemon --stacktrace'
+                                    sh './gradlew :app:assembleDebug --stacktrace'
                                 }
                             }
                         }
@@ -196,7 +221,20 @@ EOF
                                 }
 
                                 // Install dependencies (recompiles native modules for M1/M2)
-                                sh 'npm ci'
+                                sh '''
+                                    CACHE_KEY=$(md5sum package-lock.json | cut -d" " -f1)
+                                    CACHE_DIR="$HOME/.npm-cache/node-ios/$CACHE_KEY"
+                                    if [ -d "$CACHE_DIR/node_modules" ]; then
+                                        echo "Restoring node_modules from cache"
+                                        cp -r "$CACHE_DIR/node_modules" ./
+                                    else
+                                        echo "Cache miss, installing dependencies"
+                                        rm -rf node_modules
+                                        npm ci
+                                        mkdir -p "$CACHE_DIR"
+                                        cp -r node_modules "$CACHE_DIR/"
+                                    fi
+                                '''
 
                                 echo "--- Cleaning CocoaPods (Simulator) ---"
                                 // Remove any stale Pods/workspace created with the plugin enabled.
