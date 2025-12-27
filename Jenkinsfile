@@ -171,6 +171,11 @@ EOF
                 stage('iOS (Simulator)') {
                     agent { label 'mac' } // Uses the Mac OS X (aarch64) agent
 
+                    environment {
+                        // Printer SDK ships as iphoneos-only static lib; disable for simulator builds.
+                        CAPACITOR_THERMAL_PRINTER_ENABLED = '0'
+                    }
+
                     steps {
                         script {
                             echo "--- Preparing iOS Workspace ---"
@@ -192,36 +197,73 @@ EOF
                                 // Install dependencies (recompiles native modules for M1/M2)
                                 sh 'npm ci'
 
-                                echo "--- Syncing Capacitor iOS ---"
-                                // Updates native ios project with web assets and plugins
-                                sh 'npx cap sync ios'
+                                echo "--- Cleaning CocoaPods (Simulator) ---"
+                                // Remove any stale Pods/workspace created with the plugin enabled.
+                                dir('ios/App') {
+                                    sh '''
+                                        set -e
+                                        echo "CAPACITOR_THERMAL_PRINTER_ENABLED=${CAPACITOR_THERMAL_PRINTER_ENABLED}"
+                                        rm -rf Pods Podfile.lock App.xcworkspace
+                                        pod deintegrate || true
+                                    '''
+                                }
+
+                                echo "--- Syncing Capacitor iOS (Simulator) ---"
+                                // Ensure the env var is in effect for the internal CocoaPods run.
+                                sh 'CAPACITOR_THERMAL_PRINTER_ENABLED=0 npx cap sync ios'
+
+                                echo "--- Removing Thermal Printer from Plugin Registry (Simulator) ---"
+                                // Capacitor writes plugin registry to ios/App/App/capacitor.config.json.
+                                // The list is top-level: config.packageClassList
+                                sh '''
+                                    node <<'NODE'
+                                    const fs = require('fs');
+                                    const path = 'ios/App/App/capacitor.config.json';
+                                    const plugin = 'CapacitorThermalPrinterPlugin';
+
+                                    if (!fs.existsSync(path)) {
+                                      console.log('capacitor.config.json not found, skipping plugin registry patch');
+                                      process.exit(0);
+                                    }
+
+                                    const config = JSON.parse(fs.readFileSync(path, 'utf8'));
+                                    let changed = false;
+
+                                    if (Array.isArray(config.packageClassList)) {
+                                      const before = config.packageClassList.length;
+                                      config.packageClassList = config.packageClassList.filter(p => p !== plugin);
+                                      changed = changed || before !== config.packageClassList.length;
+                                    }
+
+                                    // Fallback for older/incorrect shapes; keep to be safe.
+                                    if (config.ios && config.ios.capacitorPlugins && Array.isArray(config.ios.capacitorPlugins.packageClassList)) {
+                                      const before = config.ios.capacitorPlugins.packageClassList.length;
+                                      config.ios.capacitorPlugins.packageClassList = config.ios.capacitorPlugins.packageClassList.filter(p => p !== plugin);
+                                      changed = changed || before !== config.ios.capacitorPlugins.packageClassList.length;
+                                    }
+
+                                    if (changed) {
+                                      fs.writeFileSync(path, JSON.stringify(config, null, 2));
+                                      console.log(`Removed ${plugin} from capacitor.config.json`);
+                                    } else {
+                                      console.log(`No ${plugin} entry found in capacitor.config.json`);
+                                    }
+                                    NODE
+                                '''
 
                                 echo "--- Installing CocoaPods Dependencies (Simulator) ---"
                                 dir('ios/App') {
                                     sh '''
-                                        export CAPACITOR_THERMAL_PRINTER_ENABLED=0
+                                        set -e
+                                        echo "CAPACITOR_THERMAL_PRINTER_ENABLED=${CAPACITOR_THERMAL_PRINTER_ENABLED}"
                                         pod install
+                                        if [ -f Podfile.lock ] && grep -q "CapacitorThermalPrinter" Podfile.lock; then
+                                            echo "ERROR: CapacitorThermalPrinter still present in Podfile.lock"
+                                            exit 1
+                                        fi
                                     '''
                                 }
 
-                                echo "--- Removing Thermal Printer from Plugin Registry (Simulator) ---"
-                                sh '''
-                                    if [ -f "ios/App/App/capacitor.config.json" ]; then
-                                        node -e "
-                                        const fs = require('fs');
-                                        const path = 'ios/App/App/capacitor.config.json';
-                                        const config = JSON.parse(fs.readFileSync(path, 'utf8'));
-                                        if (config.ios && config.ios.capacitorPlugins) {
-                                          config.ios.capacitorPlugins.packageClassList = config.ios.capacitorPlugins.packageClassList.filter(p => p !== 'CapacitorThermalPrinterPlugin');
-                                          fs.writeFileSync(path, JSON.stringify(config, null, 2));
-                                          console.log('Removed CapacitorThermalPrinterPlugin from packageClassList');
-                                        }
-                                        "
-                                    else
-                                        echo "capacitor.config.json not found, skipping plugin registry patch"
-                                    fi
-                                '''
-                                
                                 echo "--- Verify Capacitor Config ---"
                                 sh 'cat ios/App/App/capacitor.config.json | head -30'
                                 
