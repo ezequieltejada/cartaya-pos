@@ -217,7 +217,7 @@ EOF
                                 // Capacitor writes plugin registry to ios/App/App/capacitor.config.json.
                                 // The list is top-level: config.packageClassList
                                 sh '''
-                                    node <<'NODE'
+                                    cat <<EOF | node -
                                     const fs = require('fs');
                                     const path = 'ios/App/App/capacitor.config.json';
                                     const plugin = 'CapacitorThermalPrinterPlugin';
@@ -249,7 +249,7 @@ EOF
                                     } else {
                                       console.log(`No ${plugin} entry found in capacitor.config.json`);
                                     }
-                                    NODE
+                                    EOF
                                 '''
 
                                 echo "--- Installing CocoaPods Dependencies (Simulator) ---"
