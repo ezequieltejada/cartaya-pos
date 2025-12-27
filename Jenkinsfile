@@ -40,7 +40,8 @@ pipeline {
                 dir('cartayaPos') {
                     script {
                         echo "--- Installing Dependencies ---"
-                        sh 'npm install'
+                        sh 'rm -rf node_modules || true'
+                        sh 'npm ci'
 
                         echo "--- Building Angular App ---"
                         // Generates the 'www' directory
