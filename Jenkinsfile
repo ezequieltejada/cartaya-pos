@@ -217,39 +217,39 @@ EOF
                                 // Capacitor writes plugin registry to ios/App/App/capacitor.config.json.
                                 // The list is top-level: config.packageClassList
                                 sh '''
-                                    cat <<EOF | node -
-                                    const fs = require('fs');
-                                    const path = 'ios/App/App/capacitor.config.json';
-                                    const plugin = 'CapacitorThermalPrinterPlugin';
+                                    cat > /tmp/remove_plugin.js <<'SCRIPT'
+const fs = require("fs");
+const path = "ios/App/App/capacitor.config.json";
+const plugin = "CapacitorThermalPrinterPlugin";
 
-                                    if (!fs.existsSync(path)) {
-                                      console.log('capacitor.config.json not found, skipping plugin registry patch');
-                                      process.exit(0);
-                                    }
+if (!fs.existsSync(path)) {
+  console.log("capacitor.config.json not found, skipping plugin registry patch");
+  process.exit(0);
+}
 
-                                    const config = JSON.parse(fs.readFileSync(path, 'utf8'));
-                                    let changed = false;
+const config = JSON.parse(fs.readFileSync(path, "utf8"));
+let changed = false;
 
-                                    if (Array.isArray(config.packageClassList)) {
-                                      const before = config.packageClassList.length;
-                                      config.packageClassList = config.packageClassList.filter(p => p !== plugin);
-                                      changed = changed || before !== config.packageClassList.length;
-                                    }
+if (Array.isArray(config.packageClassList)) {
+  const before = config.packageClassList.length;
+  config.packageClassList = config.packageClassList.filter(p => p !== plugin);
+  changed = changed || before !== config.packageClassList.length;
+}
 
-                                    // Fallback for older/incorrect shapes; keep to be safe.
-                                    if (config.ios && config.ios.capacitorPlugins && Array.isArray(config.ios.capacitorPlugins.packageClassList)) {
-                                      const before = config.ios.capacitorPlugins.packageClassList.length;
-                                      config.ios.capacitorPlugins.packageClassList = config.ios.capacitorPlugins.packageClassList.filter(p => p !== plugin);
-                                      changed = changed || before !== config.ios.capacitorPlugins.packageClassList.length;
-                                    }
+if (config.ios && config.ios.capacitorPlugins && Array.isArray(config.ios.capacitorPlugins.packageClassList)) {
+  const before = config.ios.capacitorPlugins.packageClassList.length;
+  config.ios.capacitorPlugins.packageClassList = config.ios.capacitorPlugins.packageClassList.filter(p => p !== plugin);
+  changed = changed || before !== config.ios.capacitorPlugins.packageClassList.length;
+}
 
-                                    if (changed) {
-                                      fs.writeFileSync(path, JSON.stringify(config, null, 2));
-                                      console.log(`Removed ${plugin} from capacitor.config.json`);
-                                    } else {
-                                      console.log(`No ${plugin} entry found in capacitor.config.json`);
-                                    }
-                                    EOF
+if (changed) {
+  fs.writeFileSync(path, JSON.stringify(config, null, 2));
+  console.log("Removed " + plugin + " from capacitor.config.json");
+} else {
+  console.log("No " + plugin + " entry found in capacitor.config.json");
+}
+SCRIPT
+                                    node /tmp/remove_plugin.js
                                 '''
 
                                 echo "--- Installing CocoaPods Dependencies (Simulator) ---"
