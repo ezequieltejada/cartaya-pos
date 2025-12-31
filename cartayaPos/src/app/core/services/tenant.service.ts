@@ -3,6 +3,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { Observable, catchError, map, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Tenant } from '../models/tenant.model';
+import { ImageCacheService } from './image-cache.service';
 import { StorageService } from './storage.service';
 
 /**
@@ -16,6 +17,7 @@ import { StorageService } from './storage.service';
 export class TenantService {
   private httpClient = inject(HttpClient);
   private storageService = inject(StorageService);
+  private imageCacheService = inject(ImageCacheService);
 
   private readonly API_URL = `${environment.apiUrl}/api`;
 
@@ -54,11 +56,14 @@ export class TenantService {
 
   /**
    * Select a tenant
-   * Persists selection to storage
+   * Persists selection to storage and clears image cache
+   * (Images from one tenant should not appear when switching to another)
    */
   async selectTenant(tenant: Tenant): Promise<void> {
     this.selectedTenant.set(tenant);
     await this.storageService.set('selectedTenant', tenant);
+    // Clear image cache when switching tenants to prevent stale images
+    await this.imageCacheService.clearCache();
   }
 
   /**

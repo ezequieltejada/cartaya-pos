@@ -5,12 +5,14 @@ import {
   IonCardContent,
   IonCardHeader,
   IonCardTitle,
-  IonIcon
+  IonIcon,
+  IonImg
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { imageOutline } from 'ionicons/icons';
 import { Modifier } from '../../../../core/models/modifier.model';
 import { Product } from '../../../../core/models/product.model';
+import { ImageCacheService } from '../../../../core/services/image-cache.service';
 import { ModifierService } from '../../../../core/services/modifier.service';
 import { PosService } from '../../../../core/services/pos.service';
 import { ProductService } from '../../../../core/services/product.service';
@@ -38,7 +40,8 @@ import { TenantService } from '../../../../core/services/tenant.service';
     IonCardHeader,
     IonCardTitle,
     IonCardContent,
-    IonIcon
+    IonIcon,
+    IonImg
   ],
   templateUrl: './product-card.component.html',
   styleUrls: ['./product-card.component.scss'],
@@ -48,6 +51,7 @@ export class ProductCardComponent implements OnChanges {
   private modifierService = inject(ModifierService);
   private tenantService = inject(TenantService);
   private posService = inject(PosService);
+  private imageCacheService = inject(ImageCacheService);
 
   constructor() {
     addIcons({ imageOutline });
@@ -69,9 +73,15 @@ export class ProductCardComponent implements OnChanges {
    */
   private defaultModifiers = signal<Modifier[]>([]);
 
+  /**
+   * Product image URL (from cache or null if not available)
+   */
+  readonly imageUrl = signal<string | null>(null);
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['product'] && this.product) {
       this.loadDefaultModifiers();
+      this.loadProductImage();
     }
   }
 
@@ -99,6 +109,48 @@ export class ProductCardComponent implements OnChanges {
           this.defaultModifiers.set([]);
         },
       });
+  }
+
+  /**
+   * Load product image URL from cache
+   * Finds the main picture from the product and loads it asynchronously
+   */
+  private async loadProductImage(): Promise<void> {
+    const tenantId = this.tenantService.getCurrentTenantId();
+    
+    if (!tenantId || !this.product?.pictures || this.product.pictures.length === 0) {
+      this.imageUrl.set(null);
+      return;
+    }
+
+    try {
+      // Find the main picture or use the first one
+      const mainPicture = this.product.pictures.find((p) => p.isMain) || this.product.pictures[0];
+      
+      if (!mainPicture) {
+        this.imageUrl.set(null);
+        return;
+      }
+
+      const url = await this.imageCacheService.getImageUrl(
+        tenantId,
+        this.product.id,
+        mainPicture.filename
+      );
+      
+      this.imageUrl.set(url);
+    } catch (error) {
+      console.error('Failed to load product image:', error);
+      this.imageUrl.set(null);
+    }
+  }
+
+  /**
+   * Handle image load error
+   * Falls back to placeholder icon
+   */
+  onImageError(): void {
+    this.imageUrl.set(null);
   }
 
   /**
@@ -140,7 +192,7 @@ export class ProductCardComponent implements OnChanges {
    * Falls back to placeholder if no image URL provided
    * @returns Image URL or placeholder path
    */
-  get imageUrl(): string {
+  get imageUrlOrPlaceholder(): string {
     // Product model doesn't include imageUrl yet, so always use placeholder
     return 'assets/icon/product-placeholder.png';
   }

@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, catchError, forkJoin, from, map, of, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Product } from '../models/product.model';
+import { ImageCacheService } from './image-cache.service';
 import { StorageService } from './storage.service';
 import { TenantService } from './tenant.service';
 
@@ -38,6 +39,7 @@ export class ProductService {
   private storageService = inject(StorageService);
   private tenantService = inject(TenantService);
   private router = inject(Router);
+  private imageCacheService = inject(ImageCacheService);
 
   private readonly API_URL = `${environment.apiUrl}/api`;
   private readonly CACHE_TTL = 15 * 60 * 1000; // 15 minutes
@@ -409,16 +411,80 @@ export class ProductService {
   }
 
   /**
-   * Fetch products with prices
-   * Implements two-stage loading:
+   * Fetch pictures for a single product
+   * @param tenantId - Tenant ID
+   * @param productId - Product ID
+   * @returns Observable of picture array
+   */
+  private fetchProductPictures(
+    tenantId: string,
+    productId: string
+  ): Observable<any[]> {
+    return this.httpClient
+      .get<{ pictures: any[] }>(
+        `${this.API_URL}/tenants/${tenantId}/products/${productId}/pictures`
+      )
+      .pipe(
+        map((response) => response.pictures || []),
+        catchError((error) => {
+          console.debug(`Failed to fetch pictures for product ${productId}:`, error);
+          return of([]);
+        })
+      );
+  }
+
+  /**
+   * Fetch pictures for multiple products in parallel
+   * @param tenantId - Tenant ID
+   * @param products - Products to fetch pictures for
+   * @returns Observable of record mapping productId -> pictures array
+   */
+  private fetchPicturesBatch(
+    tenantId: string,
+    products: Product[]
+  ): Observable<Record<string, any[]>> {
+    if (products.length === 0) {
+      return of({});
+    }
+
+    const pictureRequests: Record<string, Observable<any[]>> = {};
+
+    products.forEach((product) => {
+      pictureRequests[product.id] = this.fetchProductPictures(tenantId, product.id);
+    });
+
+    return forkJoin(pictureRequests);
+  }
+
+  /**
+   * Merge fetched pictures with products
+   * @param products - Products to merge pictures into
+   * @param picturesMap - Map of productId -> pictures array
+   * @returns Products with embedded pictures data
+   */
+  private mergeProductsWithPictures(
+    products: Product[],
+    picturesMap: Record<string, any[]>
+  ): Product[] {
+    return products.map((product) => ({
+      ...product,
+      pictures: picturesMap[product.id] || [],
+    }));
+  }
+
+  /**
+   * Fetch products with prices and pictures
+   * Implements three-stage loading:
    * 1. Fetch products from API or cache
    * 2. Batch fetch prices for all products in parallel
-   * 3. Merge prices with products
-   * 4. Cache prices aggressively for future use
-   * This approach solves the N+1 problem by batching price requests
+   * 3. Batch fetch pictures for all products in parallel
+   * 4. Merge prices and pictures with products
+   * 5. Cache prices aggressively for future use
+   * 6. Preload images to IndexedDB for offline availability
+   * This approach solves the N+1 problem by batching requests
    * @param tenantId - Optional tenant ID (uses current tenant if not provided)
    * @param forceRefresh - Force refresh from API, bypassing cache
-   * @returns Observable of products with embedded prices
+   * @returns Observable of products with embedded prices and pictures
    */
   fetchProductsWithPrices(tenantId?: string, forceRefresh = false): Observable<Product[]> {
     const activeTenantId = tenantId || this.tenantService.getCurrentTenantId();
@@ -432,18 +498,27 @@ export class ProductService {
 
     return this.fetchProducts(activeTenantId, forceRefresh).pipe(
       switchMap((products) => {
+        // Fetch pictures for all products in parallel
+        return this.fetchPicturesBatch(activeTenantId, products).pipe(
+          map((picturesMap) => ({
+            products: this.mergeProductsWithPictures(products, picturesMap),
+            activeTenantId,
+          }))
+        );
+      }),
+      switchMap(({ products: productsWithPictures, activeTenantId }) => {
         // Build map of productId -> priceId for products with prices
         const productPriceMap = new Map<string, string>();
-        products.forEach((product) => {
+        productsWithPictures.forEach((product) => {
           if (product.defaultPriceId) {
             productPriceMap.set(product.id, product.defaultPriceId);
           }
         });
 
-        // If no products have prices, return products as-is
+        // If no products have prices, return products with pictures as-is
         if (productPriceMap.size === 0) {
           this.isLoading.set(false);
-          return of(products);
+          return of(productsWithPictures);
         }
 
         // Fetch prices in batch
@@ -461,7 +536,7 @@ export class ProductService {
 
             // If all prices are cached, use them
             if (uncachedPriceMap.size === 0) {
-              const mergedProducts = this.mergeProductsWithPrices(products, cachedPrices);
+              const mergedProducts = this.mergeProductsWithPrices(productsWithPictures, cachedPrices);
               this.isLoading.set(false);
               return of(mergedProducts);
             }
@@ -476,7 +551,7 @@ export class ProductService {
               }),
               map((fetchedPrices) => {
                 const allPrices = { ...cachedPrices, ...fetchedPrices };
-                return this.mergeProductsWithPrices(products, allPrices);
+                return this.mergeProductsWithPrices(productsWithPictures, allPrices);
               }),
               tap(() => {
                 this.isLoading.set(false);
@@ -484,16 +559,27 @@ export class ProductService {
               catchError((error) => {
                 console.error('Failed to fetch prices:', error);
                 this.isLoading.set(false);
-                // Return products without prices on error
-                return of(products);
+                // Return products with pictures but without prices on error
+                return of(productsWithPictures);
               })
             );
           })
         );
       }),
-      tap((productsWithPrices) => {
+      tap((productsWithPricesAndPictures) => {
         // Update products signal with enriched data
-        this.products.set(productsWithPrices);
+        this.products.set(productsWithPricesAndPictures);
+      }),
+      tap((productsWithPricesAndPictures) => {
+        // Preload images for offline availability
+        const activeTenantId = this.tenantService.getCurrentTenantId();
+        if (activeTenantId) {
+          this.imageCacheService
+            .preloadProductImages(activeTenantId, productsWithPricesAndPictures)
+            .catch((error) => {
+              console.debug('Image preloading failed (non-blocking):', error);
+            });
+        }
       })
     );
   }

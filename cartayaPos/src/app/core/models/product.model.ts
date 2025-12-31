@@ -1,4 +1,16 @@
 /**
+ * Picture Model
+ * Represents a picture/image for a product
+ */
+export interface Picture {
+  id: string;
+  filename: string;
+  title: string;
+  altText?: string;
+  isMain?: boolean;
+}
+
+/**
  * Product Model
  * Represents a product in a tenant's catalog
  */
@@ -15,6 +27,7 @@ export interface Product {
     amount: number;
     currency: string;
   };
+  pictures?: Picture[];
   createdAt: string;
   updatedAt: string;
 }

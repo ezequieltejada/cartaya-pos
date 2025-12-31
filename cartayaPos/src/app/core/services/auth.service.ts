@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, catchError, map, of, switchMap, tap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { User } from '../models/user.model';
+import { ImageCacheService } from './image-cache.service';
 import { ProductService } from './product.service';
 import { StorageService } from './storage.service';
 import { TenantService } from './tenant.service';
@@ -32,6 +33,7 @@ export class AuthService {
   private storageService = inject(StorageService);
   private tenantService = inject(TenantService);
   private productService = inject(ProductService);
+  private imageCacheService = inject(ImageCacheService);
 
   private readonly API_URL = `${environment.apiUrl}/api`;
   private readonly ACCESS_TOKEN_KEY = 'access_token';
@@ -175,7 +177,7 @@ export class AuthService {
 
   /**
    * Log out user and clear session
-   * Clears all product caches and tokens as part of logout process
+   * Clears all product caches, image caches, and tokens as part of logout process
    */
   logout(): Observable<void> {
     this.isLoading.set(true);
@@ -183,6 +185,8 @@ export class AuthService {
       switchMap(async () => {
         // Clear all product caches on logout
         await this.productService.clearCache();
+        // Clear image cache on logout
+        await this.imageCacheService.clearCache();
         await this.clearSession();
         this.isLoading.set(false);
         this.router.navigate(['/auth/login']);
