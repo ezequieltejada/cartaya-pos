@@ -20,9 +20,9 @@
                     x{{ modifier.quantity }}
                   </span>
                   <span class="modifier-price" 
-                    [class.positive]="modifier.priceDelta > 0"
-                    [class.negative]="modifier.priceDelta < 0">
-                    ({{ formatModifierPrice(modifier.priceDelta) }})
+                    [class.positive]="(calculateModifierCharge(modifier)) > 0"
+                    [class.negative]="(calculateModifierCharge(modifier)) < 0">
+                    {{ formatModifierPrice(modifier) }}
                   </span>
                 </ion-text>
               </div>

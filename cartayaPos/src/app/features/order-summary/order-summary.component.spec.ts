@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { AlertController, ToastController } from '@ionic/angular';
 import { of, throwError } from 'rxjs';
-import { OrderItem } from '../../core/models/order.model';
+import { OrderItem, SelectedModifier } from '../../models/order.model';
 import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
 import { TenantService } from '../../core/services/tenant.service';
@@ -27,6 +27,7 @@ describe('OrderSummaryComponent', () => {
       productId: 'prod-1',
       productName: 'Burger',
       basePrice: 10.0,
+      quantity: 1,
       modifiers: [
         {
           modifierId: 'mod-1',
@@ -42,6 +43,7 @@ describe('OrderSummaryComponent', () => {
       productId: 'prod-2',
       productName: 'Fries',
       basePrice: 3.5,
+      quantity: 1,
       modifiers: [],
       subtotal: 3.5,
     },
@@ -433,14 +435,237 @@ describe('OrderSummaryComponent', () => {
   });
 
   describe('Component Lifecycle', () => {
-    it('should initialize correctly', () => {
-      // Assert
-      expect(component).toBeTruthy();
-    });
+     it('should initialize correctly', () => {
+       // Assert
+       expect(component).toBeTruthy();
+     });
+   });
 
-    it('should handle ngOnDestroy', () => {
-      // Act & Assert - should not throw
-      expect(() => component.ngOnDestroy()).not.toThrow();
-    });
-  });
-});
+   describe('Modifier Pricing Calculation', () => {
+     describe('calculateModifierCharge', () => {
+       it('should calculate charge when selected quantity > included quantity', () => {
+         // Setup: Jamon +€1.00, includedQuantity=1, user selected 3
+         const modifier: SelectedModifier = {
+           modifierId: 'mod-jamon',
+           name: 'Jamon',
+           priceDelta: 1.0,
+           quantity: 3,
+           includedQuantity: 1,
+         };
+
+         // Act
+         const charge = component.calculateModifierCharge(modifier);
+
+         // Assert
+         // billableQuantity = max(0, 3 - 1) = 2
+         // charge = 2 × €1.00 = €2.00
+         expect(charge).toEqual(2.0);
+       });
+
+       it('should return 0 when selected quantity equals included quantity', () => {
+         // Setup: Jamon +€1.00, includedQuantity=1, user selected 1
+         const modifier: SelectedModifier = {
+           modifierId: 'mod-jamon',
+           name: 'Jamon',
+           priceDelta: 1.0,
+           quantity: 1,
+           includedQuantity: 1,
+         };
+
+         // Act
+         const charge = component.calculateModifierCharge(modifier);
+
+         // Assert
+         // billableQuantity = max(0, 1 - 1) = 0
+         // charge = 0 × €1.00 = €0.00
+         expect(charge).toEqual(0);
+       });
+
+       it('should return 0 when selected quantity < included quantity', () => {
+         // Setup: Jamon +€1.00, includedQuantity=5, user selected 2
+         const modifier: SelectedModifier = {
+           modifierId: 'mod-jamon',
+           name: 'Jamon',
+           priceDelta: 1.0,
+           quantity: 2,
+           includedQuantity: 5,
+         };
+
+         // Act
+         const charge = component.calculateModifierCharge(modifier);
+
+         // Assert
+         // billableQuantity = max(0, 2 - 5) = 0
+         // charge = 0 × €1.00 = €0.00
+         expect(charge).toEqual(0);
+       });
+
+       it('should handle negative price delta (discount)', () => {
+         // Setup: Discount -€0.50, includedQuantity=0, user selected 2
+         const modifier: SelectedModifier = {
+           modifierId: 'mod-discount',
+           name: 'Discount',
+           priceDelta: -0.5,
+           quantity: 2,
+           includedQuantity: 0,
+         };
+
+         // Act
+         const charge = component.calculateModifierCharge(modifier);
+
+         // Assert
+         // billableQuantity = max(0, 2 - 0) = 2
+         // charge = 2 × (-€0.50) = -€1.00
+         expect(charge).toEqual(-1.0);
+       });
+
+       it('should treat missing includedQuantity as 0', () => {
+         // Setup: Modifier without includedQuantity
+         const modifier: SelectedModifier = {
+           modifierId: 'mod-cheese',
+           name: 'Extra Cheese',
+           priceDelta: 1.5,
+           quantity: 2,
+           // includedQuantity is undefined
+         };
+
+         // Act
+         const charge = component.calculateModifierCharge(modifier);
+
+         // Assert
+         // billableQuantity = max(0, 2 - 0) = 2
+         // charge = 2 × €1.50 = €3.00
+         expect(charge).toEqual(3.0);
+       });
+
+       it('should handle zero quantity', () => {
+         // Setup: User selected 0 (edge case)
+         const modifier: SelectedModifier = {
+           modifierId: 'mod-cheese',
+           name: 'Extra Cheese',
+           priceDelta: 1.5,
+           quantity: 0,
+           includedQuantity: 1,
+         };
+
+         // Act
+         const charge = component.calculateModifierCharge(modifier);
+
+         // Assert
+         // billableQuantity = max(0, 0 - 1) = 0
+         expect(charge).toEqual(0);
+       });
+     });
+
+     describe('formatModifierPrice', () => {
+       it('should return "(included)" when charge is 0', () => {
+         // Setup: Modifier fully covered by includedQuantity
+         const modifier: SelectedModifier = {
+           modifierId: 'mod-jamon',
+           name: 'Jamon',
+           priceDelta: 1.0,
+           quantity: 1,
+           includedQuantity: 1,
+         };
+
+         // Act
+         const formatted = component.formatModifierPrice(modifier);
+
+         // Assert
+         expect(formatted).toEqual('(included)');
+       });
+
+       it('should format positive charge with + sign and currency', () => {
+         // Setup: Modifier with positive charge
+         const modifier: SelectedModifier = {
+           modifierId: 'mod-cheese',
+           name: 'Extra Cheese',
+           priceDelta: 1.5,
+           quantity: 2,
+           includedQuantity: 0,
+         };
+
+         // Act
+         const formatted = component.formatModifierPrice(modifier);
+
+         // Assert
+         // charge = 2 × €1.50 = €3.00
+         expect(formatted).toEqual('(+$3.00)');
+       });
+
+       it('should format negative charge with - sign and currency', () => {
+         // Setup: Discount modifier
+         const modifier: SelectedModifier = {
+           modifierId: 'mod-discount',
+           name: 'Discount',
+           priceDelta: -0.5,
+           quantity: 2,
+           includedQuantity: 0,
+         };
+
+         // Act
+         const formatted = component.formatModifierPrice(modifier);
+
+         // Assert
+         // charge = 2 × (-€0.50) = -€1.00
+         expect(formatted).toEqual('(-$1.00)');
+       });
+
+       it('should round to 2 decimal places', () => {
+         // Setup: Modifier with fractional price
+         const modifier: SelectedModifier = {
+           modifierId: 'mod-special',
+           name: 'Special',
+           priceDelta: 1.234567,
+           quantity: 2,
+           includedQuantity: 0,
+         };
+
+         // Act
+         const formatted = component.formatModifierPrice(modifier);
+
+         // Assert
+         // charge = 2 × €1.234567 = €2.469134 → €2.47
+         expect(formatted).toEqual('(+$2.47)');
+       });
+
+       it('should format zero charge as "(included)" not "+$0.00"', () => {
+         // Setup: Modifier partially included
+         const modifier: SelectedModifier = {
+           modifierId: 'mod-sauce',
+           name: 'Sauce',
+           priceDelta: 0.5,
+           quantity: 2,
+           includedQuantity: 2,
+         };
+
+         // Act
+         const formatted = component.formatModifierPrice(modifier);
+
+         // Assert
+         expect(formatted).toEqual('(included)');
+       });
+
+       it('should handle real-world scenario: Jamon with includedQuantity=1', () => {
+         // Setup: Bug scenario - Sandwich €4.00, Jamon +€1.00, includedQuantity=1, user selected 1
+         const modifier: SelectedModifier = {
+           modifierId: 'mod-jamon',
+           name: 'Jamon',
+           priceDelta: 1.0,
+           quantity: 1,
+           includedQuantity: 1,
+         };
+
+         // Act
+         const charge = component.calculateModifierCharge(modifier);
+         const formatted = component.formatModifierPrice(modifier);
+
+         // Assert
+         // Expected: charge = 0 (no billable quantity)
+         // Expected: display = "(included)"
+         expect(charge).toEqual(0);
+         expect(formatted).toEqual('(included)');
+       });
+     });
+   });
+ });

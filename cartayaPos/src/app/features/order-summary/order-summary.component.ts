@@ -15,6 +15,7 @@ import {
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
 import { checkmark, chevronDown, chevronUp, close, pencil, trash } from 'ionicons/icons';
+import { SelectedModifier } from '../../models/order.model';
 import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
 import { TenantService } from '../../core/services/tenant.service';
@@ -344,13 +345,48 @@ export class OrderSummaryComponent {
     return item.id;
   }
 
-  /**
-   * Formats modifier price delta with sign and currency
-   * @param priceDelta The price change (positive for add-ons, negative for discounts)
-   * @returns Formatted string like "+$1.50" or "-$0.50"
-   */
-  formatModifierPrice(priceDelta: number): string {
-    const sign = priceDelta >= 0 ? '+' : '';
-    return `${sign}$${Math.abs(priceDelta).toFixed(2)}`;
-  }
+   /**
+    * Calculates the actual billable charge for a modifier
+    * 
+    * Formula:
+    *   billableQuantity = max(0, selectedQuantity - includedQuantity)
+    *   charge = billableQuantity × priceDelta
+    * 
+    * The includedQuantity field allows for "bundled" quantities where customers
+    * only pay for quantities exceeding the included amount (e.g., "first 2 sauces free").
+    * 
+    * @param modifier The modifier with quantity, includedQuantity, and priceDelta
+    * @returns The actual billable charge (can be 0 if all units are included)
+    */
+   calculateModifierCharge(modifier: SelectedModifier): number {
+     const includedQuantity = modifier.includedQuantity ?? 0;
+     const billableQuantity = Math.max(0, modifier.quantity - includedQuantity);
+     return billableQuantity * modifier.priceDelta;
+   }
+
+   /**
+    * Formats modifier pricing for display
+    * 
+    * Shows:
+    * - "(included)" when the modifier's billableQuantity = 0 (no charge)
+    * - "(+$X.XX)" or "(-$X.XX)" when there is an actual charge to display
+    * 
+    * The priceDelta shown reflects the actual cost after accounting for includedQuantity.
+    * This ensures users see accurate pricing info in the order summary.
+    * 
+    * @param modifier The modifier with quantity, includedQuantity, and priceDelta
+    * @returns Formatted string like "(included)", "(+$1.50)", or "(-$0.50)"
+    */
+   formatModifierPrice(modifier: SelectedModifier): string {
+     const charge = this.calculateModifierCharge(modifier);
+     
+     // If billableQuantity is 0, show "(included)"
+     if (charge === 0) {
+       return '(included)';
+     }
+     
+     // Otherwise, show the actual charge with sign
+     const sign = charge >= 0 ? '+' : '';
+     return `(${sign}$${Math.abs(charge).toFixed(2)})`;
+   }
 }
