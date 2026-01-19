@@ -16,6 +16,40 @@ interface ModifierCache {
 
 /**
  * API Response format for modifiers endpoint
+ * 
+ * Response structure from cartaya-api GET /products/:productId/modifiers
+ * 
+ * Key fields:
+ * - id: Unique modifier identifier
+ * - name: Display name shown to users
+ * - priceDelta: Price adjustment (positive for add-ons, negative for discounts)
+ * - currency: ISO 4217 currency code (must match product currency)
+ * - active: Only active modifiers should be displayed/selectable
+ * - isDefault: Whether this modifier is automatically included
+ * - isRemovable: Whether default modifiers can be removed
+ * - includedQuantity: Quantity included in base price (NEW FIELD)
+ *   * If customer selects quantity <= includedQuantity, no extra charge applies
+ *   * Example: "First 2 cheese slices included" → includedQuantity=2
+ *   * If missing or null, defaults to 0 (charge full amount)
+ * 
+ * @example
+ * {
+ *   "data": [
+ *     {
+ *       "id": "mod-cheese",
+ *       "name": "Extra Cheese",
+ *       "priceDelta": 1.00,
+ *       "currency": "USD",
+ *       "active": true,
+ *       "isDefault": false,
+ *       "isRemovable": true,
+ *       "includedQuantity": 2,  // First 2 are free, charged from 3rd onwards
+ *       "createdAt": "2024-01-01T00:00:00Z",
+ *       "updatedAt": "2024-01-15T14:30:00Z"
+ *     }
+ *   ],
+ *   "pagination": { "total": 5, "limit": 100, "offset": 0, "hasMore": false }
+ * }
  */
 interface ModifiersApiResponse {
   data: {
@@ -26,6 +60,9 @@ interface ModifiersApiResponse {
     active: boolean;
     isDefault?: boolean;
     isRemovable?: boolean;
+    includedQuantity?: number;
+    createdAt?: string;
+    updatedAt?: string;
   }[];
   pagination: {
     total: number;
@@ -114,17 +151,39 @@ export class ModifierService {
 
   /**
    * Fetch modifiers for a specific product from the backend API
-   * Implements strategy:
+   * 
+   * Implements the following strategy:
    * 1. Make GET request to /api/tenants/:tenantId/products/:productId/modifiers
    * 2. Extract data from paginated response.data
    * 3. Filter to only include active modifiers
-   * 4. Set loading state during request
-   * 5. Cache results for offline support
-   * 6. Handle errors gracefully (log to console, return empty array)
-   * @param tenantId - Tenant ID
+   * 4. Map API response to Modifier interface, preserving includedQuantity field
+   * 5. Set loading state during request
+   * 6. Cache results for offline support
+   * 7. Handle errors gracefully (log to console, return empty array)
+   * 
+   * includedQuantity Handling:
+   * - Field is preserved from API response using spread operator: {...modifier}
+   * - If includedQuantity is present in API response, it's included in returned Modifiers
+   * - If includedQuantity is missing or null, it defaults to undefined in Modifier interface
+   * - Default behavior when undefined: treated as 0 in pricing calculations
+   * 
+   * @param tenantId - Tenant ID from settings service
    * @param productId - Product ID to fetch modifiers for
-   * @param posId - Point of Sale ID (used for caching)
-   * @returns Observable of active modifiers for the product
+   * @param posId - Point of Sale ID (used for cache key)
+   * @returns Observable of active Modifier[] with includedQuantity field preserved
+   * 
+   * @example
+   * // API response includes includedQuantity
+   * modifierService.fetchProductModifiers('tenant-1', 'prod-burger', 'pos-123')
+   *   .subscribe(modifiers => {
+   *     // modifiers[0] = {
+   *     //   id: 'mod-cheese',
+   *     //   name: 'Extra Cheese',
+   *     //   priceDelta: 1.00,
+   *     //   includedQuantity: 2,  // Preserved from API
+   *     //   ...
+   *     // }
+   *   });
    */
   fetchProductModifiers(
     tenantId: string,

@@ -19,6 +19,24 @@ export interface SelectedModifier {
   modifierId: string;
 
   /**
+   * Quantity included in the base price for this product-modifier relation
+   * 
+   * Copied from the Modifier interface at the time of order creation.
+   * Represents the quantity of this modifier that is included in the product's base price.
+   * 
+   * During pricing calculation in OrderService.calculateSubtotal():
+   * billableQuantity = max(0, selectedQuantity - includedQuantity)
+   * charge = billableQuantity × priceDelta
+   * 
+   * Allows pricing adjustments based on "bundle" quantities without requiring
+   * separate product SKUs (e.g., "first 2 sauces included, $0.50 each after").
+   * 
+   * @example 2  // User selected 3, but first 2 are included → charge for 1
+   * @default 0  // If undefined, treated as 0 (charge full quantity)
+   */
+   includedQuantity?: number;
+
+  /**
    * Snapshot of the modifier's name at time of order
    * Preserves historical naming for audit trail
    * @example "Extra Cheese"

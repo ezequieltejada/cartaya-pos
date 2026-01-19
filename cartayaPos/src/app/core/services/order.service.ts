@@ -250,18 +250,60 @@ export class OrderService {
   // ===== Private Helper Methods =====
 
   /**
-   * Calculates the subtotal for an order item
-   * Formula: basePrice + Σ(modifier.priceDelta × modifier.quantity)
-   * @param basePrice The base price of the product
-   * @param modifiers Array of selected modifiers
-   * @returns The calculated subtotal
+   * Calculates the subtotal for an order item with includedQuantity support
+   * 
+   * Formula: subtotal = basePrice + Σ(charge for each modifier)
+   * 
+   * For each modifier:
+   *   billableQuantity = max(0, selectedQuantity - includedQuantity)
+   *   charge = billableQuantity × priceDelta
+   * 
+   * The includedQuantity field allows for "bundled" quantities where customers
+   * only pay for quantities exceeding the included amount. This is useful for
+   * promotions like "first 2 sauces free, $0.50 each after".
+   * 
+   * @param basePrice - The base price of the product (without modifiers)
+   * @param modifiers - Array of selected modifiers with quantities
+   *   Each modifier contains:
+   *   - quantity: Number of items selected by user
+   *   - includedQuantity: Number of items included in base price (defaults to 0 if undefined)
+   *   - priceDelta: Price per unit of this modifier
+   * @returns The calculated subtotal including all modifiers
+   * 
+   * @example
+   * // Product: Burger ($10.00)
+   * // Modifier: Extra Cheese (+$1.00, includedQuantity=2, selected=3)
+   * const subtotal = calculateSubtotal(10.00, [{
+   *   modifierId: 'mod-1',
+   *   name: 'Extra Cheese',
+   *   priceDelta: 1.00,
+   *   quantity: 3,
+   *   includedQuantity: 2  // First 2 included in base price
+   * }]);
+   * 
+   * // Calculation:
+   * // billableQuantity = max(0, 3 - 2) = 1
+   * // charge = $1.00 × 1 = $1.00
+   * // subtotal = $10.00 + $1.00 = $11.00
+   * 
+   * @example
+   * // Edge case: selectedQuantity <= includedQuantity
+   * const subtotal = calculateSubtotal(10.00, [{
+   *   quantity: 2,
+   *   includedQuantity: 2,
+   *   priceDelta: 1.00
+   * }]);
+   * // billableQuantity = max(0, 2 - 2) = 0 → NO CHARGE
+   * // subtotal = $10.00 (all included in base price)
    */
   private calculateSubtotal(
     basePrice: number,
     modifiers: SelectedModifier[]
   ): number {
     const modifiersTotal = modifiers.reduce((sum, mod) => {
-      return sum + mod.priceDelta * mod.quantity;
+      const includedQuantity = mod.includedQuantity ?? 0;
+      const billableQuantity = Math.max(0, mod.quantity - includedQuantity);
+      return sum + mod.priceDelta * billableQuantity;
     }, 0);
     return basePrice + modifiersTotal;
   }

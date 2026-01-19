@@ -11,6 +11,25 @@ export interface Modifier {
   id: string;
 
   /**
+   * Quantity included in the base price for this product-modifier relation
+   * Represents a "bundled" quantity that is charged as part of the base product price.
+   * Customer only pays extra for quantities exceeding this amount.
+   * 
+   * Pricing Formula:
+   * charge = priceDelta × max(0, selectedQuantity - includedQuantity)
+   * 
+   * Examples:
+   * - includedQuantity=2, selectedQuantity=1 → no extra charge
+   * - includedQuantity=2, selectedQuantity=2 → no extra charge
+   * - includedQuantity=2, selectedQuantity=3 → charge for 1 extra
+   * - includedQuantity=0, selectedQuantity=any → always charge for full quantity
+   * 
+   * @example 2  // "First 2 cheese slices included in base price"
+   * @default 0  // If undefined, defaults to 0 (charge full amount) during calculation
+   */
+   includedQuantity?: number;
+
+  /**
    * Display name for the modifier shown to users
    * Should be descriptive and concise (e.g., "Extra Cheese", "Add Bacon")
    * @example "Extra Cheese"

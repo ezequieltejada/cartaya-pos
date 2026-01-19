@@ -494,21 +494,24 @@ export class ModifiersPage implements OnInit, OnDestroy {
       return;
     }
 
-    // Build SelectedModifier array from Map (only include quantities > 0)
-    const selectedModifiers: SelectedModifier[] = [];
-    this.selectedModifiers().forEach((quantity, modifierId) => {
-      if (quantity > 0) {
-        const modifier = this.modifiersList().find((m) => m.id === modifierId);
-        if (modifier) {
-          selectedModifiers.push({
-            modifierId: modifier.id,
-            name: modifier.name,
-            priceDelta: modifier.priceDelta,
-            quantity,
-          });
-        }
-      }
-    });
+     // Build SelectedModifier array from Map (only include quantities > 0)
+     const selectedModifiers: SelectedModifier[] = [];
+     this.selectedModifiers().forEach((quantity, modifierId) => {
+       if (quantity > 0) {
+         const modifier = this.modifiersList().find((m) => m.id === modifierId);
+           if (modifier) {
+             selectedModifiers.push({
+               modifierId: modifier.id,
+               name: modifier.name,
+               priceDelta: modifier.priceDelta,
+               quantity,
+               // Preserve includedQuantity from Modifier for pricing calculations
+               // Default to 0 if undefined (means no quantity is included in base price)
+               includedQuantity: modifier.includedQuantity ?? 0,
+             });
+           }
+       }
+     });
 
     if (this.isEditing() && this.editingItemId()) {
       // Update existing item modifiers
