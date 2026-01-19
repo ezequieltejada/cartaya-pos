@@ -428,4 +428,197 @@ describe('ModifiersPage', () => {
       expect(component.isLoading()).toBe(false); // After fetch completes
     });
   });
-});
+
+  // ===== includedQuantity UI Display Tests =====
+
+  describe('includedQuantity UI Display Methods', () => {
+    describe('getIncludedQuantityText()', () => {
+      it('should return empty string when includedQuantity is 0', () => {
+        const modifier: any = {
+          id: 'mod-1',
+          name: 'Extra Cheese',
+          includedQuantity: 0,
+        };
+        expect(component.getIncludedQuantityText(modifier)).toBe('');
+      });
+
+      it('should return empty string when includedQuantity is undefined', () => {
+        const modifier: any = {
+          id: 'mod-1',
+          name: 'Extra Cheese',
+          includedQuantity: undefined,
+        };
+        expect(component.getIncludedQuantityText(modifier)).toBe('');
+      });
+
+      it('should return singular form for includedQuantity = 1', () => {
+        const modifier: any = {
+          id: 'mod-1',
+          name: 'Extra Cheese',
+          includedQuantity: 1,
+        };
+        expect(component.getIncludedQuantityText(modifier)).toBe('First 1 included');
+      });
+
+      it('should return plural form for includedQuantity > 1', () => {
+        const modifier: any = {
+          id: 'mod-1',
+          name: 'Extra Cheese',
+          includedQuantity: 2,
+        };
+        expect(component.getIncludedQuantityText(modifier)).toBe('First 2 included');
+      });
+
+      it('should handle large includedQuantity values', () => {
+        const modifier: any = {
+          id: 'mod-1',
+          name: 'Extra Cheese',
+          includedQuantity: 100,
+        };
+        expect(component.getIncludedQuantityText(modifier)).toBe('First 100 included');
+      });
+    });
+
+    describe('getQuantityBreakdown()', () => {
+      it('should return empty string when quantity is 0', () => {
+        const modifier: any = {
+          id: 'mod-1',
+          name: 'Extra Cheese',
+          priceDelta: 1.0,
+          currency: 'USD',
+          includedQuantity: 2,
+        };
+        component.selectedModifiers.set(new Map([['mod-1', 0]]));
+        expect(component.getQuantityBreakdown(modifier)).toBe('');
+      });
+
+      it('should show singular form when selected = 1 and included > 0', () => {
+        const modifier: any = {
+          id: 'mod-1',
+          name: 'Extra Cheese',
+          priceDelta: 1.0,
+          currency: 'USD',
+          includedQuantity: 2,
+        };
+        component.selectedModifiers.set(new Map([['mod-1', 1]]));
+        expect(component.getQuantityBreakdown(modifier)).toBe('1 included');
+      });
+
+      it('should show plural form when all quantity is included', () => {
+        const modifier: any = {
+          id: 'mod-1',
+          name: 'Extra Cheese',
+          priceDelta: 1.0,
+          currency: 'USD',
+          includedQuantity: 2,
+        };
+        component.selectedModifiers.set(new Map([['mod-1', 2]]));
+        expect(component.getQuantityBreakdown(modifier)).toBe('2 included');
+      });
+
+      it('should show breakdown when selected > included (singular extra)', () => {
+        const modifier: any = {
+          id: 'mod-1',
+          name: 'Extra Cheese',
+          priceDelta: 1.0,
+          currency: 'USD',
+          includedQuantity: 2,
+        };
+        component.selectedModifiers.set(new Map([['mod-1', 3]]));
+        const result = component.getQuantityBreakdown(modifier);
+        expect(result).toContain('2 included');
+        expect(result).toContain('1 extra');
+        expect(result).toContain('$1.00');
+      });
+
+      it('should show breakdown when selected > included (plural extra)', () => {
+        const modifier: any = {
+          id: 'mod-1',
+          name: 'Extra Cheese',
+          priceDelta: 1.0,
+          currency: 'USD',
+          includedQuantity: 2,
+        };
+        component.selectedModifiers.set(new Map([['mod-1', 4]]));
+        const result = component.getQuantityBreakdown(modifier);
+        expect(result).toContain('2 included');
+        expect(result).toContain('2 extra');
+        expect(result).toContain('$2.00');
+      });
+
+      it('should handle zero includedQuantity in breakdown', () => {
+        const modifier: any = {
+          id: 'mod-1',
+          name: 'Extra Cheese',
+          priceDelta: 1.0,
+          currency: 'USD',
+          includedQuantity: 0,
+        };
+        component.selectedModifiers.set(new Map([['mod-1', 3]]));
+        const result = component.getQuantityBreakdown(modifier);
+        // Should show total × price format for no included quantity
+        expect(result).toContain('3');
+        expect(result).toContain('$1.00');
+      });
+
+      it('should handle undefined includedQuantity as zero', () => {
+        const modifier: any = {
+          id: 'mod-1',
+          name: 'Extra Cheese',
+          priceDelta: 1.0,
+          currency: 'USD',
+          includedQuantity: undefined,
+        };
+        component.selectedModifiers.set(new Map([['mod-1', 2]]));
+        const result = component.getQuantityBreakdown(modifier);
+        expect(result).toContain('2');
+        expect(result).toContain('$1.00');
+      });
+
+      it('should calculate charges correctly with fractional prices', () => {
+        const modifier: any = {
+          id: 'mod-1',
+          name: 'Premium Sauce',
+          priceDelta: 0.5,
+          currency: 'USD',
+          includedQuantity: 1,
+        };
+        component.selectedModifiers.set(new Map([['mod-1', 3]]));
+        const result = component.getQuantityBreakdown(modifier);
+        // 1 included + 2 extra @ $0.50 each = $1.00
+        expect(result).toContain('1 included');
+        expect(result).toContain('2 extra');
+        expect(result).toContain('$1.00');
+      });
+
+      it('should handle negative price (discount) breakdown', () => {
+        const modifier: any = {
+          id: 'mod-discount',
+          name: 'Senior Discount',
+          priceDelta: -2.0,
+          currency: 'USD',
+          includedQuantity: 0,
+        };
+        component.selectedModifiers.set(new Map([['mod-discount', 1]]));
+        const result = component.getQuantityBreakdown(modifier);
+        expect(result).toContain('1');
+        expect(result).toContain('-$2.00');
+      });
+
+      it('should show multiple included + extra correctly', () => {
+        const modifier: any = {
+          id: 'mod-1',
+          name: 'Extra Cheese',
+          priceDelta: 1.5,
+          currency: 'USD',
+          includedQuantity: 3,
+        };
+        component.selectedModifiers.set(new Map([['mod-1', 5]]));
+        const result = component.getQuantityBreakdown(modifier);
+        // 3 included + 2 extra @ $1.50 each = $3.00
+        expect(result).toContain('3 included');
+        expect(result).toContain('2 extra');
+        expect(result).toContain('$3.00');
+      });
+    });
+  });

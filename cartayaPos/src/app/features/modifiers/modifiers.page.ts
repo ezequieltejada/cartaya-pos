@@ -121,6 +121,10 @@ import { TenantService } from '../../core/services/tenant.service';
             <p [class.positive]="modifier.priceDelta > 0" [class.negative]="modifier.priceDelta < 0">
               {{ formatPriceDelta(modifier.priceDelta, modifier.currency) }}
             </p>
+            <!-- Display included quantity text when present -->
+            <p class="included-quantity-info" *ngIf="getIncludedQuantityText(modifier)">
+              {{ getIncludedQuantityText(modifier) }}
+            </p>
           </ion-label>
 
           <div slot="end" class="quantity-controls">
@@ -136,6 +140,13 @@ import { TenantService } from '../../core/services/tenant.service';
 
             <span class="quantity-display" [attr.aria-live]="'polite'">
               {{ selectedModifiers().get(modifier.id) || 0 }}
+            </span>
+
+            <!-- Display quantity breakdown when selected -->
+            <span class="quantity-breakdown" 
+                  [attr.aria-live]="'polite'"
+                  *ngIf="getQuantityBreakdown(modifier)">
+              ({{ getQuantityBreakdown(modifier) }})
             </span>
 
             <ion-button
@@ -204,6 +215,21 @@ import { TenantService } from '../../core/services/tenant.service';
         text-align: center;
         font-weight: 600;
         font-size: 18px;
+      }
+
+      .quantity-breakdown {
+        display: inline-block;
+        margin-left: 4px;
+        font-size: 14px;
+        color: var(--ion-color-medium, #92949c);
+        font-weight: 500;
+      }
+
+      .included-quantity-info {
+        font-size: 13px;
+        color: var(--ion-color-success, #2dd36f);
+        font-weight: 500;
+        margin: 4px 0 0 0;
       }
 
       ion-button {
@@ -479,6 +505,81 @@ export class ModifiersPage implements OnInit, OnDestroy {
       const sign = delta > 0 ? '+' : '';
       return `${sign}$${delta.toFixed(2)}`;
     }
+  }
+
+  /**
+   * Get text describing the included quantity for a modifier
+   * Shows "First N included" when includedQuantity > 0
+   * Returns empty string when includedQuantity is 0 or undefined (to hide from UI)
+   * 
+   * @param modifier The modifier to get included quantity text for
+   * @returns Human-readable text like "First 2 included" or empty string
+   * 
+   * @example
+   * modifier with includedQuantity=2 → "First 2 included"
+   * modifier with includedQuantity=1 → "First 1 included"
+   * modifier with includedQuantity=0 or undefined → "" (hidden)
+   */
+  getIncludedQuantityText(modifier: Modifier): string {
+    const includedQty = modifier.includedQuantity ?? 0;
+    if (includedQty === 0) {
+      return ''; // Don't show when nothing is included
+    }
+    
+    if (includedQty === 1) {
+      return 'First 1 included'; // Singular form
+    }
+    
+    return `First ${includedQty} included`; // Plural form
+  }
+
+  /**
+   * Get quantity breakdown text showing included vs billable quantity
+   * Shows only when user has selected > 0 quantity
+   * 
+   * Examples:
+   * - If selected=1, included=2 → "1 included" (all included)
+   * - If selected=2, included=2 → "2 included" (all included)
+   * - If selected=3, included=2 → "2 included + 1 extra" (partial charge)
+   * - If selected=4, included=2, price=$1 each → "2 included + 2 extra ($2.00)"
+   * 
+   * @param modifier The modifier to calculate breakdown for
+   * @returns Breakdown text or empty string if quantity is 0
+   */
+  getQuantityBreakdown(modifier: Modifier): string {
+    const selectedQty = this.selectedModifiers().get(modifier.id) || 0;
+    
+    if (selectedQty === 0) {
+      return ''; // No breakdown when quantity is 0
+    }
+    
+    const includedQty = modifier.includedQuantity ?? 0;
+    
+    // If all selected quantity is included (selected <= included)
+    if (selectedQty <= includedQty) {
+      if (selectedQty === 1) {
+        return '1 included'; // Singular
+      }
+      return `${selectedQty} included`; // Plural
+    }
+    
+    // If some quantity is not included (selected > included)
+    const billableQty = selectedQty - includedQty;
+    const charge = modifier.priceDelta * billableQty;
+    const chargeFormatted = charge.toFixed(2);
+    
+    if (includedQty === 0) {
+      // No included quantity, show all as extra (charged)
+      return `${selectedQty} × ${this.formatPriceDelta(modifier.priceDelta, modifier.currency)}`;
+    }
+    
+    if (billableQty === 1) {
+      // Singular form for billable quantity
+      return `${includedQty} included + 1 extra ($${chargeFormatted})`;
+    }
+    
+    // Plural form for billable quantity
+    return `${includedQty} included + ${billableQty} extra ($${chargeFormatted})`;
   }
 
   /**
