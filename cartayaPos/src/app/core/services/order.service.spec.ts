@@ -1623,4 +1623,220 @@ describe('OrderService', () => {
       }, 20);
     });
   });
+
+  // ===== Order Submission Integration Tests with includedQuantity =====
+
+  describe('Order Submission with includedQuantity', () => {
+    it('should submit order with correct totalAmount calculated using includedQuantity', (done) => {
+      storageService.set.and.returnValue(Promise.resolve());
+      storageService.remove.and.returnValue(Promise.resolve());
+
+      // Add item with modifiers that have includedQuantity
+      const modifiers: SelectedModifier[] = [
+        {
+          modifierId: 'mod-cheese',
+          name: 'Extra Cheese',
+          priceDelta: 1.0,
+          quantity: 3,
+          includedQuantity: 2, // First 2 included, 3rd charged
+        },
+      ];
+
+      service.addConfiguredProduct(mockProduct, modifiers);
+
+      setTimeout(() => {
+        // Order total should be: 12.99 + (1.0 × (3-2)) = 12.99 + 1.00 = 13.99
+        expect(service.orderTotal()).toBe(13.99);
+
+        // Submit order
+        service.submitOrder(posId, tenantId).subscribe(() => {
+          expect(service.orderItems().length).toBe(0); // Order cleared after submission
+          done();
+        });
+
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/pos/${posId}/orders`)
+        );
+
+        // Verify submission payload
+        const payload = req.request.body;
+        expect(payload.totalAmount).toBe(13.99); // Correct total with includedQuantity
+        expect(payload.items.length).toBe(1);
+        expect(payload.items[0].modifiers[0].quantity).toBe(3); // Selected quantity
+        expect(payload.items[0].modifiers[0].modifierId).toBe('mod-cheese');
+
+        req.flush({
+          orderId: 'order-1',
+          status: 'received',
+          createdAt: new Date().toISOString(),
+          items: [],
+          totalAmount: 13.99,
+          currency: 'EUR',
+        });
+      }, 10);
+    });
+
+    it('should submit order with multiple items having different includedQuantity values', (done) => {
+      storageService.set.and.returnValue(Promise.resolve());
+      storageService.remove.and.returnValue(Promise.resolve());
+
+      // Item 1: Modifier with includedQuantity=2, selected=3 → charge for 1
+      const mods1: SelectedModifier[] = [
+        {
+          modifierId: 'mod-1',
+          name: 'Sauce 1',
+          priceDelta: 0.5,
+          quantity: 3,
+          includedQuantity: 2,
+        },
+      ];
+
+      // Item 2: Modifier with includedQuantity=0, selected=2 → charge for 2
+      const mods2: SelectedModifier[] = [
+        {
+          modifierId: 'mod-2',
+          name: 'Sauce 2',
+          priceDelta: 0.75,
+          quantity: 2,
+          includedQuantity: 0,
+        },
+      ];
+
+      service.addConfiguredProduct(mockProduct, mods1);
+      service.addConfiguredProduct(mockProduct, mods2);
+
+      setTimeout(() => {
+        // Item 1: 12.99 + (0.5 × (3-2)) = 12.99 + 0.50 = 13.49
+        // Item 2: 12.99 + (0.75 × (2-0)) = 12.99 + 1.50 = 14.49
+        // Total: 13.49 + 14.49 = 27.98
+        expect(service.orderTotal()).toBeCloseTo(27.98, 2);
+
+        service.submitOrder(posId, tenantId).subscribe(() => {
+          done();
+        });
+
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/pos/${posId}/orders`)
+        );
+
+        const payload = req.request.body;
+        expect(payload.totalAmount).toBeCloseTo(27.98, 2);
+        expect(payload.items.length).toBe(2);
+
+        req.flush({
+          orderId: 'order-1',
+          status: 'received',
+          createdAt: new Date().toISOString(),
+          items: [],
+          totalAmount: 27.98,
+          currency: 'EUR',
+        });
+      }, 10);
+    });
+
+    it('should calculate and submit order where includedQuantity covers all selected quantity', (done) => {
+      storageService.set.and.returnValue(Promise.resolve());
+      storageService.remove.and.returnValue(Promise.resolve());
+
+      // Modifier with includedQuantity=5, selected=3 → no charge (all included)
+      const modifiers: SelectedModifier[] = [
+        {
+          modifierId: 'mod-bundle',
+          name: 'Bundle Deal',
+          priceDelta: 2.0,
+          quantity: 3,
+          includedQuantity: 5, // More than selected
+        },
+      ];
+
+      service.addConfiguredProduct(mockProduct, modifiers);
+
+      setTimeout(() => {
+        // 12.99 + (2.0 × (3-5)) = 12.99 + (2.0 × 0) = 12.99
+        expect(service.orderTotal()).toBe(12.99);
+
+        service.submitOrder(posId, tenantId).subscribe(() => {
+          done();
+        });
+
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/pos/${posId}/orders`)
+        );
+
+        const payload = req.request.body;
+        expect(payload.totalAmount).toBe(12.99);
+        expect(payload.items[0].modifiers[0].quantity).toBe(3);
+
+        req.flush({
+          orderId: 'order-1',
+          status: 'received',
+          createdAt: new Date().toISOString(),
+          items: [],
+          totalAmount: 12.99,
+          currency: 'EUR',
+        });
+      }, 10);
+    });
+
+    it('should handle order submission with mixed included/non-included modifiers', (done) => {
+      storageService.set.and.returnValue(Promise.resolve());
+      storageService.remove.and.returnValue(Promise.resolve());
+
+      // Multiple modifiers with different includedQuantity values
+      const modifiers: SelectedModifier[] = [
+        {
+          modifierId: 'mod-1',
+          name: 'Modifier 1',
+          priceDelta: 1.0,
+          quantity: 2,
+          includedQuantity: 1,
+        },
+        {
+          modifierId: 'mod-2',
+          name: 'Modifier 2',
+          priceDelta: 0.5,
+          quantity: 2,
+          includedQuantity: 2, // Exact match, no charge
+        },
+        {
+          modifierId: 'mod-3',
+          name: 'Modifier 3',
+          priceDelta: 1.5,
+          quantity: 3,
+          includedQuantity: 0,
+        },
+      ];
+
+      service.addConfiguredProduct(mockProduct, modifiers);
+
+      setTimeout(() => {
+        // charge1 = 1.0 × (2-1) = 1.00
+        // charge2 = 0.5 × (2-2) = 0.00
+        // charge3 = 1.5 × (3-0) = 4.50
+        // Total: 12.99 + 1.00 + 0.00 + 4.50 = 18.49
+        expect(service.orderTotal()).toBeCloseTo(18.49, 2);
+
+        service.submitOrder(posId, tenantId).subscribe(() => {
+          done();
+        });
+
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/pos/${posId}/orders`)
+        );
+
+        const payload = req.request.body;
+        expect(payload.totalAmount).toBeCloseTo(18.49, 2);
+        expect(payload.items[0].modifiers.length).toBe(3);
+
+        req.flush({
+          orderId: 'order-1',
+          status: 'received',
+          createdAt: new Date().toISOString(),
+          items: [],
+          totalAmount: 18.49,
+          currency: 'EUR',
+        });
+      }, 10);
+    });
+  });
 });

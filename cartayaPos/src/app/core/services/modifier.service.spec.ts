@@ -651,4 +651,257 @@ describe('ModifierService', () => {
       });
     });
   });
+
+  // ===== includedQuantity API Response Handling =====
+
+  describe('includedQuantity API Response Handling', () => {
+    it('should preserve includedQuantity from API response', (done) => {
+      storageService.set.and.returnValue(Promise.resolve());
+
+      const apiResponseWithIncluded = {
+        data: [
+          {
+            id: 'mod-cheese',
+            name: 'Extra Cheese',
+            priceDelta: 1.0,
+            currency: 'USD',
+            active: true,
+            includedQuantity: 2, // KEY: includedQuantity in API response
+            isDefault: false,
+            isRemovable: true,
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+        pagination: {
+          total: 1,
+          limit: 100,
+          offset: 0,
+          hasMore: false,
+        },
+      };
+
+      service.fetchProductModifiers(tenantId, productId, posId).subscribe((modifiers) => {
+        expect(modifiers.length).toBe(1);
+        expect(modifiers[0].id).toBe('mod-cheese');
+        expect(modifiers[0].includedQuantity).toBe(2); // VERIFY: includedQuantity preserved
+        done();
+      });
+
+      const req = httpMock.expectOne((r) =>
+        r.url.includes(`/tenants/${tenantId}/products/${productId}/modifiers`)
+      );
+      req.flush(apiResponseWithIncluded);
+    });
+
+    it('should handle missing includedQuantity as undefined', (done) => {
+      storageService.set.and.returnValue(Promise.resolve());
+
+      const apiResponseWithoutIncluded = {
+        data: [
+          {
+            id: 'mod-bacon',
+            name: 'Add Bacon',
+            priceDelta: 2.0,
+            currency: 'USD',
+            active: true,
+            // includedQuantity is missing
+            isDefault: false,
+            isRemovable: true,
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+        pagination: {
+          total: 1,
+          limit: 100,
+          offset: 0,
+          hasMore: false,
+        },
+      };
+
+      service.fetchProductModifiers(tenantId, productId, posId).subscribe((modifiers) => {
+        expect(modifiers.length).toBe(1);
+        expect(modifiers[0].includedQuantity).toBeUndefined();
+        done();
+      });
+
+      const req = httpMock.expectOne((r) =>
+        r.url.includes(`/tenants/${tenantId}/products/${productId}/modifiers`)
+      );
+      req.flush(apiResponseWithoutIncluded);
+    });
+
+    it('should filter inactive modifiers and preserve includedQuantity for active ones', (done) => {
+      storageService.set.and.returnValue(Promise.resolve());
+
+      const mixedResponse = {
+        data: [
+          {
+            id: 'mod-1',
+            name: 'Active with included',
+            priceDelta: 1.0,
+            currency: 'USD',
+            active: true,
+            includedQuantity: 3,
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-01T00:00:00Z',
+          },
+          {
+            id: 'mod-2',
+            name: 'Inactive (should filter)',
+            priceDelta: 2.0,
+            currency: 'USD',
+            active: false,
+            includedQuantity: 1,
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-01T00:00:00Z',
+          },
+          {
+            id: 'mod-3',
+            name: 'Active without included',
+            priceDelta: 1.5,
+            currency: 'USD',
+            active: true,
+            // includedQuantity missing
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+        pagination: {
+          total: 3,
+          limit: 100,
+          offset: 0,
+          hasMore: false,
+        },
+      };
+
+      service.fetchProductModifiers(tenantId, productId, posId).subscribe((modifiers) => {
+        // Should only get 2 active modifiers
+        expect(modifiers.length).toBe(2);
+        expect(modifiers[0].id).toBe('mod-1');
+        expect(modifiers[0].includedQuantity).toBe(3); // Preserved
+        expect(modifiers[1].id).toBe('mod-3');
+        expect(modifiers[1].includedQuantity).toBeUndefined(); // Missing in original
+        done();
+      });
+
+      const req = httpMock.expectOne((r) =>
+        r.url.includes(`/tenants/${tenantId}/products/${productId}/modifiers`)
+      );
+      req.flush(mixedResponse);
+    });
+
+    it('should cache includedQuantity correctly', async () => {
+      storageService.set.and.returnValue(Promise.resolve());
+      storageService.get.and.returnValue(Promise.resolve(null));
+
+      const apiResponseWithIncluded = {
+        data: [
+          {
+            id: 'mod-cheese',
+            name: 'Extra Cheese',
+            priceDelta: 1.0,
+            currency: 'USD',
+            active: true,
+            includedQuantity: 2,
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+        pagination: {
+          total: 1,
+          limit: 100,
+          offset: 0,
+          hasMore: false,
+        },
+      };
+
+      // Fetch modifiers (will cache them)
+      service.fetchProductModifiers(tenantId, productId, posId).subscribe();
+
+      const req = httpMock.expectOne((r) =>
+        r.url.includes(`/tenants/${tenantId}/products/${productId}/modifiers`)
+      );
+      req.flush(apiResponseWithIncluded);
+
+      // Wait for async cache operation
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Verify caching called with correct data
+      expect(storageService.set).toHaveBeenCalled();
+      const cacheCall = storageService.set.calls.mostRecent();
+      expect(cacheCall).toBeTruthy();
+
+      // The cached data should include includedQuantity
+      const cachedData = cacheCall?.args[1];
+      expect(cachedData).toEqual(
+        jasmine.arrayContaining([
+          jasmine.objectContaining({
+            id: 'mod-cheese',
+            includedQuantity: 2,
+          }),
+        ])
+      );
+    });
+
+    it('should handle multiple modifiers with different includedQuantity values', (done) => {
+      storageService.set.and.returnValue(Promise.resolve());
+
+      const complexResponse = {
+        data: [
+          {
+            id: 'mod-1',
+            name: 'Sauce 1',
+            priceDelta: 0.5,
+            currency: 'USD',
+            active: true,
+            includedQuantity: 1,
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-01T00:00:00Z',
+          },
+          {
+            id: 'mod-2',
+            name: 'Sauce 2',
+            priceDelta: 0.75,
+            currency: 'USD',
+            active: true,
+            includedQuantity: 2,
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-01T00:00:00Z',
+          },
+          {
+            id: 'mod-3',
+            name: 'Premium Topping',
+            priceDelta: 1.5,
+            currency: 'USD',
+            active: true,
+            includedQuantity: 0,
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+        pagination: {
+          total: 3,
+          limit: 100,
+          offset: 0,
+          hasMore: false,
+        },
+      };
+
+      service.fetchProductModifiers(tenantId, productId, posId).subscribe((modifiers) => {
+        expect(modifiers.length).toBe(3);
+        // Verify each modifier has correct includedQuantity
+        expect(modifiers[0].includedQuantity).toBe(1);
+        expect(modifiers[1].includedQuantity).toBe(2);
+        expect(modifiers[2].includedQuantity).toBe(0);
+        done();
+      });
+
+      const req = httpMock.expectOne((r) =>
+        r.url.includes(`/tenants/${tenantId}/products/${productId}/modifiers`)
+      );
+      req.flush(complexResponse);
+    });
+  });
 });

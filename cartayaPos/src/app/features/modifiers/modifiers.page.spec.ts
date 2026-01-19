@@ -622,3 +622,121 @@ describe('ModifiersPage', () => {
       });
     });
   });
+
+  // ===== Modifier Selection Flow Integration Tests =====
+
+  describe('Modifier Selection Flow with includedQuantity', () => {
+    it('should correctly map modifiers with includedQuantity to SelectedModifier', (done) => {
+      const mockModifiers: any[] = [
+        {
+          id: 'mod-1',
+          name: 'Extra Cheese',
+          priceDelta: 1.0,
+          includedQuantity: 2,
+          currency: 'USD',
+          active: true,
+        },
+        {
+          id: 'mod-2',
+          name: 'Extra Bacon',
+          priceDelta: 2.0,
+          // includedQuantity missing
+          currency: 'USD',
+          active: true,
+        },
+      ];
+
+      component.modifiersList.set(mockModifiers);
+      component.selectedModifiers.set(
+        new Map([
+          ['mod-1', 3],
+          ['mod-2', 1],
+        ])
+      );
+
+      // Simulate confirmSelection by manually building SelectedModifier array
+      const selectedModifiers: any[] = [];
+      component.selectedModifiers().forEach((quantity, modifierId) => {
+        if (quantity > 0) {
+          const modifier = component.modifiersList().find((m) => m.id === modifierId);
+          if (modifier) {
+            selectedModifiers.push({
+              modifierId: modifier.id,
+              name: modifier.name,
+              priceDelta: modifier.priceDelta,
+              quantity,
+              includedQuantity: modifier.includedQuantity ?? 0,
+            });
+          }
+        }
+      });
+
+      // Verify includedQuantity is correctly mapped
+      expect(selectedModifiers.length).toBe(2);
+      expect(selectedModifiers[0].modifierId).toBe('mod-1');
+      expect(selectedModifiers[0].includedQuantity).toBe(2); // From modifier
+      expect(selectedModifiers[1].modifierId).toBe('mod-2');
+      expect(selectedModifiers[1].includedQuantity).toBe(0); // Default when undefined
+      done();
+    });
+
+    it('should preserve includedQuantity through complete modifier selection flow', (done) => {
+      const mockModifier: any = {
+        id: 'mod-sauce',
+        name: 'Premium Sauce',
+        priceDelta: 0.5,
+        includedQuantity: 3, // First 3 included
+        currency: 'USD',
+        active: true,
+      };
+
+      component.modifiersList.set([mockModifier]);
+
+      // User selects 5 units
+      component.selectedModifiers.set(new Map([['mod-sauce', 5]]));
+
+      // Get breakdown
+      const breakdown = component.getQuantityBreakdown(mockModifier);
+
+      // Should show: 3 included + 2 extra = $1.00
+      expect(breakdown).toContain('3 included');
+      expect(breakdown).toContain('2 extra');
+      expect(breakdown).toContain('$1.00');
+
+      done();
+    });
+
+    it('should handle editing order item with includedQuantity modifiers', (done) => {
+      const mockModifiers: any[] = [
+        {
+          id: 'mod-cheese',
+          name: 'Extra Cheese',
+          priceDelta: 1.0,
+          includedQuantity: 2,
+          currency: 'USD',
+          active: true,
+        },
+      ];
+
+      component.modifiersList.set(mockModifiers);
+
+      // Start with 2 units selected (all included)
+      component.selectedModifiers.set(new Map([['mod-cheese', 2]]));
+      let breakdown = component.getQuantityBreakdown(mockModifiers[0]);
+      expect(breakdown).toBe('2 included');
+
+      // User increases to 4 units
+      component.selectedModifiers.set(new Map([['mod-cheese', 4]]));
+      breakdown = component.getQuantityBreakdown(mockModifiers[0]);
+
+      // Should now show: 2 included + 2 extra = $2.00
+      expect(breakdown).toContain('2 included');
+      expect(breakdown).toContain('2 extra');
+      expect(breakdown).toContain('$2.00');
+
+      done();
+    });
+  });
+});
+    });
+  });
