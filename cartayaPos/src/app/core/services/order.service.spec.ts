@@ -1087,6 +1087,364 @@ describe('OrderService', () => {
     });
   });
 
+  // ===== includedQuantity Pricing Tests =====
+
+  describe('Pricing with includedQuantity', () => {
+    describe('Single modifier scenarios', () => {
+      it('should charge zero when selected quantity equals includedQuantity', (done) => {
+        storageService.set.and.returnValue(Promise.resolve());
+        const modifiers: SelectedModifier[] = [
+          {
+            modifierId: 'mod-cheese',
+            name: 'Extra Cheese',
+            priceDelta: 1.0,
+            quantity: 2,
+            includedQuantity: 2, // Exactly included amount
+          },
+        ];
+
+        service.addConfiguredProduct(mockProduct, modifiers);
+
+        setTimeout(() => {
+          const item = service.orderItems()[0];
+          // billableQty = max(0, 2-2) = 0
+          // charge = $1.00 × 0 = $0.00
+          // subtotal = $12.99 + $0.00 = $12.99
+          expect(item.subtotal).toBe(12.99);
+          done();
+        }, 10);
+      });
+
+      it('should charge zero when selected quantity is less than includedQuantity', (done) => {
+        storageService.set.and.returnValue(Promise.resolve());
+        const modifiers: SelectedModifier[] = [
+          {
+            modifierId: 'mod-cheese',
+            name: 'Extra Cheese',
+            priceDelta: 1.0,
+            quantity: 1,
+            includedQuantity: 2, // More included than selected
+          },
+        ];
+
+        service.addConfiguredProduct(mockProduct, modifiers);
+
+        setTimeout(() => {
+          const item = service.orderItems()[0];
+          // billableQty = max(0, 1-2) = 0
+          // charge = $1.00 × 0 = $0.00
+          // subtotal = $12.99 + $0.00 = $12.99
+          expect(item.subtotal).toBe(12.99);
+          done();
+        }, 10);
+      });
+
+      it('should charge for excess when selected quantity exceeds includedQuantity', (done) => {
+        storageService.set.and.returnValue(Promise.resolve());
+        const modifiers: SelectedModifier[] = [
+          {
+            modifierId: 'mod-cheese',
+            name: 'Extra Cheese',
+            priceDelta: 1.0,
+            quantity: 3,
+            includedQuantity: 2, // First 2 included, charge for the 3rd
+          },
+        ];
+
+        service.addConfiguredProduct(mockProduct, modifiers);
+
+        setTimeout(() => {
+          const item = service.orderItems()[0];
+          // billableQty = max(0, 3-2) = 1
+          // charge = $1.00 × 1 = $1.00
+          // subtotal = $12.99 + $1.00 = $13.99
+          expect(item.subtotal).toBe(13.99);
+          done();
+        }, 10);
+      });
+
+      it('should charge full amount when includedQuantity is zero', (done) => {
+        storageService.set.and.returnValue(Promise.resolve());
+        const modifiers: SelectedModifier[] = [
+          {
+            modifierId: 'mod-cheese',
+            name: 'Extra Cheese',
+            priceDelta: 1.0,
+            quantity: 3,
+            includedQuantity: 0, // No quantity included
+          },
+        ];
+
+        service.addConfiguredProduct(mockProduct, modifiers);
+
+        setTimeout(() => {
+          const item = service.orderItems()[0];
+          // billableQty = max(0, 3-0) = 3
+          // charge = $1.00 × 3 = $3.00
+          // subtotal = $12.99 + $3.00 = $15.99
+          expect(item.subtotal).toBe(15.99);
+          done();
+        }, 10);
+      });
+
+      it('should handle undefined includedQuantity as zero', (done) => {
+        storageService.set.and.returnValue(Promise.resolve());
+        const modifiers: SelectedModifier[] = [
+          {
+            modifierId: 'mod-cheese',
+            name: 'Extra Cheese',
+            priceDelta: 1.0,
+            quantity: 2,
+            // includedQuantity is undefined
+          },
+        ];
+
+        service.addConfiguredProduct(mockProduct, modifiers);
+
+        setTimeout(() => {
+          const item = service.orderItems()[0];
+          // includedQuantity ?? 0 = 0
+          // billableQty = max(0, 2-0) = 2
+          // charge = $1.00 × 2 = $2.00
+          // subtotal = $12.99 + $2.00 = $14.99
+          expect(item.subtotal).toBe(14.99);
+          done();
+        }, 10);
+      });
+
+      it('should calculate correctly with large includedQuantity values', (done) => {
+        storageService.set.and.returnValue(Promise.resolve());
+        const modifiers: SelectedModifier[] = [
+          {
+            modifierId: 'mod-sauce',
+            name: 'Premium Sauce',
+            priceDelta: 0.5,
+            quantity: 150,
+            includedQuantity: 100, // First 100 included
+          },
+        ];
+
+        service.addConfiguredProduct(mockProduct, modifiers);
+
+        setTimeout(() => {
+          const item = service.orderItems()[0];
+          // billableQty = max(0, 150-100) = 50
+          // charge = $0.50 × 50 = $25.00
+          // subtotal = $12.99 + $25.00 = $37.99
+          expect(item.subtotal).toBeCloseTo(37.99, 2);
+          done();
+        }, 10);
+      });
+    });
+
+    describe('Multiple modifiers with includedQuantity', () => {
+      it('should calculate correctly with mixed included/non-included modifiers', (done) => {
+        storageService.set.and.returnValue(Promise.resolve());
+        const modifiers: SelectedModifier[] = [
+          {
+            modifierId: 'mod-cheese',
+            name: 'Extra Cheese',
+            priceDelta: 1.0,
+            quantity: 3,
+            includedQuantity: 2, // First 2 included, charge for 1
+          },
+          {
+            modifierId: 'mod-bacon',
+            name: 'Bacon',
+            priceDelta: 2.0,
+            quantity: 1,
+            includedQuantity: 0, // No included, charge for 1
+          },
+        ];
+
+        service.addConfiguredProduct(mockProduct, modifiers);
+
+        setTimeout(() => {
+          const item = service.orderItems()[0];
+          // charge1 = $1.00 × (3-2) = $1.00
+          // charge2 = $2.00 × (1-0) = $2.00
+          // subtotal = $12.99 + $1.00 + $2.00 = $15.99
+          expect(item.subtotal).toBe(15.99);
+          done();
+        }, 10);
+      });
+
+      it('should calculate correctly when all modifiers have included quantities', (done) => {
+        storageService.set.and.returnValue(Promise.resolve());
+        const modifiers: SelectedModifier[] = [
+          {
+            modifierId: 'mod-1',
+            name: 'Modifier 1',
+            priceDelta: 0.5,
+            quantity: 2,
+            includedQuantity: 1,
+          },
+          {
+            modifierId: 'mod-2',
+            name: 'Modifier 2',
+            priceDelta: 0.75,
+            quantity: 2,
+            includedQuantity: 2, // Exact match, no charge
+          },
+          {
+            modifierId: 'mod-3',
+            name: 'Modifier 3',
+            priceDelta: 1.0,
+            quantity: 4,
+            includedQuantity: 3,
+          },
+        ];
+
+        service.addConfiguredProduct(mockProduct, modifiers);
+
+        setTimeout(() => {
+          const item = service.orderItems()[0];
+          // charge1 = $0.50 × (2-1) = $0.50
+          // charge2 = $0.75 × (2-2) = $0.00
+          // charge3 = $1.00 × (4-3) = $1.00
+          // subtotal = $12.99 + $0.50 + $0.00 + $1.00 = $14.49
+          expect(item.subtotal).toBeCloseTo(14.49, 2);
+          done();
+        }, 10);
+      });
+
+      it('should calculate correctly with no modifiers having included quantities', (done) => {
+        storageService.set.and.returnValue(Promise.resolve());
+        const modifiers: SelectedModifier[] = [
+          {
+            modifierId: 'mod-1',
+            name: 'Mod 1',
+            priceDelta: 1.0,
+            quantity: 2,
+            includedQuantity: 0,
+          },
+          {
+            modifierId: 'mod-2',
+            name: 'Mod 2',
+            priceDelta: 1.0,
+            quantity: 2,
+            includedQuantity: 0,
+          },
+        ];
+
+        service.addConfiguredProduct(mockProduct, modifiers);
+
+        setTimeout(() => {
+          const item = service.orderItems()[0];
+          // charge1 = $1.00 × 2 = $2.00
+          // charge2 = $1.00 × 2 = $2.00
+          // subtotal = $12.99 + $2.00 + $2.00 = $16.99
+          expect(item.subtotal).toBe(16.99);
+          done();
+        }, 10);
+      });
+    });
+
+    describe('Negative prices with includedQuantity', () => {
+      it('should apply discount correctly with includedQuantity', (done) => {
+        storageService.set.and.returnValue(Promise.resolve());
+        const modifiers: SelectedModifier[] = [
+          {
+            modifierId: 'mod-discount',
+            name: 'Senior Discount',
+            priceDelta: -2.0,
+            quantity: 1,
+            includedQuantity: 0,
+          },
+        ];
+
+        service.addConfiguredProduct(mockProduct, modifiers);
+
+        setTimeout(() => {
+          const item = service.orderItems()[0];
+          // charge = -$2.00 × (1-0) = -$2.00
+          // subtotal = $12.99 - $2.00 = $10.99
+          expect(item.subtotal).toBe(10.99);
+          done();
+        }, 10);
+      });
+
+      it('should handle negative price with included quantity not charged', (done) => {
+        storageService.set.and.returnValue(Promise.resolve());
+        const modifiers: SelectedModifier[] = [
+          {
+            modifierId: 'mod-credit',
+            name: 'Store Credit',
+            priceDelta: -1.0,
+            quantity: 1,
+            includedQuantity: 2, // More included than selected, so no charge
+          },
+        ];
+
+        service.addConfiguredProduct(mockProduct, modifiers);
+
+        setTimeout(() => {
+          const item = service.orderItems()[0];
+          // charge = -$1.00 × (1-2) = -$1.00 × 0 = $0.00 (due to max(0, ...))
+          // subtotal = $12.99 + $0.00 = $12.99
+          expect(item.subtotal).toBe(12.99);
+          done();
+        }, 10);
+      });
+    });
+
+    describe('Floating-point precision with includedQuantity', () => {
+      it('should handle cent-level prices correctly', (done) => {
+        storageService.set.and.returnValue(Promise.resolve());
+        const modifiers: SelectedModifier[] = [
+          {
+            modifierId: 'mod-precise',
+            name: 'Precise Price',
+            priceDelta: 0.33, // Could cause floating-point issues
+            quantity: 3,
+            includedQuantity: 1,
+          },
+        ];
+
+        service.addConfiguredProduct(mockProduct, modifiers);
+
+        setTimeout(() => {
+          const item = service.orderItems()[0];
+          // charge = $0.33 × (3-1) = $0.33 × 2 = $0.66
+          // subtotal = $12.99 + $0.66 = $13.65
+          expect(item.subtotal).toBeCloseTo(13.65, 2);
+          done();
+        }, 10);
+      });
+
+      it('should handle multiple modifiers with fractional prices', (done) => {
+        storageService.set.and.returnValue(Promise.resolve());
+        const modifiers: SelectedModifier[] = [
+          {
+            modifierId: 'mod-1',
+            name: 'Mod 1',
+            priceDelta: 0.49,
+            quantity: 2,
+            includedQuantity: 1,
+          },
+          {
+            modifierId: 'mod-2',
+            name: 'Mod 2',
+            priceDelta: 0.51,
+            quantity: 2,
+            includedQuantity: 1,
+          },
+        ];
+
+        service.addConfiguredProduct(mockProduct, modifiers);
+
+        setTimeout(() => {
+          const item = service.orderItems()[0];
+          // charge1 = $0.49 × (2-1) = $0.49
+          // charge2 = $0.51 × (2-1) = $0.51
+          // subtotal = $12.99 + $0.49 + $0.51 = $13.99
+          expect(item.subtotal).toBeCloseTo(13.99, 2);
+          done();
+        }, 10);
+      });
+    });
+  });
+
   // ===== Edge Cases =====
 
   describe('Edge Cases', () => {
