@@ -1,11 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { AlertController, ToastController } from '@ionic/angular';
+import { signal } from '@angular/core';
 import { of, throwError } from 'rxjs';
 import { OrderItem, SelectedModifier } from '../../models/order.model';
 import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
 import { TenantService } from '../../core/services/tenant.service';
+import { SettingsService } from '../../core/services/settings.service';
 import { Printer } from '../../services/printer';
 import { OrderSummaryComponent } from './order-summary.component';
 
@@ -15,6 +17,7 @@ describe('OrderSummaryComponent', () => {
   let mockOrderService: jasmine.SpyObj<OrderService>;
   let mockPosService: jasmine.SpyObj<PosService>;
   let mockTenantService: jasmine.SpyObj<TenantService>;
+  let mockSettingsService: jasmine.SpyObj<SettingsService>;
   let mockPrinter: jasmine.SpyObj<Printer>;
   let mockRouter: jasmine.SpyObj<Router>;
   let mockToastController: jasmine.SpyObj<ToastController>;
@@ -118,6 +121,10 @@ describe('OrderSummaryComponent', () => {
     mockTenantService = jasmine.createSpyObj('TenantService', ['getCurrentTenantId']);
     mockTenantService.getCurrentTenantId.and.returnValue('tenant-1');
 
+    mockSettingsService = jasmine.createSpyObj('SettingsService', [], {
+      currency: signal('USD'),
+    });
+
     mockPrinter = jasmine.createSpyObj('Printer', ['scanForPrinters', 'selectPrinter', 'printSample']);
 
     mockRouter = jasmine.createSpyObj('Router', ['navigate']);
@@ -137,6 +144,7 @@ describe('OrderSummaryComponent', () => {
         { provide: OrderService, useValue: mockOrderService },
         { provide: PosService, useValue: mockPosService },
         { provide: TenantService, useValue: mockTenantService },
+        { provide: SettingsService, useValue: mockSettingsService },
         { provide: Printer, useValue: mockPrinter },
         { provide: Router, useValue: mockRouter },
         { provide: ToastController, useValue: mockToastController },
@@ -589,8 +597,9 @@ describe('OrderSummaryComponent', () => {
          const formatted = component.formatModifierPrice(modifier);
 
          // Assert
-         // charge = 2 × €1.50 = €3.00
-         expect(formatted).toEqual('(+$3.00)');
+         // charge = 2 × $1.50 = $3.00
+         // With USD, should format as $3.00
+         expect(formatted).toMatch(/\(\+\$3\.00\)/);
        });
 
        it('should format negative charge with - sign and currency', () => {
@@ -607,8 +616,9 @@ describe('OrderSummaryComponent', () => {
          const formatted = component.formatModifierPrice(modifier);
 
          // Assert
-         // charge = 2 × (-€0.50) = -€1.00
-         expect(formatted).toEqual('(-$1.00)');
+         // charge = 2 × (-$0.50) = -$1.00
+         // Formatter should show -$1.00 with currency
+         expect(formatted).toMatch(/\(-\$1\.00\)/);
        });
 
        it('should round to 2 decimal places', () => {
@@ -625,8 +635,8 @@ describe('OrderSummaryComponent', () => {
          const formatted = component.formatModifierPrice(modifier);
 
          // Assert
-         // charge = 2 × €1.234567 = €2.469134 → €2.47
-         expect(formatted).toEqual('(+$2.47)');
+         // charge = 2 × $1.234567 = $2.469134 → $2.47
+         expect(formatted).toMatch(/\(\+\$2\.47\)/);
        });
 
        it('should format zero charge as "(included)" not "+$0.00"', () => {

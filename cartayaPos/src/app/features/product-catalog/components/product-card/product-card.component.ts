@@ -155,9 +155,15 @@ export class ProductCardComponent implements OnChanges {
 
   /**
    * Get the formatted price for display
-   * Displays base price plus sum of default modifier prices
+   * Displays base price plus sum of default modifier prices (accounting for includedQuantity)
    * Falls back to "Price not available" if missing
    * Uses ProductService to format with proper currency symbol
+   * 
+   * For each default modifier, only charges for quantities exceeding includedQuantity:
+   *   billableQuantity = max(0, defaultQty - includedQty)
+   *   charge = billableQuantity × priceDelta
+   * 
+   * This ensures the displayed price matches what will be charged in the cart.
    * @returns Formatted price string with currency symbol or fallback message
    */
   get formattedPrice(): string {
@@ -165,10 +171,16 @@ export class ProductCardComponent implements OnChanges {
       return 'Price not available';
     }
 
-    // Calculate total price: base price + sum of default modifier prices
+    // Calculate total price: base price + sum of default modifier prices (with includedQuantity adjustment)
     const basePrice = this.product.defaultPrice.amount;
     const defaultModifierTotal = this.defaultModifiers().reduce(
-      (sum, modifier) => sum + modifier.priceDelta,
+      (sum, modifier) => {
+        // For default modifiers, quantity is 1 (set in defaultModifiers signal)
+        const selectedQty = 1;
+        const includedQty = modifier.includedQuantity ?? 0;
+        const billableQty = Math.max(0, selectedQty - includedQty);
+        return sum + modifier.priceDelta * billableQty;
+      },
       0
     );
     const totalPrice = basePrice + defaultModifierTotal;

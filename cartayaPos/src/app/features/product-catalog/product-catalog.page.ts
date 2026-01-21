@@ -256,24 +256,36 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
    * or adds directly to order
    * @param product - The selected product
    */
-  async onProductTap(product: Product): Promise<void> {
-    // Log for analytics (future)
-    console.log('Product selected:', product.id, product.name);
+   async onProductTap(product: Product): Promise<void> {
+     // Log for analytics (future)
+     console.log('Product selected:', product.id, product.name);
+     
+     // DEBUG: Step 1 - Product Selection
+     console.debug('STEP 1 - Product selected from catalog:', {
+       productId: product.id,
+       productName: product.name,
+       price: product.defaultPrice,
+       fullProduct: JSON.stringify(product, null, 2)
+     });
 
-    // Check if product has modifiers
-    const hasModifiers = await this.checkProductModifiers(product);
+     // Check if product has modifiers
+     const hasModifiers = await this.checkProductModifiers(product);
 
-    if (hasModifiers) {
-      // Navigate to modifiers page with product data via route state
-      this.router.navigate(['/products', product.id, 'modifiers'], {
-        state: { product },
-      });
-    } else {
-      // Add directly to order without modifiers
-      this.orderService.addConfiguredProduct(product, []);
-      await this.showSuccessToast(`"${product.name}" ` + this.translate.instant('PRODUCT_GRID.PRODUCT_ADDED'));
-    }
-  }
+     if (hasModifiers) {
+       // Navigate to modifiers page with product data via route state
+       this.router.navigate(['/products', product.id, 'modifiers'], {
+         state: { product },
+       });
+     } else {
+       // Add directly to order without modifiers
+       console.debug('STEP 1b - Adding product directly (no modifiers):', {
+         productId: product.id,
+         defaultPrice: product.defaultPrice
+       });
+       this.orderService.addConfiguredProduct(product, []);
+       await this.showSuccessToast(`"${product.name}" ` + this.translate.instant('PRODUCT_GRID.PRODUCT_ADDED'));
+     }
+   }
 
   /**
    * Check if product has modifiers

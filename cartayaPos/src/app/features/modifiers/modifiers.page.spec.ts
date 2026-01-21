@@ -734,9 +734,7 @@ describe('ModifiersPage', () => {
       expect(breakdown).toContain('2 extra');
       expect(breakdown).toContain('$2.00');
 
-      done();
-    });
-  });
+       done();
+     });
+   });
 });
-    });
-  });

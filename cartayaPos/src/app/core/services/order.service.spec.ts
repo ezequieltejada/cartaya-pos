@@ -1445,6 +1445,54 @@ describe('OrderService', () => {
     });
   });
 
+  // Test for bug report scenario
+  describe('Bug Report: Sandwich + Jamon (includedQuantity)', () => {
+    it('should calculate €4.00 total for Sandwich with included Jamon', (done) => {
+      // This test validates the fix for:
+      // BUG_REPORT_INCLUDEDQUANTITY_PRICING.md
+      // 
+      // Scenario:
+      // - Product: Sandwich (€4.00 base price, includes Jamon)
+      // - Modifier: Jamon (+€1.00, includedQuantity=1, user selected 1)
+      // - Expected: €4.00 (Jamon is included in base, no extra charge)
+      // - Bug was showing: €3.00 (incorrectly subtracting the modifier price)
+      
+      storageService.set.and.returnValue(Promise.resolve());
+      
+      const sandwich = {
+        ...mockProduct,
+        name: 'Sandwich',
+        id: 'prod-sandwich',
+        defaultPrice: {
+          id: 'price-sandwich',
+          amount: 4.0,
+          currency: 'EUR',
+        },
+      };
+      
+      const jamonModifier: SelectedModifier = {
+        modifierId: 'mod-jamon',
+        name: 'Jamon',
+        priceDelta: 1.0,
+        quantity: 1,
+        includedQuantity: 1, // First 1 is included in base price
+      };
+
+      service.addConfiguredProduct(sandwich, [jamonModifier]);
+
+      setTimeout(() => {
+        const item = service.orderItems()[0];
+        // billableQuantity = max(0, 1 - 1) = 0
+        // modifierCharge = 0 × €1.00 = €0.00
+        // subtotal = €4.00 + €0.00 = €4.00
+        expect(item.subtotal).toBe(4.0);
+        expect(item.modifiers[0].includedQuantity).toBe(1);
+        expect(item.modifiers[0].quantity).toBe(1);
+        done();
+      }, 10);
+    });
+  });
+
   // ===== Edge Cases =====
 
   describe('Edge Cases', () => {

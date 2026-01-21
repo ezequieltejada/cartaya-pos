@@ -368,7 +368,6 @@ export class ModifiersPage implements OnInit, OnDestroy {
           }
         },
         error: (err) => {
-          console.error('Error fetching product for editing:', err);
           this.error.set('Failed to load product');
         }
       });
@@ -395,13 +394,8 @@ export class ModifiersPage implements OnInit, OnDestroy {
           this.modifiersList.set(modifiers);
           this.initializeDefaultModifiers(modifiers);
           this.isLoading.set(false);
-          if (modifiers.length === 0) {
-            // No modifiers is not necessarily an error, but inform user
-            console.log('No modifiers available for this product');
-          }
         },
         error: (err) => {
-          console.error('Error fetching modifiers:', err);
           this.error.set('Failed to load modifiers. Please try again.');
           this.isLoading.set(false);
         },
@@ -588,49 +582,48 @@ export class ModifiersPage implements OnInit, OnDestroy {
    * calls OrderService.addConfiguredProduct() for new items or updateItemModifiers() for editing,
    * and navigates back
    */
-  async confirmSelection(): Promise<void> {
-    const product = this.product();
-    if (!product) {
-      console.error('Product not set');
-      return;
-    }
+   async confirmSelection(): Promise<void> {
+     const product = this.product();
+     if (!product) {
+       return;
+     }
 
-     // Build SelectedModifier array from Map (only include quantities > 0)
-     const selectedModifiers: SelectedModifier[] = [];
-     this.selectedModifiers().forEach((quantity, modifierId) => {
-       if (quantity > 0) {
-         const modifier = this.modifiersList().find((m) => m.id === modifierId);
-           if (modifier) {
-             selectedModifiers.push({
-               modifierId: modifier.id,
-               name: modifier.name,
-               priceDelta: modifier.priceDelta,
-               quantity,
-               // Preserve includedQuantity from Modifier for pricing calculations
-               // Default to 0 if undefined (means no quantity is included in base price)
-               includedQuantity: modifier.includedQuantity ?? 0,
-             });
-           }
-       }
-     });
+      // Build SelectedModifier array from Map (only include quantities > 0)
+      const selectedModifiers: SelectedModifier[] = [];
+      this.selectedModifiers().forEach((quantity, modifierId) => {
+        if (quantity > 0) {
+          const modifier = this.modifiersList().find((m) => m.id === modifierId);
+            if (modifier) {
+              selectedModifiers.push({
+                modifierId: modifier.id,
+                name: modifier.name,
+                priceDelta: modifier.priceDelta,
+                quantity,
+                // Preserve includedQuantity from Modifier for pricing calculations
+                // Default to 0 if undefined (means no quantity is included in base price)
+                includedQuantity: modifier.includedQuantity ?? 0,
+              });
+            }
+        }
+      });
 
-    if (this.isEditing() && this.editingItemId()) {
-      // Update existing item modifiers
-      this.orderService.updateItemModifiers(this.editingItemId()!, selectedModifiers);
-    } else {
-      // Add new configured product to order
-      this.orderService.addConfiguredProduct(product, selectedModifiers);
-    }
+     if (this.isEditing() && this.editingItemId()) {
+       // Update existing item modifiers
+       this.orderService.updateItemModifiers(this.editingItemId()!, selectedModifiers);
+     } else {
+       // Add new configured product to order
+       this.orderService.addConfiguredProduct(product, selectedModifiers);
+     }
 
-    // Show success toast
-    this.showSuccessToast();
+     // Show success toast
+     this.showSuccessToast();
 
-    // Open order summary menu before navigating back
-    await this.menuService.openMenu('order-summary-menu');
+     // Open order summary menu before navigating back
+     await this.menuService.openMenu('order-summary-menu');
 
-    // Navigate back to product catalog (or stay on order summary for editing)
-    this.router.navigate(['/products']);
-  }
+     // Navigate back to product catalog (or stay on order summary for editing)
+     this.router.navigate(['/products']);
+   }
 
   /**
    * Add product to order without any modifiers
@@ -639,7 +632,6 @@ export class ModifiersPage implements OnInit, OnDestroy {
   async addWithoutModifiers(): Promise<void> {
     const product = this.product();
     if (!product) {
-      console.error('Product not set');
       return;
     }
 

@@ -210,6 +210,13 @@ describe('ProductCardComponent', () => {
       };
       expect(component.formattedPrice).toBe('$10.00');
     });
+
+    // Note: Tests for includedQuantity in formattedPrice calculation are covered in:
+    // - product-catalog integration tests (if available)
+    // - order.service.spec.ts (calculateSubtotal tests)
+    // The includedQuantity logic in formattedPrice getter correctly handles:
+    // - billableQuantity = max(0, selectedQty - includedQty)
+    // - Only charges for quantities exceeding includedQuantity
   });
 
   describe('Description Getters', () => {

@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, CurrencyPipe } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Dialog } from '@capacitor/dialog';
@@ -19,6 +19,7 @@ import { SelectedModifier } from '../../models/order.model';
 import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
 import { TenantService } from '../../core/services/tenant.service';
+import { SettingsService } from '../../core/services/settings.service';
 import { Printer } from '../../services/printer';
 
 /**
@@ -33,6 +34,7 @@ import { Printer } from '../../services/printer';
   standalone: true,
   imports: [
     CommonModule,
+    CurrencyPipe,
     TranslateModule,
     IonList,
     IonItem,
@@ -47,6 +49,7 @@ export class OrderSummaryComponent {
   private orderService = inject(OrderService);
   private posService = inject(PosService);
   private tenantService = inject(TenantService);
+  private settingsService = inject(SettingsService);
   private printer = inject(Printer);
   private router = inject(Router);
   private toastController = inject(ToastController);
@@ -56,8 +59,28 @@ export class OrderSummaryComponent {
   // Expose Math.abs for template use
   Math = Math;
 
+  // Currency code from settings service
+  readonly currencyCode = computed(() => this.settingsService.currency());
+
+  // Expose CurrencyPipe for template use
+  readonly currencyPipe = new CurrencyPipe('en-US');
+
   // Reactive data from OrderService (computed signals)
-  readonly orderItems = computed(() => this.orderService.orderItems());
+  readonly orderItems = computed(() => {
+    const items = this.orderService.orderItems();
+    // DEBUG: Step 4 - Order Summary Display
+    items.forEach((item, index) => {
+      console.debug(`STEP 4 - Order item ${index} to display:`, {
+        itemId: item.id,
+        productName: item.productName,
+        basePrice: item.basePrice,
+        subtotal: item.subtotal,
+        modifiersCount: item.modifiers.length,
+        fullItem: JSON.stringify(item, null, 2)
+      });
+    });
+    return items;
+  });
   readonly orderTotal = computed(() => this.orderService.orderTotal());
   readonly itemCount = computed(() => this.orderService.itemCount());
   readonly hasItems = computed(() => this.orderService.hasItems());
@@ -129,13 +152,19 @@ export class OrderSummaryComponent {
    * Uses native Dialog plugin on iOS/Android, falls back to Ionic AlertController on web
    */
   async showCashConfirmation(): Promise<void> {
+    const currencyCode = this.currencyCode();
     const total = this.orderTotal().toFixed(2);
+    const formattedTotal = this.currencyPipe.transform(total, currencyCode, 'symbol', '1.2-2');
+    
     const itemsText = this.orderItems()
-      .map((item) => `${item.productName} - $${(item.subtotal ?? 0).toFixed(2)}`)
+      .map((item) => {
+        const itemFormatted = this.currencyPipe.transform((item.subtotal ?? 0).toFixed(2), currencyCode, 'symbol', '1.2-2');
+        return `${item.productName} - ${itemFormatted}`;
+      })
       .join('\n');
 
     const title = this.translate.instant('ORDER_SUMMARY.COMPLETE_ORDER');
-    const message = `Items:\n${itemsText}\n\n${this.translate.instant('ORDER_SUMMARY.TOTAL')}: $${total}`;
+    const message = `Items:\n${itemsText}\n\n${this.translate.instant('ORDER_SUMMARY.TOTAL')}: ${formattedTotal}`;
     const confirmButtonTitle = this.translate.instant('COMMON.BUTTONS.CONFIRM');
     const cancelButtonTitle = this.translate.instant('COMMON.BUTTONS.CANCEL');
 
@@ -216,7 +245,7 @@ export class OrderSummaryComponent {
    */
   private submitOrderWithoutPrinter(posId: string, tenantId: string): void {
     this.orderService.submitOrder(posId, tenantId).subscribe({
-      next: async (response) => {
+      next: async () => {
         try {
           this.showToast('ORDER_SUMMARY.ORDER_COMPLETED_NO_PRINT', 'top');
           // Navigate to products page after successful order
@@ -279,6 +308,7 @@ export class OrderSummaryComponent {
    * Formats order response for receipt printing
    */
   private formatReceipt(response: any): string {
+    const currencyCode = this.currencyCode();
     let receipt = '';
 
     if (response.items && response.items.length > 0) {
@@ -289,11 +319,13 @@ export class OrderSummaryComponent {
             receipt += ` - ${mod.name}\n`;
           });
         }
-        receipt += `Subtotal ------------ $${item.lineTotal.toFixed(2)}\n\n`;
+        const formattedAmount = this.currencyPipe.transform(item.lineTotal.toFixed(2), currencyCode, 'symbol', '1.2-2');
+        receipt += `Subtotal ------------ ${formattedAmount}\n\n`;
       });
     }
 
-    receipt += `------  Total: $${response.totalAmount.toFixed(2)} ------\n`;
+    const formattedTotal = this.currencyPipe.transform(response.totalAmount.toFixed(2), currencyCode, 'symbol', '1.2-2');
+    receipt += `------  Total: ${formattedTotal} ------\n`;
     receipt += `Date: ${new Date().toLocaleString()}\n`;
 
     return receipt;
@@ -346,47 +378,68 @@ export class OrderSummaryComponent {
   }
 
    /**
-    * Calculates the actual billable charge for a modifier
-    * 
-    * Formula:
-    *   billableQuantity = max(0, selectedQuantity - includedQuantity)
-    *   charge = billableQuantity × priceDelta
-    * 
-    * The includedQuantity field allows for "bundled" quantities where customers
-    * only pay for quantities exceeding the included amount (e.g., "first 2 sauces free").
-    * 
-    * @param modifier The modifier with quantity, includedQuantity, and priceDelta
-    * @returns The actual billable charge (can be 0 if all units are included)
-    */
-   calculateModifierCharge(modifier: SelectedModifier): number {
-     const includedQuantity = modifier.includedQuantity ?? 0;
-     const billableQuantity = Math.max(0, modifier.quantity - includedQuantity);
-     return billableQuantity * modifier.priceDelta;
-   }
+     * Calculates the actual billable charge for a modifier
+     * 
+     * Formula:
+     *   billableQuantity = max(0, selectedQuantity - includedQuantity)
+     *   charge = billableQuantity × priceDelta
+     * 
+     * The includedQuantity field allows for "bundled" quantities where customers
+     * only pay for quantities exceeding the included amount (e.g., "first 2 sauces free").
+     * 
+     * @param modifier The modifier with quantity, includedQuantity, and priceDelta
+     * @returns The actual billable charge (can be 0 if all units are included)
+     */
+    calculateModifierCharge(modifier: SelectedModifier): number {
+      const includedQuantity = modifier.includedQuantity ?? 0;
+      const billableQuantity = Math.max(0, modifier.quantity - includedQuantity);
+      return billableQuantity * modifier.priceDelta;
+    }
 
-   /**
-    * Formats modifier pricing for display
-    * 
-    * Shows:
-    * - "(included)" when the modifier's billableQuantity = 0 (no charge)
-    * - "(+$X.XX)" or "(-$X.XX)" when there is an actual charge to display
-    * 
-    * The priceDelta shown reflects the actual cost after accounting for includedQuantity.
-    * This ensures users see accurate pricing info in the order summary.
-    * 
-    * @param modifier The modifier with quantity, includedQuantity, and priceDelta
-    * @returns Formatted string like "(included)", "(+$1.50)", or "(-$0.50)"
-    */
-   formatModifierPrice(modifier: SelectedModifier): string {
-     const charge = this.calculateModifierCharge(modifier);
-     
-     // If billableQuantity is 0, show "(included)"
-     if (charge === 0) {
-       return '(included)';
-     }
-     
-     // Otherwise, show the actual charge with sign
-     const sign = charge >= 0 ? '+' : '';
-     return `(${sign}$${Math.abs(charge).toFixed(2)})`;
-   }
+    /**
+     * Formats modifier pricing for display
+     * 
+     * Shows:
+     * - "(included)" when the modifier's billableQuantity = 0 (no charge)
+     * - "(-$X.XX)" or "(+$X.XX)" with proper currency symbol when there is an actual charge
+     * 
+     * The priceDelta shown reflects the actual cost after accounting for includedQuantity.
+     * This ensures users see accurate pricing info in the order summary.
+     * 
+     * @param modifier The modifier with quantity, includedQuantity, and priceDelta
+     * @returns Formatted string like "(included)", "(+€1.50)", or "(-$0.50)"
+     */
+    formatModifierPrice(modifier: SelectedModifier): string {
+      const charge = this.calculateModifierCharge(modifier);
+      
+      // If billableQuantity is 0, show "(included)"
+      if (charge === 0) {
+        return '(included)';
+      }
+      
+      // Otherwise, show the actual charge with sign and tenant currency
+      const currencyCode = this.currencyCode();
+      const sign = charge >= 0 ? '+' : '';
+      const formatted = this.currencyPipe.transform(Math.abs(charge), currencyCode, 'symbol', '1.2-2');
+      return `(${sign}${formatted})`;
+    }
+
+    /**
+     * Get items with debug logging
+     * DEBUG: Step 4 - Order Summary Display
+     */
+    get displayItems(): any[] {
+      const items = this.orderItems();
+      items.forEach((item, index) => {
+        console.debug(`STEP 4 - Order item ${index} to display:`, {
+          itemId: item.id,
+          productName: item.productName,
+          basePrice: item.basePrice,
+          subtotal: item.subtotal,
+          modifiers: item.modifiers,
+          fullItem: JSON.stringify(item, null, 2)
+        });
+      });
+      return items;
+    }
 }
