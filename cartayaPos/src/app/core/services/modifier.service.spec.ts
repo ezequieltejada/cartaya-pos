@@ -300,7 +300,7 @@ describe('ModifierService', () => {
     it('should cache modifiers to storage', async () => {
       storageService.set.and.returnValue(Promise.resolve());
 
-      await service.cacheModifiers(posId, mockModifiers);
+      await service.cacheModifiers(posId, productId, mockModifiers);
 
       expect(storageService.set).toHaveBeenCalled();
       const callArgs = storageService.set.calls.mostRecent().args;
@@ -311,10 +311,10 @@ describe('ModifierService', () => {
     it('should use correct cache key format', async () => {
       storageService.set.and.returnValue(Promise.resolve());
 
-      await service.cacheModifiers(posId, mockModifiers);
+      await service.cacheModifiers(posId, productId, mockModifiers);
 
       const callArgs = storageService.set.calls.mostRecent().args;
-      expect(callArgs[0]).toBe(`modifiers_${posId}`);
+      expect(callArgs[0]).toBe(`modifiers_${posId}_${productId}`);
     });
 
     it('should handle storage service errors gracefully', async () => {
@@ -324,7 +324,7 @@ describe('ModifierService', () => {
       spyOn(console, 'debug');
 
       // Should not throw error
-      await service.cacheModifiers(posId, mockModifiers);
+      await service.cacheModifiers(posId, productId, mockModifiers);
 
       expect(console.debug).toHaveBeenCalled();
     });
@@ -332,7 +332,7 @@ describe('ModifierService', () => {
     it('should cache empty array', async () => {
       storageService.set.and.returnValue(Promise.resolve());
 
-      await service.cacheModifiers(posId, []);
+      await service.cacheModifiers(posId, productId, []);
 
       const callArgs = storageService.set.calls.mostRecent().args;
       expect(callArgs[1]).toEqual([]);
@@ -344,8 +344,8 @@ describe('ModifierService', () => {
       const firstBatch = mockModifiers.slice(0, 2);
       const secondBatch = mockModifiers.slice(2);
 
-      await service.cacheModifiers(posId, firstBatch);
-      await service.cacheModifiers(posId, secondBatch);
+      await service.cacheModifiers(posId, productId, firstBatch);
+      await service.cacheModifiers(posId, productId, secondBatch);
 
       expect(storageService.set).toHaveBeenCalledTimes(2);
       const lastCallArgs = storageService.set.calls.mostRecent().args;
@@ -359,16 +359,16 @@ describe('ModifierService', () => {
     it('should retrieve cached modifiers from storage', async () => {
       storageService.get.and.returnValue(Promise.resolve(mockModifiers));
 
-      const cached = await service.getCachedModifiers(posId);
+      const cached = await service.getCachedModifiers(posId, productId);
 
       expect(cached).toEqual(mockModifiers);
-      expect(storageService.get).toHaveBeenCalledWith(`modifiers_${posId}`);
+      expect(storageService.get).toHaveBeenCalledWith(`modifiers_${posId}_${productId}`);
     });
 
     it('should return null when cache is not found', async () => {
       storageService.get.and.returnValue(Promise.resolve(null));
 
-      const cached = await service.getCachedModifiers(posId);
+      const cached = await service.getCachedModifiers(posId, productId);
 
       expect(cached).toBeNull();
     });
@@ -379,7 +379,7 @@ describe('ModifierService', () => {
       );
       spyOn(console, 'debug');
 
-      const cached = await service.getCachedModifiers(posId);
+      const cached = await service.getCachedModifiers(posId, productId);
 
       expect(cached).toBeNull();
       expect(console.debug).toHaveBeenCalled();
@@ -388,9 +388,9 @@ describe('ModifierService', () => {
     it('should use correct cache key', async () => {
       storageService.get.and.returnValue(Promise.resolve(mockModifiers));
 
-      await service.getCachedModifiers(posId);
+      await service.getCachedModifiers(posId, productId);
 
-      expect(storageService.get).toHaveBeenCalledWith(`modifiers_${posId}`);
+      expect(storageService.get).toHaveBeenCalledWith(`modifiers_${posId}_${productId}`);
     });
   });
 
@@ -414,7 +414,7 @@ describe('ModifierService', () => {
 
       // Get cached modifiers
       storageService.get.and.returnValue(Promise.resolve(activeModifiers));
-      cachedModifiers = await service.getCachedModifiers(posId);
+      cachedModifiers = await service.getCachedModifiers(posId, productId);
 
       expect(cachedModifiers).toEqual(activeModifiers);
     });
@@ -615,7 +615,7 @@ describe('ModifierService', () => {
       req.flush(mockApiResponse);
 
       // Get cached modifiers
-      const cachedModifiers = await service.getCachedModifiers(posId);
+      const cachedModifiers = await service.getCachedModifiers(posId, productId);
 
       expect(fetchedModifiers.length).toBe(3);
       expect(cachedModifiers?.length).toBe(3);

@@ -94,13 +94,15 @@ export class ModifierService {
   readonly isLoading = signal(false);
 
   /**
-   * Get cache key for modifiers of a specific POS location
-   * Cache is keyed by POS ID to support per-location modifier caching
+   * Get cache key for modifiers of a specific product at a specific POS location
+   * Cache is keyed by both POS ID and Product ID to prevent cache collisions
+   * when different product cards fetch their own modifiers
    * @param posId - Point of Sale ID
+   * @param productId - Product ID
    * @returns Cache key string
    */
-  private getCacheKey(posId: string): string {
-    return `modifiers_${posId}`;
+  private getCacheKey(posId: string, productId: string): string {
+    return `modifiers_${posId}_${productId}`;
   }
 
   /**
@@ -108,11 +110,12 @@ export class ModifierService {
    * Checks for cache expiration (no TTL for MVP, cache indefinitely)
    * Returns null if cache miss or parse error occurs
    * @param posId - Point of Sale ID
+   * @param productId - Product ID
    * @returns Promise resolving to cached modifiers or null
    */
-  private async getModifiersCache(posId: string): Promise<Modifier[] | null> {
+  private async getModifiersCache(posId: string, productId: string): Promise<Modifier[] | null> {
     try {
-      const key = this.getCacheKey(posId);
+      const key = this.getCacheKey(posId, productId);
       const cached = await this.storageService.get<Modifier[]>(key);
       return cached || null;
     } catch (e) {
@@ -126,12 +129,13 @@ export class ModifierService {
    * Stores modifiers indefinitely (MVP strategy)
    * Manual invalidation or app restart clears cache
    * @param posId - Point of Sale ID
+   * @param productId - Product ID
    * @param modifiers - Modifiers to cache
    * @returns Promise resolving when cache is saved
    */
-  async cacheModifiers(posId: string, modifiers: Modifier[]): Promise<void> {
+  async cacheModifiers(posId: string, productId: string, modifiers: Modifier[]): Promise<void> {
     try {
-      const key = this.getCacheKey(posId);
+      const key = this.getCacheKey(posId, productId);
       await this.storageService.set(key, modifiers);
     } catch (e) {
       console.debug('Failed to save modifiers cache:', e);
@@ -143,10 +147,11 @@ export class ModifierService {
    * Returns null if cache doesn't exist or parse fails
    * This is a public wrapper around getModifiersCache
    * @param posId - Point of Sale ID
+   * @param productId - Product ID
    * @returns Promise resolving to cached modifiers or null
    */
-  async getCachedModifiers(posId: string): Promise<Modifier[] | null> {
-    return this.getModifiersCache(posId);
+  async getCachedModifiers(posId: string, productId: string): Promise<Modifier[] | null> {
+    return this.getModifiersCache(posId, productId);
   }
 
   /**
@@ -223,7 +228,7 @@ export class ModifierService {
         }),
         tap(async (modifiers) => {
           // Cache modifiers for offline support
-          await this.cacheModifiers(posId, modifiers);
+          await this.cacheModifiers(posId, productId, modifiers);
           this.isLoading.set(false);
         }),
         catchError((error) => {
