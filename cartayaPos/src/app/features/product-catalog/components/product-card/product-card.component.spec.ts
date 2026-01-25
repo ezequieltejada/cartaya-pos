@@ -8,8 +8,14 @@ import {
     IonCardTitle,
     IonImg,
 } from '@ionic/angular/standalone';
+import { of } from 'rxjs';
+import { Modifier } from '../../../../core/models/modifier.model';
 import { Product } from '../../../../core/models/product.model';
+import { ImageCacheService } from '../../../../core/services/image-cache.service';
+import { ModifierService } from '../../../../core/services/modifier.service';
+import { PosService } from '../../../../core/services/pos.service';
 import { ProductService } from '../../../../core/services/product.service';
+import { TenantService } from '../../../../core/services/tenant.service';
 import { ProductCardComponent } from './product-card.component';
 
 describe('ProductCardComponent', () => {
@@ -36,6 +42,11 @@ describe('ProductCardComponent', () => {
   };
 
   beforeEach(async () => {
+    const modifierServiceSpy = jasmine.createSpyObj('ModifierService', ['fetchProductModifiers']);
+    const tenantServiceSpy = jasmine.createSpyObj('TenantService', ['getCurrentTenantId']);
+    const posServiceSpy = jasmine.createSpyObj('PosService', ['getSelectedPos']);
+    const imageCacheServiceSpy = jasmine.createSpyObj('ImageCacheService', ['getImageUrl']);
+
     await TestBed.configureTestingModule({
       imports: [
         ProductCardComponent,
@@ -45,7 +56,13 @@ describe('ProductCardComponent', () => {
         IonCardContent,
         IonImg,
       ],
-      providers: [ProductService],
+      providers: [
+        ProductService,
+        { provide: ModifierService, useValue: modifierServiceSpy },
+        { provide: TenantService, useValue: tenantServiceSpy },
+        { provide: PosService, useValue: posServiceSpy },
+        { provide: ImageCacheService, useValue: imageCacheServiceSpy },
+      ],
     }).compileComponents();
 
     productService = TestBed.inject(ProductService);
@@ -586,6 +603,230 @@ describe('ProductCardComponent', () => {
 
       const descriptionElement = compiled.query(By.css('.description'));
       expect(descriptionElement).toBeTruthy();
+    });  });
+
+  describe('Default Modifiers Price Calculation', () => {
+    let modifierService: jasmine.SpyObj<ModifierService>;
+    let tenantService: jasmine.SpyObj<TenantService>;
+    let posService: jasmine.SpyObj<PosService>;
+
+    beforeEach(() => {
+      modifierService = TestBed.inject(ModifierService) as jasmine.SpyObj<ModifierService>;
+      tenantService = TestBed.inject(TenantService) as jasmine.SpyObj<TenantService>;
+      posService = TestBed.inject(PosService) as jasmine.SpyObj<PosService>;
+
+      tenantService.getCurrentTenantId.and.returnValue('tenant-1');
+      posService.getSelectedPos.and.returnValue({ id: 'pos-1', name: 'Test POS' } as any);
     });
-  });
+
+    it('should include default modifier price when includedQuantity is 0', (done) => {
+      const defaultModifier: Modifier = {
+        id: 'mod-1',
+        name: 'Extra Cheese',
+        priceDelta: 1.50,
+        currency: 'USD',
+        active: true,
+        default: true,
+        includedQuantity: 0,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      };
+
+      modifierService.fetchProductModifiers.and.returnValue(of([defaultModifier]));
+
+      component.product = mockProduct;
+      fixture.detectChanges();
+
+      // Wait for async operations to complete
+      fixture.whenStable().then(() => {
+        fixture.detectChanges();
+        // Base price: $12.99 + Default modifier at qty 1: (1 - 0) * $1.50 = $1.50 = $14.49
+        expect(component.formattedPrice).toBe('$14.49');
+        done();
+      });
+    });
+
+    it('should not charge for default modifier when includedQuantity is 1 or more', (done) => {
+      const defaultModifier: Modifier = {
+        id: 'mod-1',
+        name: 'Extra Cheese',
+        priceDelta: 1.50,
+        currency: 'USD',
+        active: true,
+        default: true,
+        includedQuantity: 1,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      };
+
+      modifierService.fetchProductModifiers.and.returnValue(of([defaultModifier]));
+
+      component.product = mockProduct;
+      fixture.detectChanges();
+
+      fixture.whenStable().then(() => {
+        fixture.detectChanges();
+        // Base price: $12.99 + Default modifier at qty 1: max(0, 1 - 1) * $1.50 = $0 = $12.99
+        expect(component.formattedPrice).toBe('$12.99');
+        done();
+      });
+    });
+
+    it('should not charge for default modifier when includedQuantity is greater than 1', (done) => {
+      const defaultModifier: Modifier = {
+        id: 'mod-1',
+        name: 'Extra Cheese',
+        priceDelta: 1.50,
+        currency: 'USD',
+        active: true,
+        default: true,
+        includedQuantity: 2,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      };
+
+      modifierService.fetchProductModifiers.and.returnValue(of([defaultModifier]));
+
+      component.product = mockProduct;
+      fixture.detectChanges();
+
+      fixture.whenStable().then(() => {
+        fixture.detectChanges();
+        // Base price: $12.99 + Default modifier at qty 1: max(0, 1 - 2) * $1.50 = $0 = $12.99
+        expect(component.formattedPrice).toBe('$12.99');
+        done();
+      });
+    });
+
+    it('should handle multiple default modifiers with different includedQuantities', (done) => {
+      const defaultModifier1: Modifier = {
+        id: 'mod-1',
+        name: 'Extra Cheese',
+        priceDelta: 1.50,
+        currency: 'USD',
+        active: true,
+        default: true,
+        includedQuantity: 0,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      };
+
+      const defaultModifier2: Modifier = {
+        id: 'mod-2',
+        name: 'Add Bacon',
+        priceDelta: 2.00,
+        currency: 'USD',
+        active: true,
+        default: true,
+        includedQuantity: 1,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      };
+
+      modifierService.fetchProductModifiers.and.returnValue(of([defaultModifier1, defaultModifier2]));
+
+      component.product = mockProduct;
+      fixture.detectChanges();
+
+      fixture.whenStable().then(() => {
+        fixture.detectChanges();
+        // Base price: $12.99
+        // Modifier 1: max(0, 1 - 0) * $1.50 = $1.50
+        // Modifier 2: max(0, 1 - 1) * $2.00 = $0
+        // Total: $12.99 + $1.50 = $14.49
+        expect(component.formattedPrice).toBe('$14.49');
+        done();
+      });
+    });
+
+    it('should handle negative modifier price delta', (done) => {
+      const defaultModifier: Modifier = {
+        id: 'mod-1',
+        name: 'Discount',
+        priceDelta: -0.50,
+        currency: 'USD',
+        active: true,
+        default: true,
+        includedQuantity: 0,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      };
+
+      modifierService.fetchProductModifiers.and.returnValue(of([defaultModifier]));
+
+      component.product = mockProduct;
+      fixture.detectChanges();
+
+      fixture.whenStable().then(() => {
+        fixture.detectChanges();
+        // Base price: $12.99 + Default modifier at qty 1: (1 - 0) * -$0.50 = -$0.50 = $12.49
+        expect(component.formattedPrice).toBe('$12.49');
+        done();
+      });
+    });
+
+    it('should only include modifiers marked as default', (done) => {
+      const defaultModifier: Modifier = {
+        id: 'mod-1',
+        name: 'Extra Cheese',
+        priceDelta: 1.50,
+        currency: 'USD',
+        active: true,
+        default: true,
+        includedQuantity: 0,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      };
+
+      const nonDefaultModifier: Modifier = {
+        id: 'mod-2',
+        name: 'Add Bacon',
+        priceDelta: 2.00,
+        currency: 'USD',
+        active: true,
+        default: false,
+        includedQuantity: 0,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      };
+
+      modifierService.fetchProductModifiers.and.returnValue(of([defaultModifier, nonDefaultModifier]));
+
+      component.product = mockProduct;
+      fixture.detectChanges();
+
+      fixture.whenStable().then(() => {
+        fixture.detectChanges();
+        // Only defaultModifier should be included: $12.99 + $1.50 = $14.49
+        // nonDefaultModifier should be ignored
+        expect(component.formattedPrice).toBe('$14.49');
+        done();
+      });
+    });
+
+    it('should handle missing includedQuantity as 0', (done) => {
+      const defaultModifier: Modifier = {
+        id: 'mod-1',
+        name: 'Extra Cheese',
+        priceDelta: 1.50,
+        currency: 'USD',
+        active: true,
+        default: true,
+        // includedQuantity is undefined
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      };
+
+      modifierService.fetchProductModifiers.and.returnValue(of([defaultModifier]));
+
+      component.product = mockProduct;
+      fixture.detectChanges();
+
+      fixture.whenStable().then(() => {
+        fixture.detectChanges();
+        // When includedQuantity is undefined, treat as 0: $12.99 + $1.50 = $14.49
+        expect(component.formattedPrice).toBe('$14.49');
+        done();
+      });
+    });  });
 });
