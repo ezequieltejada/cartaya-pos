@@ -354,9 +354,47 @@ EOF
                         // =====================================================
                         echo "--- Step 5: Publishing to GitHub Releases ---"
 
-                        withCredentials([string(credentialsId: 'github-app-jenkins-pws', variable: 'GITHUB_TOKEN')]) {
+                        withCredentials([
+                            gitHubApp(
+                                credentialsId: 'github-app-jenkins-pws',
+                                appIdVariable: 'GITHUB_APP_ID',
+                                privateKeyVariable: 'GITHUB_APP_PRIVATE_KEY',
+                                installationIdVariable: 'GITHUB_APP_INSTALLATION_ID'
+                            )
+                        ]) {
                             sh '''
                                 set -e
+
+                                b64url() {
+                                    openssl base64 -e -A | tr '+/' '-_' | tr -d '='
+                                }
+
+                                NOW=$(date +%s)
+                                IAT=$((NOW - 60))
+                                EXP=$((NOW + 540))
+
+                                HEADER=$(printf '{"alg":"RS256","typ":"JWT"}' | b64url)
+                                PAYLOAD=$(printf '{"iat":%s,"exp":%s,"iss":"%s"}' "${IAT}" "${EXP}" "${GITHUB_APP_ID}" | b64url)
+
+                                KEY_FILE=$(mktemp)
+                                printf '%s' "${GITHUB_APP_PRIVATE_KEY}" > "${KEY_FILE}"
+                                SIGNATURE=$(printf '%s.%s' "${HEADER}" "${PAYLOAD}" | openssl dgst -sha256 -sign "${KEY_FILE}" | b64url)
+                                rm -f "${KEY_FILE}"
+
+                                APP_JWT="${HEADER}.${PAYLOAD}.${SIGNATURE}"
+
+                                INSTALL_RESPONSE=$(curl -s -X POST \\
+                                    -H "Authorization: Bearer ${APP_JWT}" \\
+                                    -H "Accept: application/vnd.github+json" \\
+                                    "https://api.github.com/app/installations/${GITHUB_APP_INSTALLATION_ID}/access_tokens")
+
+                                GITHUB_TOKEN=$(echo "${INSTALL_RESPONSE}" | grep -o '"token"[[:space:]]*:[[:space:]]*"[^"]*' | sed 's/.*"token"[[:space:]]*:[[:space:]]*"//;s/"$//' || true)
+
+                                if [ -z "${GITHUB_TOKEN}" ]; then
+                                    echo "ERROR: Failed to obtain GitHub installation token"
+                                    echo "Response: ${INSTALL_RESPONSE}"
+                                    exit 1
+                                fi
 
                                 # Extract owner/repo from GIT_URL
                                 # Handles: https://github.com/owner/repo.git or git@github.com:owner/repo.git
@@ -370,19 +408,19 @@ EOF
 
                                 # Build release body
                                 RELEASE_BODY=$(cat <<EOF
-**Version:** ${RELEASE_VERSION}
-**Platform:** android
-**Build:** #${BUILD_NUMBER}
-**Commit:** ${COMMIT_SHA}
-**Message:** ${COMMIT_MSG}
+ **Version:** ${RELEASE_VERSION}
+ **Platform:** android
+ **Build:** #${BUILD_NUMBER}
+ **Commit:** ${COMMIT_SHA}
+ **Message:** ${COMMIT_MSG}
 
-**Build Details:**
-- Job: ${JOB_NAME}
-- Build URL: ${BUILD_URL}
+ **Build Details:**
+ - Job: ${JOB_NAME}
+ - Build URL: ${BUILD_URL}
 
-This is an automated release for Obtainium app update tracking.
-EOF
-)
+ This is an automated release for Obtainium app update tracking.
+ EOF
+ )
 
                                 echo "Release Notes:"
                                 echo "${RELEASE_BODY}"
@@ -403,15 +441,15 @@ EOF
                                         -H "Authorization: token ${GITHUB_TOKEN}" \\
                                         -H "Accept: application/vnd.github.v3+json" \\
                                         -d @- "https://api.github.com/repos/${REPO_SLUG}/releases" <<'PAYLOAD'
-{
-    "tag_name": "TAG_NAME_PLACEHOLDER",
-    "name": "Release TAG_NAME_PLACEHOLDER",
-    "body": "BODY_PLACEHOLDER",
-    "draft": false,
-    "prerelease": false
-}
-PAYLOAD
-)
+ {
+     "tag_name": "TAG_NAME_PLACEHOLDER",
+     "name": "Release TAG_NAME_PLACEHOLDER",
+     "body": "BODY_PLACEHOLDER",
+     "draft": false,
+     "prerelease": false
+ }
+ PAYLOAD
+ )
                                     echo "${RELEASE_RESPONSE}" | sed "s/TAG_NAME_PLACEHOLDER/${TAG_NAME}/g; s|BODY_PLACEHOLDER|${RELEASE_BODY}|g"
 
                                     RELEASE_ID=$(echo "${RELEASE_RESPONSE}" | grep -o '"id"[[:space:]]*:[[:space:]]*[0-9]*' | head -1 | grep -o '[0-9]*' || true)
