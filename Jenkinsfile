@@ -1,8 +1,79 @@
+// Helper Functions for Version Management and Release Publishing
+
+/**
+ * Extract version from multiple sources in priority order:
+ * 1. package.json (Node project version)
+ * 2. android/app/build.gradle (Android versionName)
+ * Returns normalized version string or empty string if not found.
+ */
+def extractVersion() {
+    // Try package.json first
+    def pkgVersion = sh(
+        script: '''
+            if [ -f "package.json" ]; then
+                grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*' package.json | \
+                sed 's/"version"[[:space:]]*:[[:space:]]*"//g' || true
+            fi
+        ''',
+        returnStdout: true
+    ).trim()
+    
+    if (pkgVersion) {
+        echo "✓ Found version in package.json: ${pkgVersion}"
+        return pkgVersion
+    }
+    
+    // Fall back to build.gradle versionName
+    def gradleVersion = sh(
+        script: '''
+            if [ -f "android/app/build.gradle" ]; then
+                grep 'versionName[[:space:]]*"' android/app/build.gradle | \
+                sed 's/.*versionName[[:space:]]*"//;s/".*//' | head -1 || true
+            fi
+        ''',
+        returnStdout: true
+    ).trim()
+    
+    if (gradleVersion) {
+        echo "✓ Found version in android/app/build.gradle: ${gradleVersion}"
+        return gradleVersion
+    }
+    
+    echo "✗ Could not extract version from package.json or build.gradle"
+    return ""
+}
+
+/**
+ * Normalize version string to semantic versioning format (x.y.z).
+ * - Removes leading 'v' prefix
+ * - Validates format matches \d+\.\d+(\.\d+)?
+ * - Returns normalized version or throws error if invalid
+ */
+def normalizeVersion(String version) {
+    // Remove leading 'v' if present
+    def normalized = version.replaceAll(/^[vV]/, '')
+    
+    // Validate semantic version format (x.y or x.y.z)
+    if (!normalized.matches(/^\d+\.\d+(\.\d+)?$/)) {
+        error "Invalid version format: '${version}' -> '${normalized}'. Expected x.y or x.y.z format"
+    }
+    
+    // Ensure three-part version (x.y.z) by adding .0 if needed
+    def parts = normalized.split('\\.')
+    if (parts.size() == 2) {
+        normalized = "${parts[0]}.${parts[1]}.0"
+        echo "Expanded version: ${normalized}"
+    }
+    
+    return normalized
+}
+
 pipeline {
     agent none
 
     tools {
         nodejs 'nodejs'
+
     }
 
     stages {
@@ -374,6 +445,204 @@ SCRIPT
                             }
                         }
                     }
+                }
+            }
+        }
+
+        // -------------------------------------------------------------------------
+        // Stage 3: Publish Release to GitHub (Obtainium Integration)
+        // -------------------------------------------------------------------------
+        stage('Publish Release') {
+            agent { label 'linux' }
+            when {
+                // Only publish on successful builds
+                expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+            }
+            steps {
+                script {
+                    dir('cartayaPos') {
+                        echo "=== GitHub Release Publisher (Obtainium Integration) ==="
+                        
+                        // =====================================================
+                        // Step 1: Extract Version
+                        // =====================================================
+                        echo "--- Step 1: Extracting Version ---"
+                        def version = extractVersion()
+                        
+                        if (!version) {
+                            echo "WARNING: Could not extract version, skipping release publication"
+                            return
+                        }
+                        
+                        echo "✓ Extracted version: ${version}"
+                        
+                        // =====================================================
+                        // Step 2: Validate and normalize version
+                        // =====================================================
+                        echo "--- Step 2: Validating Version Format ---"
+                        def normalizedVersion = normalizeVersion(version)
+                        echo "✓ Normalized version: ${normalizedVersion}"
+                        
+                        def tagName = normalizedVersion.startsWith('v') ? normalizedVersion : "v${normalizedVersion}"
+                        def releaseVersion = normalizedVersion.replaceAll(/^v/, '')
+                        
+                        echo "Git tag: ${tagName}"
+                        echo "Release version: ${releaseVersion}"
+                        
+                        // =====================================================
+                        // Step 3: Ensure git tag exists
+                        // =====================================================
+                        echo "--- Step 3: Managing Git Tag ---"
+                        def tagExists = sh(
+                            script: "git rev-parse '${tagName}' > /dev/null 2>&1",
+                            returnStatus: true
+                        ) == 0
+                        
+                        if (!tagExists) {
+                            echo "Creating git tag: ${tagName}"
+                            sh '''
+                                git config user.email "jenkins@cartaya.app"
+                                git config user.name "Jenkins CI"
+                                git tag -a "${TAG_NAME}" \
+                                    -m "Automated release ${RELEASE_VERSION} from Jenkins Build #${BUILD_NUMBER}"
+                                echo "✓ Git tag created"
+                            '''.replace('${TAG_NAME}', tagName).replace('${RELEASE_VERSION}', releaseVersion).replace('${BUILD_NUMBER}', "${BUILD_NUMBER}")
+                        } else {
+                            echo "ℹ Git tag ${tagName} already exists"
+                        }
+                        
+                        // =====================================================
+                        // Step 4: Locate APK artifact
+                        // =====================================================
+                        echo "--- Step 4: Locating Build Artifacts ---"
+                        def apkPath = sh(
+                            script: 'find android/app/build/outputs/apk -name "*.apk" -type f | sort | head -1',
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (!apkPath) {
+                            echo "ERROR: No APK found in android/app/build/outputs/apk"
+                            error "APK artifact not found"
+                        }
+                        
+                        def apkFileName = new File(apkPath).getName()
+                        echo "✓ APK found: ${apkPath}"
+                        echo "  Filename: ${apkFileName}"
+                        
+                        // =====================================================
+                        // Step 5: Publish to GitHub Releases
+                        // =====================================================
+                        echo "--- Step 5: Publishing to GitHub Releases ---"
+                        
+                        withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                            sh '''
+                                set -e
+                                
+                                # Extract owner/repo from GIT_URL
+                                # Handles: https://github.com/owner/repo.git or git@github.com:owner/repo.git
+                                REPO_SLUG=$(echo "${GIT_URL}" | sed -E 's|.*github.com[:/](.*)(\\.git)?$|\\1|')
+                                echo "Repository: ${REPO_SLUG}"
+                                
+                                # Get commit info for release notes
+                                COMMIT_SHA=$(git rev-parse --short HEAD)
+                                COMMIT_MSG=$(git log -1 --pretty=%B | head -1)
+                                BUILD_URL="${JENKINS_URL}job/${JOB_NAME}/${BUILD_NUMBER}/"
+                                
+                                # Build release body
+                                RELEASE_BODY=$(cat <<EOF
+**Version:** ${RELEASE_VERSION}
+**Build:** #${BUILD_NUMBER}
+**Commit:** ${COMMIT_SHA}
+**Message:** ${COMMIT_MSG}
+
+**Build Details:**
+- Job: ${JOB_NAME}
+- Build URL: ${BUILD_URL}
+
+This is an automated release for Obtainium app update tracking.
+EOF
+)
+                                
+                                echo "Release Notes:"
+                                echo "${RELEASE_BODY}"
+                                
+                                # Check if release already exists
+                                echo "Checking for existing release..."
+                                RELEASE_RESPONSE=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \\
+                                    "https://api.github.com/repos/${REPO_SLUG}/releases/tags/${TAG_NAME}" 2>/dev/null || true)
+                                
+                                RELEASE_ID=$(echo "${RELEASE_RESPONSE}" | grep -o '"id"[[:space:]]*:[[:space:]]*[0-9]*' | head -1 | grep -o '[0-9]*' || true)
+                                
+                                if [ -n "${RELEASE_ID}" ]; then
+                                    echo "✓ Release already exists (ID: ${RELEASE_ID})"
+                                    RELEASE_EXISTS="true"
+                                else
+                                    echo "Creating new release..."
+                                    RELEASE_RESPONSE=$(curl -s -X POST \\
+                                        -H "Authorization: token ${GITHUB_TOKEN}" \\
+                                        -H "Accept: application/vnd.github.v3+json" \\
+                                        -d @- "https://api.github.com/repos/${REPO_SLUG}/releases" <<'PAYLOAD'
+{
+    "tag_name": "TAG_NAME_PLACEHOLDER",
+    "name": "Release TAG_NAME_PLACEHOLDER",
+    "body": "BODY_PLACEHOLDER",
+    "draft": false,
+    "prerelease": false
+}
+PAYLOAD
+)
+                                    echo "${RELEASE_RESPONSE}" | sed "s/TAG_NAME_PLACEHOLDER/${TAG_NAME}/g; s|BODY_PLACEHOLDER|${RELEASE_BODY}|g"
+                                    
+                                    RELEASE_ID=$(echo "${RELEASE_RESPONSE}" | grep -o '"id"[[:space:]]*:[[:space:]]*[0-9]*' | head -1 | grep -o '[0-9]*' || true)
+                                    if [ -n "${RELEASE_ID}" ]; then
+                                        echo "✓ Release created (ID: ${RELEASE_ID})"
+                                        RELEASE_EXISTS="true"
+                                    else
+                                        echo "ERROR: Failed to create release"
+                                        echo "Response: ${RELEASE_RESPONSE}"
+                                        exit 1
+                                    fi
+                                fi
+                                
+                                # Get upload URL
+                                UPLOAD_URL=$(echo "${RELEASE_RESPONSE}" | grep -o '"upload_url"[[:space:]]*:[[:space:]]*"[^"]*' | sed 's/"upload_url"[[:space:]]*:[[:space:]]*"//;s/{.*$//' || true)
+                                
+                                if [ -z "${UPLOAD_URL}" ]; then
+                                    echo "ERROR: Could not obtain upload URL from release response"
+                                    exit 1
+                                fi
+                                
+                                echo "Upload URL: ${UPLOAD_URL}"
+                                
+                                # Upload APK asset
+                                echo "Uploading APK asset: ${APK_FILENAME}"
+                                curl -X POST \\
+                                    -H "Authorization: token ${GITHUB_TOKEN}" \\
+                                    -H "Content-Type: application/octet-stream" \\
+                                    --data-binary @"${APK_PATH}" \\
+                                    "${UPLOAD_URL}?name=${APK_FILENAME}" \\
+                                    --fail-with-body \\
+                                    -o /dev/null -w "\\nHTTP Status: %{http_code}\\n"
+                                    
+                                echo "✓ APK asset uploaded"
+                            '''
+                            .replace('${TAG_NAME}', tagName)
+                            .replace('${RELEASE_VERSION}', releaseVersion)
+                            .replace('${APK_PATH}', apkPath)
+                            .replace('${APK_FILENAME}', apkFileName)
+                            .replace('${BUILD_NUMBER}', "${BUILD_NUMBER}")
+                            .replace('${JOB_NAME}', "${env.JOB_NAME}")
+                            .replace('${JENKINS_URL}', "${env.JENKINS_URL}")
+                        }
+                        
+                        echo "=== ✓ Release Publication Complete ==="
+                    }
+                }
+            }
+            post {
+                failure {
+                    echo "ERROR: GitHub Release publication failed"
+                    echo "This may indicate: GitHub API error, missing credentials, or network issue"
                 }
             }
         }
