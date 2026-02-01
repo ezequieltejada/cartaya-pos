@@ -17,12 +17,12 @@ def extractVersion() {
         ''',
         returnStdout: true
     ).trim()
-    
+
     if (pkgVersion) {
         echo "✓ Found version in package.json: ${pkgVersion}"
         return pkgVersion
     }
-    
+
     // Fall back to build.gradle versionName
     def gradleVersion = sh(
         script: '''
@@ -33,12 +33,12 @@ def extractVersion() {
         ''',
         returnStdout: true
     ).trim()
-    
+
     if (gradleVersion) {
         echo "✓ Found version in android/app/build.gradle: ${gradleVersion}"
         return gradleVersion
     }
-    
+
     echo "✗ Could not extract version from package.json or build.gradle"
     return ""
 }
@@ -52,19 +52,19 @@ def extractVersion() {
 def normalizeVersion(String version) {
     // Remove leading 'v' if present
     def normalized = version.replaceAll(/^[vV]/, '')
-    
+
     // Validate semantic version format (x.y or x.y.z)
     if (!normalized.matches(/^\d+\.\d+(\.\d+)?$/)) {
         error "Invalid version format: '${version}' -> '${normalized}'. Expected x.y or x.y.z format"
     }
-    
+
     // Ensure three-part version (x.y.z) by adding .0 if needed
     def parts = normalized.split('\\.')
     if (parts.size() == 2) {
         normalized = "${parts[0]}.${parts[1]}.0"
         echo "Expanded version: ${normalized}"
     }
-    
+
     return normalized
 }
 
@@ -141,65 +141,41 @@ pipeline {
         }
 
         // -------------------------------------------------------------------------
-        // Stage 2: Android Build
+        // Stage 2: iOS Build
         // -------------------------------------------------------------------------
-        stage('Android Build') {
+        stage('iOS Build') {
+            agent { label 'mac' } // Uses the Mac OS X (aarch64) agent
             options {
-                timeout(time: 45, unit: 'MINUTES')
+                timeout(time: 60, unit: 'MINUTES')
             }
-            agent { label 'linux' }
 
             environment {
-                // Prefer Jenkins-managed ANDROID_SDK_ROOT/ANDROID_HOME, otherwise fall back to the repo default.
-                ANDROID_SDK_ROOT = "${env.ANDROID_HOME ?: '/home/circleci/android-sdk'}"
-                ANDROID_HOME = "${env.ANDROID_HOME ?: '/home/circleci/android-sdk'}"
+                // Printer SDK ships as iphoneos-only static lib; disable for simulator builds.
+                CAPACITOR_THERMAL_PRINTER_ENABLED = '0'
             }
 
             steps {
-                dir('cartayaPos') {
-                    script {
-                        echo "--- Preparing Android Workspace ---"
-                        // Unstash configuration to ensure consistency
+                script {
+                    echo "--- Preparing iOS Workspace ---"
+                    // Clean checkout on the new agent
+                    checkout scm
+
+                    dir('cartayaPos') {
                         unstash 'config-files'
                         unstash 'web-dist'
 
-                        // Ensure the Android SDK is discoverable by Gradle on the Linux agent.
-                        // The failure in build #16 was: "SDK location not found".
-                        echo "--- Validating Android SDK Environment ---"
-                        sh '''
-                            echo "Current user: $(whoami)"
-                            echo "Current group: $(id)"
-                            echo "ANDROID_SDK_ROOT: ${ANDROID_SDK_ROOT:-NOT SET}"
-                            echo "ANDROID_HOME: ${ANDROID_HOME:-NOT SET}"
-                            echo ""
-                            echo "Checking /home/circleci permissions:"
-                            stat /home/circleci 2>/dev/null || echo "Cannot stat /home/circleci"
-                            echo ""
-                            echo "Checking SDK directory:"
-                            if [ -d "$ANDROID_SDK_ROOT" ]; then
-                                echo "✓ Android SDK found at: $ANDROID_SDK_ROOT"
-                                stat "$ANDROID_SDK_ROOT"
-                            else
-                                echo "✗ Android SDK not found at: $ANDROID_SDK_ROOT"
-                                echo "Checking if path exists with different permissions:"
-                                test -e "$ANDROID_SDK_ROOT" && echo "Path exists but no read permission" || echo "Path does not exist"
-                                exit 1
-                            fi
-                        '''
-
-                        dir('android') {
-                            sh '''
-                                cat > local.properties <<'EOF'
-sdk.dir=/home/circleci/android-sdk
-EOF
-                            '''
-                            echo "✓ local.properties created"
+                        // The iOS failure in build #16 was during `npx cap sync ios` when it ran:
+                        // `xcodebuild -project App.xcodeproj clean`
+                        // and Xcode refused to delete `ios/App/build` because it wasn't created by the build system.
+                        // Clear it proactively so `cap sync` can clean safely.
+                        dir('ios/App') {
+                            sh 'rm -rf build || true'
                         }
 
-                        // Install dependencies (needed for Capacitor CLI)
+                        // Install dependencies (recompiles native modules for M1/M2)
                         sh '''
                             CACHE_KEY=$(md5sum package-lock.json | cut -d" " -f1)
-                            CACHE_DIR="$HOME/.npm-cache/node-android/$CACHE_KEY"
+                            CACHE_DIR="$HOME/.npm-cache/node-ios/$CACHE_KEY"
                             if [ -d "$CACHE_DIR/node_modules" ]; then
                                 echo "Restoring node_modules from cache"
                                 cp -r "$CACHE_DIR/node_modules" ./
@@ -212,55 +188,143 @@ EOF
                             fi
                         '''
 
-                        echo "--- Syncing Capacitor Android ---"
-                        sh 'npx cap sync android'
-
-                        echo "--- Creating Debug Keystore & Properties ---"
-                        dir('android') {
-                            // Create a debug keystore (if it doesn't exist) for signing Debug APK
-                            // This prevents the "path may not be null" error in build.gradle:27
+                        echo "--- Cleaning CocoaPods (Simulator) ---"
+                        // Remove any stale Pods/workspace created with the plugin enabled.
+                        dir('ios/App') {
                             sh '''
-                                if [ ! -f app/debug.keystore ]; then
-                                    echo "Generating debug keystore..."
-                                    keytool -genkey -v -keystore app/debug.keystore \
-                                        -keyalg RSA -keysize 2048 -validity 10000 \
-                                        -alias androiddebugkey -keypass android -storepass android \
-                                        -dname "CN=Android Debug,O=Android,C=US"
-                                else
-                                    echo "Debug keystore already exists."
-                                fi
-                            '''
-
-                            // Create keystore.properties pointing to the debug keystore
-                            sh '''
-                                cat > keystore.properties <<EOF
-storeFile=app/debug.keystore
-storePassword=android
-keyAlias=androiddebugkey
-keyPassword=android
-EOF
+                                set -e
+                                echo "CAPACITOR_THERMAL_PRINTER_ENABLED=${CAPACITOR_THERMAL_PRINTER_ENABLED}"
+                                rm -rf Pods Podfile.lock App.xcworkspace
+                                pod deintegrate || true
                             '''
                         }
 
-                        echo "--- Building Debug APK ---"
-                        dir('android') {
-                            // Ensure Gradle wrapper is executable
-                            sh 'chmod +x gradlew'
-                            // Build Debug APK (no signing config requirements for Debug)
-                            sh './gradlew :app:assembleDebug --stacktrace'
+                        echo "--- Syncing Capacitor iOS (Simulator) ---"
+                        // Ensure the env var is in effect for the internal CocoaPods run.
+                        sh 'CAPACITOR_THERMAL_PRINTER_ENABLED=0 npx cap sync ios'
+
+                        echo "--- Removing Thermal Printer from Plugin Registry (Simulator) ---"
+                        // Capacitor writes plugin registry to ios/App/App/capacitor.config.json.
+                        // The list is top-level: config.packageClassList
+                        dir('ios/App') {
+                            sh '''
+                                cat > /tmp/remove_plugin.js <<'SCRIPT'
+const fs = require("fs");
+const path = "ios/App/App/capacitor.config.json";
+const plugin = "CapacitorThermalPrinterPlugin";
+
+if (!fs.existsSync(path)) {
+  console.log("capacitor.config.json not found, skipping plugin registry patch");
+  process.exit(0);
+}
+
+const config = JSON.parse(fs.readFileSync(path, "utf8"));
+let changed = false;
+
+if (Array.isArray(config.packageClassList)) {
+  const before = config.packageClassList.length;
+  config.packageClassList = config.packageClassList.filter(p => p !== plugin);
+  changed = changed || before !== config.packageClassList.length;
+}
+
+if (config.ios && config.ios.capacitorPlugins && Array.isArray(config.ios.capacitorPlugins.packageClassList)) {
+  const before = config.ios.capacitorPlugins.packageClassList.length;
+  config.ios.capacitorPlugins.packageClassList = config.ios.capacitorPlugins.packageClassList.filter(p => p !== plugin);
+  changed = changed || before !== config.ios.capacitorPlugins.packageClassList.length;
+}
+
+if (changed) {
+  fs.writeFileSync(path, JSON.stringify(config, null, 2));
+  console.log("Removed " + plugin + " from capacitor.config.json");
+} else {
+  console.log("No " + plugin + " entry found in capacitor.config.json");
+}
+SCRIPT
+                                node /tmp/remove_plugin.js
+
+                                echo "--- Removing Thermal Printer from Podfile ---"
+                                sed -i '' '/CapacitorThermalPrinter/d' Podfile
+
+                                echo "--- Cleaning Pods to force regeneration without Thermal Printer ---"
+                                rm -rf Pods Podfile.lock
+                            '''
+                        }
+
+                        echo "--- Installing CocoaPods Dependencies (Simulator) ---"
+                        dir('ios/App') {
+                            sh '''
+                                set -e
+                                echo "CAPACITOR_THERMAL_PRINTER_ENABLED=${CAPACITOR_THERMAL_PRINTER_ENABLED}"
+                                pod install
+
+                                echo "--- Verifying Thermal Printer not in Podfile.lock ---"
+                                if grep -q "CapacitorThermalPrinter" Podfile.lock; then
+                                    echo "ERROR: CapacitorThermalPrinter still present in Podfile.lock"
+                                    grep "CapacitorThermalPrinter" Podfile.lock
+                                    exit 1
+                                else
+                                    echo "SUCCESS: Thermal Printer not found in Podfile.lock"
+                                fi
+                            '''
+                        }
+
+                        echo "--- Verify Capacitor Config ---"
+                        sh 'cat ios/App/App/capacitor.config.json | head -30'
+
+                        echo "--- Building iOS Simulator App ---"
+                        dir('ios/App') {
+                            // Xcode 26.2 with explicit simulator SDK and destination.
+                            // -sdk iphonesimulator: force simulator SDK (overrides device-only SDKROOT settings)
+                            // -destination: specify explicit simulator (iPhone 15 is widely available in Xcode 26.2)
+                            // Add arm64e exclusion if needed for older simulators on Apple Silicon
+                             sh '''
+                                 set -e
+                                 echo "Available simulators:"
+                                 xcrun simctl list devices available || true
+
+                                 echo ""
+                                 echo "Building for simulator..."
+                                 xcodebuild -workspace App.xcworkspace \
+                                     -scheme App \
+                                     -configuration Debug \
+                                     -sdk iphonesimulator \
+                                     -destination 'platform=iOS Simulator,OS=26.1,name=iPhone 17' \
+                                     -derivedDataPath build \
+                                     clean build
+                              '''
+                        }
+
+                        echo "--- Zipping App Bundle ---"
+                        // The .app bundle is a directory, so we zip it for the artifact
+                        dir('ios/App/build/Build/Products/Debug-iphonesimulator') {
+                            sh 'zip -r App-Simulator.zip App.app'
                         }
                     }
                 }
             }
             post {
                 success {
-                    // Archive the APK for download
-                    // Note: We need to match the path relative to workspace root, so we prepend cartayaPos/
-                    archiveArtifacts artifacts: 'cartayaPos/android/app/build/outputs/apk/debug/*.apk', fingerprint: true
-                    stash includes: 'cartayaPos/android/app/build/outputs/apk/debug/*.apk', name: 'release-asset-android'
+                    // Archive the App-Simulator.zip for download
+                    archiveArtifacts artifacts: 'cartayaPos/ios/App/build/Build/Products/Debug-iphonesimulator/App-Simulator.zip', fingerprint: true
+                    stash includes: 'cartayaPos/ios/App/build/Build/Products/Debug-iphonesimulator/App-Simulator.zip', name: 'release-asset-ios'
                 }
                 failure {
-                    echo "Android build failed."
+                    echo "iOS build failed. Collecting diagnostics..."
+                    dir('cartayaPos/ios/App') {
+                        sh '''
+                            echo "=== Xcode Version ==="
+                            xcodebuild -version
+                            echo ""
+                            echo "=== Available Simulators ==="
+                            xcrun simctl list devices available || true
+                            echo ""
+                            echo "=== Workspace Info ==="
+                            xcodebuild -list -workspace App.xcworkspace || true
+                            echo ""
+                            echo "=== Pod Status ==="
+                            ls -la Pods/ || echo "Pods directory not found"
+                        ''' as String
+                    }
                 }
             }
         }
@@ -276,8 +340,8 @@ EOF
             steps {
                 script {
                     dir('cartayaPos') {
-                        unstash 'release-asset-android'
-                        echo "=== GitHub Release Publisher (Android) ==="
+                        unstash 'release-asset-ios'
+                        echo "=== GitHub Release Publisher (iOS) ==="
 
                         // =====================================================
                         // Step 1: Extract Version
@@ -332,13 +396,13 @@ EOF
                         // =====================================================
                         echo "--- Step 4: Locating Build Artifacts ---"
                         def artifactPath = sh(
-                            script: 'find android/app/build/outputs/apk -name "*.apk" -type f | sort | head -1',
+                            script: 'find ios/App/build/Build/Products/Debug-iphonesimulator -name "*.zip" -type f | sort | head -1',
                             returnStdout: true
                         ).trim()
 
                         if (!artifactPath) {
-                            echo "ERROR: No APK found in android/app/build/outputs/apk"
-                            error "APK artifact not found"
+                            echo "ERROR: No iOS ZIP found in ios/App/build/Build/Products/Debug-iphonesimulator"
+                            error "iOS ZIP artifact not found"
                         }
 
                         def artifactFileName = new File(artifactPath).getName()
@@ -367,7 +431,7 @@ EOF
                                 # Build release body
                                 RELEASE_BODY=$(cat <<EOF
 **Version:** ${RELEASE_VERSION}
-**Platform:** android
+**Platform:** ios
 **Build:** #${BUILD_NUMBER}
 **Commit:** ${COMMIT_SHA}
 **Message:** ${COMMIT_MSG}
