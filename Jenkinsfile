@@ -354,14 +354,7 @@ EOF
                         // =====================================================
                         echo "--- Step 5: Publishing to GitHub Releases ---"
 
-                        withCredentials([
-                            gitHubApp(
-                                credentialsId: 'github-app-jenkins-pws',
-                                appIdVariable: 'GITHUB_APP_ID',
-                                privateKeyVariable: 'GITHUB_APP_PRIVATE_KEY',
-                                installationIdVariable: 'GITHUB_APP_INSTALLATION_ID'
-                            )
-                        ]) {
+                        withCredentials([string(credentialsId: 'github-cartaya-ghcr-access-token', variable: 'GITHUB_TOKEN')]) {
                             sh '''
                                 set -e
 
