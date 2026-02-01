@@ -354,7 +354,7 @@ EOF
                         // =====================================================
                         echo "--- Step 5: Publishing to GitHub Releases ---"
 
-                        withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                        withCredentials([string(credentialsId: 'github-app-jenkins-pws', variable: 'GITHUB_TOKEN')]) {
                             sh '''
                                 set -e
 
