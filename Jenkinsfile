@@ -331,17 +331,21 @@ EOF
                         // Step 4: Locate build artifact
                         // =====================================================
                         echo "--- Step 4: Locating Build Artifacts ---"
-                        def artifactPath = sh(
-                            script: 'find android/app/build/outputs/apk -name "*.apk" -type f | sort | head -1',
-                            returnStdout: true
-                        ).trim()
+                        def candidateArtifacts = [
+                            'android/app/build/outputs/apk/debug/app-debug.apk',
+                            'android/app/build/outputs/apk/release/app-release.apk'
+                        ]
+
+                        def artifactPath = candidateArtifacts.find { path ->
+                            fileExists(path)
+                        }
 
                         if (!artifactPath) {
                             echo "ERROR: No APK found in android/app/build/outputs/apk"
                             error "APK artifact not found"
                         }
 
-                        def artifactFileName = new File(artifactPath).getName()
+                        def artifactFileName = artifactPath.tokenize('/').last()
                         echo "✓ Artifact found: ${artifactPath}"
                         echo "  Filename: ${artifactFileName}"
 
