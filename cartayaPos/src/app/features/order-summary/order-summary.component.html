@@ -30,7 +30,7 @@
 
             <div slot="end" class="item-actions">
               @if (item.subtotal !== undefined) {
-                <span class="item-price">{{ (item.subtotal ?? 0) | currency: currencyCode() : 'symbol' : '1.2-2' }}</span>
+                <span class="item-price">{{ item.subtotal | currency: currencyCode() : 'symbol' : '1.2-2' }}</span>
               } @else {
                 <span class="item-price">{{ 'COMMON.BUTTONS.OK' | translate }}</span>
               }
