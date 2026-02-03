@@ -265,8 +265,8 @@ EOF
             }
         }
 
-        // -------------------------------------------------------------------------
-        // Stage 3: Publish Release to GitHub (Obtainium Integration)
+// -------------------------------------------------------------------------
+        // Stage 3: Publish Release to GitHub (Fixed)
         // -------------------------------------------------------------------------
         stage('Publish Release') {
             agent { label 'linux' }
@@ -279,222 +279,101 @@ EOF
                         unstash 'release-asset-android'
                         echo "=== GitHub Release Publisher (Android) ==="
 
-                        // =====================================================
-                        // Step 1: Extract Version
-                        // =====================================================
-                        echo "--- Step 1: Extracting Version ---"
+                        // --- Step 1: Extract Version ---
                         def version = extractVersion()
-
                         if (!version) {
                             echo "WARNING: Could not extract version, skipping release publication"
                             return
                         }
-
-                        echo "✓ Extracted version: ${version}"
-
-                        // =====================================================
-                        // Step 2: Validate and normalize version
-                        // =====================================================
-                        echo "--- Step 2: Validating Version Format ---"
+                        
+                        // --- Step 2: Validate Version ---
                         def normalizedVersion = normalizeVersion(version)
-                        echo "✓ Normalized version: ${normalizedVersion}"
-
                         def tagName = normalizedVersion.startsWith('v') ? normalizedVersion : "v${normalizedVersion}"
                         def releaseVersion = normalizedVersion.replaceAll(/^v/, '')
-
-                        echo "Git tag: ${tagName}"
-                        echo "Release version: ${releaseVersion}"
-
-                        // =====================================================
-                        // Step 3: Ensure git tag exists
-                        // =====================================================
-                        echo "--- Step 3: Managing Git Tag ---"
-                        def tagExists = sh(
-                            script: "git rev-parse '${tagName}' > /dev/null 2>&1",
-                            returnStatus: true
-                        ) == 0
-
-                        if (!tagExists) {
-                            echo "Creating git tag: ${tagName}"
-                            sh '''
-                                git config user.email "jenkins@cartaya.app"
-                                git config user.name "Jenkins CI"
-                                git tag -a "${TAG_NAME}" \
-                                    -m "Automated release ${RELEASE_VERSION} from Jenkins Build #${BUILD_NUMBER}"
-                                echo "✓ Git tag created"
-                            '''.replace('${TAG_NAME}', tagName).replace('${RELEASE_VERSION}', releaseVersion).replace('${BUILD_NUMBER}', "${BUILD_NUMBER}")
-                        } else {
-                            echo "ℹ Git tag ${tagName} already exists"
+                        
+                        // --- Step 3: Manage Git Tag ---
+                        // Note: If using a PAT, ensure the user associated with the token has permission to push tags
+                        withCredentials([usernamePassword(credentialsId: 'github-app-jenkins-pws', passwordVariable: 'GIT_PASS', usernameVariable: 'GIT_USER')]) {
+                            sh """
+                                if ! git rev-parse '${tagName}' >/dev/null 2>&1; then
+                                    git config user.email "jenkins@cartaya.app"
+                                    git config user.name "Jenkins CI"
+                                    git tag -a "${tagName}" -m "Release ${releaseVersion}"
+                                    # Push the tag back to remote so GitHub knows about it
+                                    git push https://${GIT_USER}:${GIT_PASS}@github.com/ezequieltejada/cartaya-pos.git ${tagName}
+                                    echo "✓ Git tag created and pushed"
+                                else
+                                    echo "ℹ Git tag ${tagName} already exists"
+                                fi
+                            """
                         }
 
-                        // =====================================================
-                        // Step 4: Locate build artifact
-                        // =====================================================
-                        echo "--- Step 4: Locating Build Artifacts ---"
+                        // --- Step 4: Locate Artifact ---
                         def candidateArtifacts = [
                             'android/app/build/outputs/apk/debug/app-debug.apk',
                             'android/app/build/outputs/apk/release/app-release.apk'
                         ]
-
-                        def artifactPath = candidateArtifacts.find { path ->
-                            fileExists(path)
-                        }
-
-                        if (!artifactPath) {
-                            echo "ERROR: No APK found in android/app/build/outputs/apk"
-                            error "APK artifact not found"
-                        }
-
+                        def artifactPath = candidateArtifacts.find { path -> fileExists(path) }
+                        if (!artifactPath) error "APK artifact not found"
                         def artifactFileName = artifactPath.tokenize('/').last()
-                        echo "✓ Artifact found: ${artifactPath}"
-                        echo "  Filename: ${artifactFileName}"
 
-                        // =====================================================
-                        // Step 5: Publish to GitHub Releases
-                        // =====================================================
-                        echo "--- Step 5: Publishing to GitHub Releases ---"
-
-                        withCredentials([string(credentialsId: 'github-cartaya-ghcr-access-token', variable: 'GITHUB_TOKEN')]) {
+                        // --- Step 5: Publish to GitHub Releases ---
+                        // REPLACE 'github-api-token' with the ID of the Secret Text credential you created
+                        withCredentials([string(credentialsId: 'github-api-token', variable: 'GITHUB_TOKEN')]) {
                             sh '''
                                 set -e
-
-                                b64url() {
-                                    openssl base64 -e -A | tr '+/' '-_' | tr -d '='
-                                }
-
-                                NOW=$(date +%s)
-                                IAT=$((NOW - 60))
-                                EXP=$((NOW + 540))
-
-                                HEADER=$(printf '{"alg":"RS256","typ":"JWT"}' | b64url)
-                                PAYLOAD=$(printf '{"iat":%s,"exp":%s,"iss":"%s"}' "${IAT}" "${EXP}" "${GITHUB_APP_ID}" | b64url)
-
-                                KEY_FILE=$(mktemp)
-                                printf '%s' "${GITHUB_APP_PRIVATE_KEY}" > "${KEY_FILE}"
-                                SIGNATURE=$(printf '%s.%s' "${HEADER}" "${PAYLOAD}" | openssl dgst -sha256 -sign "${KEY_FILE}" | b64url)
-                                rm -f "${KEY_FILE}"
-
-                                APP_JWT="${HEADER}.${PAYLOAD}.${SIGNATURE}"
-
-                                INSTALL_RESPONSE=$(curl -s -X POST \\
-                                    -H "Authorization: Bearer ${APP_JWT}" \\
-                                    -H "Accept: application/vnd.github+json" \\
-                                    "https://api.github.com/app/installations/${GITHUB_APP_INSTALLATION_ID}/access_tokens")
-
-                                GITHUB_TOKEN=$(echo "${INSTALL_RESPONSE}" | grep -o '"token"[[:space:]]*:[[:space:]]*"[^"]*' | sed 's/.*"token"[[:space:]]*:[[:space:]]*"//;s/"$//' || true)
-
-                                if [ -z "${GITHUB_TOKEN}" ]; then
-                                    echo "ERROR: Failed to obtain GitHub installation token"
-                                    echo "Response: ${INSTALL_RESPONSE}"
-                                    exit 1
-                                fi
-
-                                # Extract owner/repo from GIT_URL
-                                # Handles: https://github.com/owner/repo.git or git@github.com:owner/repo.git
+                                
+                                # 1. Prepare Metadata
                                 REPO_SLUG=$(echo "${GIT_URL}" | sed -E 's|.*github.com[:/](.*)(\\.git)?$|\\1|')
-                                echo "Repository: ${REPO_SLUG}"
-
-                                # Get commit info for release notes
                                 COMMIT_SHA=$(git rev-parse --short HEAD)
-                                COMMIT_MSG=$(git log -1 --pretty=%B | head -1)
-                                BUILD_URL="${JENKINS_URL}job/${JOB_NAME}/${BUILD_NUMBER}/"
+                                RELEASE_BODY="**Version:** ${RELEASE_VERSION}\\n**Platform:** Android\\n**Commit:** ${COMMIT_SHA}\\n\\nAutomated Release."
 
-                                # Build release body
-                                RELEASE_BODY=$(cat <<EOF
- **Version:** ${RELEASE_VERSION}
- **Platform:** android
- **Build:** #${BUILD_NUMBER}
- **Commit:** ${COMMIT_SHA}
- **Message:** ${COMMIT_MSG}
+                                # 2. Create or Get Release
+                                echo "Creating/Updating Release on GitHub..."
+                                RELEASE_RESPONSE=$(curl -s -X POST \
+                                    -H "Authorization: token ${GITHUB_TOKEN}" \
+                                    -H "Accept: application/vnd.github.v3+json" \
+                                    "https://api.github.com/repos/${REPO_SLUG}/releases" \
+                                    -d "{
+                                        \\"tag_name\\": \\"${TAG_NAME}\\",
+                                        \\"name\\": \\"Release ${TAG_NAME}\\",
+                                        \\"body\\": \\"${RELEASE_BODY}\\",
+                                        \\"draft\\": false,
+                                        \\"prerelease\\": false
+                                    }")
 
- **Build Details:**
- - Job: ${JOB_NAME}
- - Build URL: ${BUILD_URL}
-
- This is an automated release for Obtainium app update tracking.
- EOF
- )
-
-                                echo "Release Notes:"
-                                echo "${RELEASE_BODY}"
-
-                                # Check if release already exists
-                                echo "Checking for existing release..."
-                                RELEASE_RESPONSE=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \\
-                                    "https://api.github.com/repos/${REPO_SLUG}/releases/tags/${TAG_NAME}" 2>/dev/null || true)
-
-                                RELEASE_ID=$(echo "${RELEASE_RESPONSE}" | grep -o '"id"[[:space:]]*:[[:space:]]*[0-9]*' | head -1 | grep -o '[0-9]*' || true)
-
-                                if [ -n "${RELEASE_ID}" ]; then
-                                    echo "✓ Release already exists (ID: ${RELEASE_ID})"
-                                    RELEASE_EXISTS="true"
-                                else
-                                    echo "Creating new release..."
-                                    RELEASE_RESPONSE=$(curl -s -X POST \\
-                                        -H "Authorization: token ${GITHUB_TOKEN}" \\
-                                        -H "Accept: application/vnd.github.v3+json" \\
-                                        -d @- "https://api.github.com/repos/${REPO_SLUG}/releases" <<'PAYLOAD'
- {
-     "tag_name": "TAG_NAME_PLACEHOLDER",
-     "name": "Release TAG_NAME_PLACEHOLDER",
-     "body": "BODY_PLACEHOLDER",
-     "draft": false,
-     "prerelease": false
- }
- PAYLOAD
- )
-                                    echo "${RELEASE_RESPONSE}" | sed "s/TAG_NAME_PLACEHOLDER/${TAG_NAME}/g; s|BODY_PLACEHOLDER|${RELEASE_BODY}|g"
-
-                                    RELEASE_ID=$(echo "${RELEASE_RESPONSE}" | grep -o '"id"[[:space:]]*:[[:space:]]*[0-9]*' | head -1 | grep -o '[0-9]*' || true)
-                                    if [ -n "${RELEASE_ID}" ]; then
-                                        echo "✓ Release created (ID: ${RELEASE_ID})"
-                                        RELEASE_EXISTS="true"
-                                    else
-                                        echo "ERROR: Failed to create release"
-                                        echo "Response: ${RELEASE_RESPONSE}"
-                                        exit 1
-                                    fi
+                                # 3. Extract Upload URL (handles errors if release already exists)
+                                # If creation failed because it exists, we fetch the existing one
+                                if echo "$RELEASE_RESPONSE" | grep -q "already_exists"; then
+                                    echo "Release exists, fetching details..."
+                                    RELEASE_RESPONSE=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
+                                    "https://api.github.com/repos/${REPO_SLUG}/releases/tags/${TAG_NAME}")
                                 fi
 
-                                # Get upload URL
-                                UPLOAD_URL=$(echo "${RELEASE_RESPONSE}" | grep -o '"upload_url"[[:space:]]*:[[:space:]]*"[^"]*' | sed 's/"upload_url"[[:space:]]*:[[:space:]]*"//;s/{.*$//' || true)
+                                UPLOAD_URL=$(echo "${RELEASE_RESPONSE}" | grep -o '"upload_url"[[:space:]]*:[[:space:]]*"[^"]*' | sed 's/"upload_url"[[:space:]]*:[[:space:]]*"//;s/{.*$//')
 
                                 if [ -z "${UPLOAD_URL}" ]; then
-                                    echo "ERROR: Could not obtain upload URL from release response"
+                                    echo "ERROR: Could not find Upload URL. Response: ${RELEASE_RESPONSE}"
                                     exit 1
                                 fi
 
-                                echo "Upload URL: ${UPLOAD_URL}"
+                                # 4. Upload Asset
+                                echo "Uploading ${ARTIFACT_FILENAME}..."
+                                curl -X POST \
+                                    -H "Authorization: token ${GITHUB_TOKEN}" \
+                                    -H "Content-Type: application/vnd.android.package-archive" \
+                                    --data-binary @"${ARTIFACT_PATH}" \
+                                    "${UPLOAD_URL}?name=${ARTIFACT_FILENAME}" \
+                                    --fail-with-body
 
-                                # Upload release asset
-                                echo "Uploading release asset: ${ARTIFACT_FILENAME}"
-                                curl -X POST \\
-                                    -H "Authorization: token ${GITHUB_TOKEN}" \\
-                                    -H "Content-Type: application/octet-stream" \\
-                                    --data-binary @"${ARTIFACT_PATH}" \\
-                                    "${UPLOAD_URL}?name=${ARTIFACT_FILENAME}" \\
-                                    --fail-with-body \\
-                                    -o /dev/null -w "\\nHTTP Status: %{http_code}\\n"
-
-                                echo "✓ Release asset uploaded"
+                                echo "✓ Release asset uploaded successfully"
                             '''
                             .replace('${TAG_NAME}', tagName)
                             .replace('${RELEASE_VERSION}', releaseVersion)
                             .replace('${ARTIFACT_PATH}', artifactPath)
                             .replace('${ARTIFACT_FILENAME}', artifactFileName)
-                            .replace('${BUILD_NUMBER}', "${BUILD_NUMBER}")
-                            .replace('${JOB_NAME}', "${env.JOB_NAME}")
-                            .replace('${JENKINS_URL}', "${env.JENKINS_URL}")
                         }
-
-                        echo "=== ✓ Release Publication Complete ==="
                     }
-                }
-            }
-            post {
-                failure {
-                    echo "ERROR: GitHub Release publication failed"
-                    echo "This may indicate: GitHub API error, missing credentials, or network issue"
                 }
             }
         }
