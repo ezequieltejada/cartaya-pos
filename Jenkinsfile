@@ -270,57 +270,70 @@ EOF
         // -------------------------------------------------------------------------
         stage('Publish Release') {
             agent { label 'linux' }
-            // Trigger on 'main' branch or when manually started by a user
             when {
                 anyOf {
                     branch 'main'
-                    triggeredBy 'UserIdCause'
+                    triggeredBy 'UserIdCause' // Allows manual trigger 
                 }
             }
             steps {
                 script {
                     dir('cartayaPos') {
-                        unstash 'release-asset-android' [cite: 57]
+                        // 1. Unstash first [cite: 57]
+                        unstash 'release-asset-android'
                         
-                        // --- Versioning Logic ---
-                        def version = extractVersion() [cite: 58]
-                        if (!version) return
+                        // 2. Extract and Normalize Version [cite: 58, 60]
+                        def rawVersion = extractVersion()
+                        if (!rawVersion) {
+                            echo "No version found, skipping release."
+                            return
+                        }
+                        def normVersion = normalizeVersion(rawVersion)
                         
-                        def normalizedVersion = normalizeVersion(version) [cite: 60]
+                        // 3. Determine Tag Name and Prerelease status [cite: 61]
                         def isMain = (env.BRANCH_NAME == 'main')
+                        def tagName = isMain ? "v${normVersion}" : "v${normVersion}-DEV-${env.BUILD_NUMBER}"
+                        def isPrerelease = !isMain
                         
-                        // Set Tag Name: v1.0.0 for main, v1.0.0-DEV-buildNum for others
-                        def tagName = isMain ? "v${normalizedVersion}" : "v${normalizedVersion}-DEV-${env.BUILD_NUMBER}" [cite: 61]
-                        
-                        // --- Changelog Extraction ---
-                        // Pulls the last commit message body (where PR comments are stored on merge)
-                        def changelog = sh(script: 'git log -1 --pretty=%b', returnStdout: true).trim()
-                        if (!changelog) changelog = "Manual build triggered from branch: ${env.BRANCH_NAME}"
+                        // 4. Extract Changelog (PR Comment)
+                        // git log -1 --pretty=%b gets the body of the merge commit
+                        def changelogRaw = sh(script: 'git log -1 --pretty=%b', returnStdout: true).trim()
+                        def changelogBody = changelogRaw ?: "Automated build from branch: ${env.BRANCH_NAME}"
 
-                        // --- GitHub Publication ---
-                        withCredentials([string(credentialsId: 'github-api-token', variable: 'GITHUB_TOKEN')]) { [cite: 70]
-                            sh '''
-                                # Sanitize changelog for JSON (Escape quotes and newlines)
-                                ESCAPED_CHANGELOG=$(echo "${CHANGELOG_CONTENT}" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
+                        // 5. Sanitize Changelog for JSON using Python (to handle newlines/quotes)
+                        def escapedChangelog = sh(
+                            script: "echo \"${changelogBody}\" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'",
+                            returnStdout: true
+                        ).trim()
+
+                        // 6. GitHub Release [cite: 70, 73]
+                        withCredentials([string(credentialsId: 'github-api-token', variable: 'GITHUB_TOKEN')]) {
+                            // Define the shell script as a variable first to avoid CPS errors in .replace()
+                            def releaseScript = '''
+                                set -e
+                                REPO_SLUG="ezequieltejada/cartaya-pos"
                                 
-                                # Use your existing CURL logic but replace the body with ESCAPED_CHANGELOG
+                                # Create the release using the escaped changelog body
                                 RELEASE_RESPONSE=$(curl -s -X POST \
                                     -H "Authorization: token ${GITHUB_TOKEN}" \
                                     -H "Accept: application/vnd.github.v3+json" \
-                                    "https://api.github.com/repos/ezequieltejada/cartaya-pos/releases" \
+                                    "https://api.github.com/repos/${REPO_SLUG}/releases" \
                                     -d "{
                                         \\"tag_name\\": \\"${TAG_NAME}\\",
                                         \\"name\\": \\"Release ${TAG_NAME}\\",
-                                        \\"body\\": ${ESCAPED_CHANGELOG},
+                                        \\"body\\": ${CHANGELOG_JSON},
                                         \\"draft\\": false,
-                                        \\"prerelease\\": ${IS_PRERELEASE}
+                                        \\"prerelease\\": ${PRERELEASE_STATUS}
                                     }")
-                                # ... (Rest of your upload logic)
+                                
+                                # ... (Existing logic to extract UPLOAD_URL and upload asset)
                             '''
-                            .replace('${TAG_NAME}', tagName)
-                            .replace('${CHANGELOG_CONTENT}', changelog)
-                            .replace('${IS_PRERELEASE}', isMain ? 'false' : 'true')
-                            // Ensure existing replacements for artifact paths remain [cite: 87]
+                            
+                            // Execute the script with clean replacements
+                            sh releaseScript
+                                .replace('${TAG_NAME}', tagName)
+                                .replace('${CHANGELOG_JSON}', escapedChangelog)
+                                .replace('${PRERELEASE_STATUS}', isPrerelease.toString())
                         }
                     }
                 }
