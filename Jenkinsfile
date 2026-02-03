@@ -270,108 +270,57 @@ EOF
         // -------------------------------------------------------------------------
         stage('Publish Release') {
             agent { label 'linux' }
+            // Trigger on 'main' branch or when manually started by a user
             when {
-                expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+                anyOf {
+                    branch 'main'
+                    triggeredBy 'UserIdCause'
+                }
             }
             steps {
                 script {
                     dir('cartayaPos') {
-                        unstash 'release-asset-android'
-                        echo "=== GitHub Release Publisher (Android) ==="
-
-                        // --- Step 1: Extract Version ---
-                        def version = extractVersion()
-                        if (!version) {
-                            echo "WARNING: Could not extract version, skipping release publication"
-                            return
-                        }
+                        unstash 'release-asset-android' [cite: 57]
                         
-                        // --- Step 2: Validate Version ---
-                        def normalizedVersion = normalizeVersion(version)
-                        def tagName = normalizedVersion.startsWith('v') ? normalizedVersion : "v${normalizedVersion}"
-                        def releaseVersion = normalizedVersion.replaceAll(/^v/, '')
+                        // --- Versioning Logic ---
+                        def version = extractVersion() [cite: 58]
+                        if (!version) return
                         
-                        // --- Step 3: Manage Git Tag ---
-                        // Note: If using a PAT, ensure the user associated with the token has permission to push tags
-                        withCredentials([usernamePassword(credentialsId: 'github-app-jenkins-pws', passwordVariable: 'GIT_PASS', usernameVariable: 'GIT_USER')]) {
-                            sh """
-                                if ! git rev-parse '${tagName}' >/dev/null 2>&1; then
-                                    git config user.email "jenkins@cartaya.app"
-                                    git config user.name "Jenkins CI"
-                                    git tag -a "${tagName}" -m "Release ${releaseVersion}"
-                                    # Push the tag back to remote so GitHub knows about it
-                                    git push https://${GIT_USER}:${GIT_PASS}@github.com/ezequieltejada/cartaya-pos.git ${tagName}
-                                    echo "✓ Git tag created and pushed"
-                                else
-                                    echo "ℹ Git tag ${tagName} already exists"
-                                fi
-                            """
-                        }
+                        def normalizedVersion = normalizeVersion(version) [cite: 60]
+                        def isMain = (env.BRANCH_NAME == 'main')
+                        
+                        // Set Tag Name: v1.0.0 for main, v1.0.0-DEV-buildNum for others
+                        def tagName = isMain ? "v${normalizedVersion}" : "v${normalizedVersion}-DEV-${env.BUILD_NUMBER}" [cite: 61]
+                        
+                        // --- Changelog Extraction ---
+                        // Pulls the last commit message body (where PR comments are stored on merge)
+                        def changelog = sh(script: 'git log -1 --pretty=%b', returnStdout: true).trim()
+                        if (!changelog) changelog = "Manual build triggered from branch: ${env.BRANCH_NAME}"
 
-                        // --- Step 4: Locate Artifact ---
-                        def candidateArtifacts = [
-                            'android/app/build/outputs/apk/debug/app-debug.apk',
-                            'android/app/build/outputs/apk/release/app-release.apk'
-                        ]
-                        def artifactPath = candidateArtifacts.find { path -> fileExists(path) }
-                        if (!artifactPath) error "APK artifact not found"
-                        def artifactFileName = artifactPath.tokenize('/').last()
-
-                        // --- Step 5: Publish to GitHub Releases ---
-                        // REPLACE 'github-api-token' with the ID of the Secret Text credential you created
-                        withCredentials([string(credentialsId: 'github-api-token', variable: 'GITHUB_TOKEN')]) {
+                        // --- GitHub Publication ---
+                        withCredentials([string(credentialsId: 'github-api-token', variable: 'GITHUB_TOKEN')]) { [cite: 70]
                             sh '''
-                                set -e
+                                # Sanitize changelog for JSON (Escape quotes and newlines)
+                                ESCAPED_CHANGELOG=$(echo "${CHANGELOG_CONTENT}" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
                                 
-                                # 1. Prepare Metadata
-                                REPO_SLUG="ezequieltejada/cartaya-pos"
-                                COMMIT_SHA=$(git rev-parse --short HEAD)
-                                RELEASE_BODY="**Version:** ${RELEASE_VERSION}\\n**Platform:** Android\\n**Commit:** ${COMMIT_SHA}\\n\\nAutomated Release."
-
-                                # 2. Create or Get Release
-                                echo "Creating/Updating Release on GitHub..."
+                                # Use your existing CURL logic but replace the body with ESCAPED_CHANGELOG
                                 RELEASE_RESPONSE=$(curl -s -X POST \
                                     -H "Authorization: token ${GITHUB_TOKEN}" \
                                     -H "Accept: application/vnd.github.v3+json" \
-                                    "https://api.github.com/repos/${REPO_SLUG}/releases" \
+                                    "https://api.github.com/repos/ezequieltejada/cartaya-pos/releases" \
                                     -d "{
                                         \\"tag_name\\": \\"${TAG_NAME}\\",
                                         \\"name\\": \\"Release ${TAG_NAME}\\",
-                                        \\"body\\": \\"${RELEASE_BODY}\\",
+                                        \\"body\\": ${ESCAPED_CHANGELOG},
                                         \\"draft\\": false,
-                                        \\"prerelease\\": false
+                                        \\"prerelease\\": ${IS_PRERELEASE}
                                     }")
-
-                                # 3. Extract Upload URL (handles errors if release already exists)
-                                # If creation failed because it exists, we fetch the existing one
-                                if echo "$RELEASE_RESPONSE" | grep -q "already_exists"; then
-                                    echo "Release exists, fetching details..."
-                                    RELEASE_RESPONSE=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
-                                    "https://api.github.com/repos/${REPO_SLUG}/releases/tags/${TAG_NAME}")
-                                fi
-
-                                UPLOAD_URL=$(echo "${RELEASE_RESPONSE}" | grep -o '"upload_url"[[:space:]]*:[[:space:]]*"[^"]*' | sed 's/"upload_url"[[:space:]]*:[[:space:]]*"//;s/{.*$//')
-
-                                if [ -z "${UPLOAD_URL}" ]; then
-                                    echo "ERROR: Could not find Upload URL. Response: ${RELEASE_RESPONSE}"
-                                    exit 1
-                                fi
-
-                                # 4. Upload Asset
-                                echo "Uploading ${ARTIFACT_FILENAME}..."
-                                curl -X POST \
-                                    -H "Authorization: token ${GITHUB_TOKEN}" \
-                                    -H "Content-Type: application/vnd.android.package-archive" \
-                                    --data-binary @"${ARTIFACT_PATH}" \
-                                    "${UPLOAD_URL}?name=${ARTIFACT_FILENAME}" \
-                                    --fail-with-body
-
-                                echo "✓ Release asset uploaded successfully"
+                                # ... (Rest of your upload logic)
                             '''
                             .replace('${TAG_NAME}', tagName)
-                            .replace('${RELEASE_VERSION}', releaseVersion)
-                            .replace('${ARTIFACT_PATH}', artifactPath)
-                            .replace('${ARTIFACT_FILENAME}', artifactFileName)
+                            .replace('${CHANGELOG_CONTENT}', changelog)
+                            .replace('${IS_PRERELEASE}', isMain ? 'false' : 'true')
+                            // Ensure existing replacements for artifact paths remain [cite: 87]
                         }
                     }
                 }
