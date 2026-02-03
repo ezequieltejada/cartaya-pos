@@ -324,7 +324,7 @@ EOF
                                 set -e
                                 
                                 # 1. Prepare Metadata
-                                REPO_SLUG=$(echo "${GIT_URL}" | sed -E 's|.*github.com[:/](.*)(\\.git)?$|\\1|')
+                                REPO_SLUG="ezequieltejada/cartaya-pos"
                                 COMMIT_SHA=$(git rev-parse --short HEAD)
                                 RELEASE_BODY="**Version:** ${RELEASE_VERSION}\\n**Platform:** Android\\n**Commit:** ${COMMIT_SHA}\\n\\nAutomated Release."
 
