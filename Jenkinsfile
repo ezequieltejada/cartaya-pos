@@ -279,10 +279,10 @@ EOF
             steps {
                 script {
                     dir('cartayaPos') {
-                        // 1. Unstash first [cite: 57]
+                        [cite_start]// 1. Unstash Android build artifacts [cite: 57]
                         unstash 'release-asset-android'
                         
-                        // 2. Extract and Normalize Version [cite: 58, 60]
+                        [cite_start]// 2. Extract and Normalize Version [cite: 58, 60]
                         def rawVersion = extractVersion()
                         if (!rawVersion) {
                             echo "No version found, skipping release."
@@ -290,50 +290,77 @@ EOF
                         }
                         def normVersion = normalizeVersion(rawVersion)
                         
-                        // 3. Determine Tag Name and Prerelease status [cite: 61]
+                        [cite_start]// 3. Determine Tag Name and Prerelease status [cite: 61]
                         def isMain = (env.BRANCH_NAME == 'main')
                         def tagName = isMain ? "v${normVersion}" : "v${normVersion}-DEV-${env.BUILD_NUMBER}"
                         def isPrerelease = !isMain
                         
-                        // 4. Extract Changelog (PR Comment)
-                        // git log -1 --pretty=%b gets the body of the merge commit
+                        // 4. Extract Changelog safely
                         def changelogRaw = sh(script: 'git log -1 --pretty=%b', returnStdout: true).trim()
                         def changelogBody = changelogRaw ?: "Automated build from branch: ${env.BRANCH_NAME}"
-
-                        // 5. Sanitize Changelog for JSON using Python (to handle newlines/quotes)
+                        
+                        // 5. Generate JSON content safely using Python
+                        // We write the body to a temp file first to avoid shell quoting issues with 'echo'
+                        writeFile file: 'changelog_raw.txt', text: changelogBody
                         def escapedChangelog = sh(
-                            script: "echo \"${changelogBody}\" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'",
+                            script: "python3 -c 'import json,sys; print(json.dumps(open(\"changelog_raw.txt\").read()))'", 
                             returnStdout: true
                         ).trim()
 
-                        // 6. GitHub Release [cite: 70, 73]
+                        // 6. Create the Release Payload File
+                        // We build the JSON file using Groovy interpolation, then write it to disk.
+                        // This prevents the shell from ever seeing the special characters in the body.
+                        def jsonPayload = """
+                        {
+                            "tag_name": "${tagName}",
+                            "name": "Release ${tagName}",
+                            "body": ${escapedChangelog},
+                            "draft": false,
+                            "prerelease": ${isPrerelease}
+                        }
+                        """
+                        writeFile file: 'release.json', text: jsonPayload
+
+                        [cite_start]// 7. Publish Release [cite: 70, 73]
                         withCredentials([string(credentialsId: 'github-api-token', variable: 'GITHUB_TOKEN')]) {
-                            // Define the shell script as a variable first to avoid CPS errors in .replace()
-                            def releaseScript = '''
+                            echo "--- Publishing Release ${tagName} ---"
+                            sh '''
                                 set -e
                                 REPO_SLUG="ezequieltejada/cartaya-pos"
                                 
-                                # Create the release using the escaped changelog body
+                                # Create release using the payload file
                                 RELEASE_RESPONSE=$(curl -s -X POST \
-                                    -H "Authorization: token ${GITHUB_TOKEN}" \
+                                    -H "Authorization: token $GITHUB_TOKEN" \
                                     -H "Accept: application/vnd.github.v3+json" \
-                                    "https://api.github.com/repos/${REPO_SLUG}/releases" \
-                                    -d "{
-                                        \\"tag_name\\": \\"${TAG_NAME}\\",
-                                        \\"name\\": \\"Release ${TAG_NAME}\\",
-                                        \\"body\\": ${CHANGELOG_JSON},
-                                        \\"draft\\": false,
-                                        \\"prerelease\\": ${PRERELEASE_STATUS}
-                                    }")
+                                    -H "Content-Type: application/json" \
+                                    "https://api.github.com/repos/$REPO_SLUG/releases" \
+                                    -d @release.json)
                                 
-                                # ... (Existing logic to extract UPLOAD_URL and upload asset)
+                                # Check if release creation was successful
+                                if echo "$RELEASE_RESPONSE" | grep -q '"id":'; then
+                                    echo "✓ Release created successfully"
+                                else
+                                    echo "✗ Failed to create release: $RELEASE_RESPONSE"
+                                    exit 1
+                                fi
+
+                                # Extract Upload URL and Release ID for asset upload
+                                UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['upload_url'].replace('{?name,label}', ''))")
+                                RELEASE_ID=$(echo "$RELEASE_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['id'])")
+                                
+                                # Upload the APK asset
+                                echo "--- Uploading APK Asset ---"
+                                for apk in android/app/build/outputs/apk/debug/*.apk; do
+                                    FILENAME=$(basename "$apk")
+                                    echo "Uploading $FILENAME..."
+                                    
+                                    curl -s -X POST \
+                                        -H "Authorization: token $GITHUB_TOKEN" \
+                                        -H "Content-Type: application/vnd.android.package-archive" \
+                                        "${UPLOAD_URL}?name=${FILENAME}" \
+                                        --data-binary @"$apk"
+                                done
                             '''
-                            
-                            // Execute the script with clean replacements
-                            sh releaseScript
-                                .replace('${TAG_NAME}', tagName)
-                                .replace('${CHANGELOG_JSON}', escapedChangelog)
-                                .replace('${PRERELEASE_STATUS}', isPrerelease.toString())
                         }
                     }
                 }
