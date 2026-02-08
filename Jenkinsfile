@@ -130,519 +130,375 @@ pipeline {
                         // Generates the 'www' directory
                         sh 'npm run build'
                     }
-                    
-                    // Stash the compiled web assets to share with the native build stages.
-                    // We do NOT stash node_modules because architectures differ (Linux vs Mac).
-                    stash includes: 'www/**', name: 'web-dist'
-                    stash includes: 'package.json, package-lock.json, capacitor.config.ts', name: 'config-files'
+                }
+            }
+            post {
+                success {
+                    stash includes: 'cartayaPos/www/**', name: 'web-dist'
+                    stash includes: 'cartayaPos/package.json, cartayaPos/package-lock.json, cartayaPos/capacitor.config.ts', name: 'config-files'
                 }
             }
         }
 
         // -------------------------------------------------------------------------
-        // Stage 2: Parallel Native Builds (Android & iOS)
+        // Stage 2: Android Build
         // -------------------------------------------------------------------------
-        stage('Native Builds') {
-            parallel {
-                
-                // --- Android Build (Linux Agent) ---
-                stage('Android (APK)') {
-                    agent { label 'linux' }
+        stage('Android Build') {
+            options {
+                timeout(time: 45, unit: 'MINUTES')
+            }
+            agent { label 'linux' }
 
-                    environment {
-                        // Prefer Jenkins-managed ANDROID_SDK_ROOT/ANDROID_HOME, otherwise fall back to the repo default.
-                        ANDROID_SDK_ROOT = "${env.ANDROID_HOME ?: '/home/circleci/android-sdk'}"
-                        ANDROID_HOME = "${env.ANDROID_HOME ?: '/home/circleci/android-sdk'}"
-                    }
+            environment {
+                // Prefer Jenkins-managed ANDROID_SDK_ROOT/ANDROID_HOME, otherwise fall back to the repo default.
+                ANDROID_SDK_ROOT = "${env.ANDROID_HOME ?: '/home/circleci/android-sdk'}"
+                ANDROID_HOME = "${env.ANDROID_HOME ?: '/home/circleci/android-sdk'}"
+            }
 
-                    steps {
-                        dir('cartayaPos') {
-                            script {
-                                echo "--- Preparing Android Workspace ---"
-                                // Unstash configuration to ensure consistency
-                                unstash 'config-files'
-                                unstash 'web-dist'
+            steps {
+                dir('cartayaPos') {
+                    script {
+                        echo "--- Preparing Android Workspace ---"
+                        // Unstash configuration to ensure consistency
+                        unstash 'config-files'
+                        unstash 'web-dist'
 
-                                // Ensure the Android SDK is discoverable by Gradle on the Linux agent.
-                                // The failure in build #16 was: "SDK location not found".
-                                echo "--- Validating Android SDK Environment ---"
-                                sh '''
-                                    echo "Current user: $(whoami)"
-                                    echo "Current group: $(id)"
-                                    echo "ANDROID_SDK_ROOT: ${ANDROID_SDK_ROOT:-NOT SET}"
-                                    echo "ANDROID_HOME: ${ANDROID_HOME:-NOT SET}"
-                                    echo ""
-                                    echo "Checking /home/circleci permissions:"
-                                    stat /home/circleci 2>/dev/null || echo "Cannot stat /home/circleci"
-                                    echo ""
-                                    echo "Checking SDK directory:"
-                                    if [ -d "$ANDROID_SDK_ROOT" ]; then
-                                        echo "✓ Android SDK found at: $ANDROID_SDK_ROOT"
-                                        stat "$ANDROID_SDK_ROOT"
-                                    else
-                                        echo "✗ Android SDK not found at: $ANDROID_SDK_ROOT"
-                                        echo "Checking if path exists with different permissions:"
-                                        test -e "$ANDROID_SDK_ROOT" && echo "Path exists but no read permission" || echo "Path does not exist"
-                                        exit 1
-                                    fi
-                                '''
-                                
-                                dir('android') {
-                                    sh '''
-                                        cat > local.properties <<'EOF'
+                        // Ensure the Android SDK is discoverable by Gradle on the Linux agent.
+                        // The failure in build #16 was: "SDK location not found".
+                        echo "--- Validating Android SDK Environment ---"
+                        sh '''
+                            echo "Current user: $(whoami)"
+                            echo "Current group: $(id)"
+                            echo "ANDROID_SDK_ROOT: ${ANDROID_SDK_ROOT:-NOT SET}"
+                            echo "ANDROID_HOME: ${ANDROID_HOME:-NOT SET}"
+                            echo ""
+                            echo "Checking /home/circleci permissions:"
+                            stat /home/circleci 2>/dev/null || echo "Cannot stat /home/circleci"
+                            echo ""
+                            echo "Checking SDK directory:"
+                            if [ -d "$ANDROID_SDK_ROOT" ]; then
+                                echo "✓ Android SDK found at: $ANDROID_SDK_ROOT"
+                                stat "$ANDROID_SDK_ROOT"
+                            else
+                                echo "✗ Android SDK not found at: $ANDROID_SDK_ROOT"
+                                echo "Checking if path exists with different permissions:"
+                                test -e "$ANDROID_SDK_ROOT" && echo "Path exists but no read permission" || echo "Path does not exist"
+                                exit 1
+                            fi
+                        '''
+
+                        dir('android') {
+                            sh '''
+                                cat > local.properties <<'EOF'
 sdk.dir=/home/circleci/android-sdk
 EOF
-                                    '''
-                                    echo "✓ local.properties created"
-                                }
+                            '''
+                            echo "✓ local.properties created"
+                        }
 
-                                // Install dependencies (needed for Capacitor CLI)
-                                sh '''
-                                    CACHE_KEY=$(md5sum package-lock.json | cut -d" " -f1)
-                                    CACHE_DIR="$HOME/.npm-cache/node-android/$CACHE_KEY"
-                                    if [ -d "$CACHE_DIR/node_modules" ]; then
-                                        echo "Restoring node_modules from cache"
-                                        cp -r "$CACHE_DIR/node_modules" ./
-                                    else
-                                        echo "Cache miss, installing dependencies"
-                                        rm -rf node_modules
-                                        npm ci
-                                        mkdir -p "$CACHE_DIR"
-                                        cp -r node_modules "$CACHE_DIR/"
-                                    fi
-                                '''
+                        // Install dependencies (needed for Capacitor CLI)
+                        sh '''
+                            CACHE_KEY=$(md5sum package-lock.json | cut -d" " -f1)
+                            CACHE_DIR="$HOME/.npm-cache/node-android/$CACHE_KEY"
+                            if [ -d "$CACHE_DIR/node_modules" ]; then
+                                echo "Restoring node_modules from cache"
+                                cp -r "$CACHE_DIR/node_modules" ./
+                            else
+                                echo "Cache miss, installing dependencies"
+                                rm -rf node_modules
+                                npm ci
+                                mkdir -p "$CACHE_DIR"
+                                cp -r node_modules "$CACHE_DIR/"
+                            fi
+                        '''
 
-                                echo "--- Syncing Capacitor Android ---"
-                                sh 'npx cap sync android'
+                        echo "--- Syncing Capacitor Android ---"
+                        sh 'npx cap sync android'
 
-                                echo "--- Creating Debug Keystore & Properties ---"
-                                dir('android') {
-                                    // Create a debug keystore (if it doesn't exist) for signing Debug APK
-                                    // This prevents the "path may not be null" error in build.gradle:27
-                                    sh '''
-                                        if [ ! -f app/debug.keystore ]; then
-                                            echo "Generating debug keystore..."
-                                            keytool -genkey -v -keystore app/debug.keystore \
-                                                -keyalg RSA -keysize 2048 -validity 10000 \
-                                                -alias androiddebugkey -keypass android -storepass android \
-                                                -dname "CN=Android Debug,O=Android,C=US"
-                                        else
-                                            echo "Debug keystore already exists."
-                                        fi
-                                    '''
-                                    
-                                    // Create keystore.properties pointing to the debug keystore
-                                    sh '''
-                                        cat > keystore.properties <<EOF
+                        echo "--- Creating Debug Keystore & Properties ---"
+                        dir('android') {
+                            // Create a debug keystore (if it doesn't exist) for signing Debug APK
+                            // This prevents the "path may not be null" error in build.gradle:27
+                            sh '''
+                                if [ ! -f app/debug.keystore ]; then
+                                    echo "Generating debug keystore..."
+                                    keytool -genkey -v -keystore app/debug.keystore \
+                                        -keyalg RSA -keysize 2048 -validity 10000 \
+                                        -alias androiddebugkey -keypass android -storepass android \
+                                        -dname "CN=Android Debug,O=Android,C=US"
+                                else
+                                    echo "Debug keystore already exists."
+                                fi
+                            '''
+
+                            // Create keystore.properties pointing to the debug keystore
+                            sh '''
+                                cat > keystore.properties <<EOF
 storeFile=app/debug.keystore
 storePassword=android
 keyAlias=androiddebugkey
 keyPassword=android
 EOF
-                                    '''
-                                }
+                            '''
+                        }
 
-                                echo "--- Building Debug APK ---"
-                                dir('android') {
-                                    // Ensure Gradle wrapper is executable
-                                    sh 'chmod +x gradlew'
-                                    // Build Debug APK (no signing config requirements for Debug)
-                                    sh './gradlew :app:assembleDebug --stacktrace'
-                                }
-                            }
-                        }
-                    }
-                    post {
-                        success {
-                            // Archive the APK for download
-                            // Note: We need to match the path relative to workspace root, so we prepend cartayaPos/
-                            archiveArtifacts artifacts: 'cartayaPos/android/app/build/outputs/apk/debug/*.apk', fingerprint: true
-                        }
-                        failure {
-                            echo "Android build failed."
+                        echo "--- Building Debug APK ---"
+                        dir('android') {
+                            // Ensure Gradle wrapper is executable
+                            sh 'chmod +x gradlew'
+                            // Build Debug APK (no signing config requirements for Debug)
+                            sh './gradlew :app:assembleDebug --stacktrace'
                         }
                     }
                 }
+            }
+            post {
+                success {
+                    // Archive the APK for download
+                    // Note: We need to match the path relative to workspace root, so we prepend cartayaPos/
+                    archiveArtifacts artifacts: 'cartayaPos/android/app/build/outputs/apk/debug/*.apk', fingerprint: true
+                    stash includes: 'cartayaPos/android/app/build/outputs/apk/debug/*.apk', name: 'release-asset-android'
+                }
+                failure {
+                    echo "Android build failed."
+                }
+            }
+        }
 
-                // --- iOS Build (Mac Agent) ---
-                stage('iOS (Simulator)') {
-                    agent { label 'mac' } // Uses the Mac OS X (aarch64) agent
+// -------------------------------------------------------------------------
+// Stage 3: Publish Release to GitHub (Fixed)
+// -------------------------------------------------------------------------
+        stage('Publish Release') {
+            agent { label 'linux' }
+            when {
+                anyOf {
+                    branch 'main'
+                    triggeredBy 'UserIdCause' // Allows manual trigger 
+                }
+            }
+            steps {
+                script {
+                    dir('cartayaPos') {
+                        // 1. Unstash Android build artifacts
+                        unstash 'release-asset-android'
+                        
+                        // 2. Extract and Normalize Version
+                        def rawVersion = extractVersion()
+                        if (!rawVersion) {
+                            echo "No version found, skipping release."
+                            return
+                        }
+                        def normVersion = normalizeVersion(rawVersion)
+                        
+                        // 3. Determine Tag Name and Prerelease status
+                        def isMain = (env.BRANCH_NAME == 'main')
+                        def tagName = isMain ? "v${normVersion}" : "v${normVersion}-DEV-${env.BUILD_NUMBER}"
+                        def isPrerelease = !isMain
+                        
+                        // 4. Extract Changelog safely
+                        def changelogRaw = sh(script: 'git log -1 --pretty=%b', returnStdout: true).trim()
+                        def changelogBody = changelogRaw ?: "Automated build from branch: ${env.BRANCH_NAME}"
+                        
+                        // 5. Generate JSON content safely using Python
+                        // We write the body to a temp file first to avoid shell quoting issues with 'echo'
+                        writeFile file: 'changelog_raw.txt', text: changelogBody
+                        def escapedChangelog = sh(
+                            script: "python3 -c 'import json,sys; print(json.dumps(open(\"changelog_raw.txt\").read()))'", 
+                            returnStdout: true
+                        ).trim()
 
-                    environment {
-                        // Printer SDK ships as iphoneos-only static lib; disable for simulator builds.
-                        CAPACITOR_THERMAL_PRINTER_ENABLED = '0'
-                    }
+                        // 6. Create the Release Payload File
+                        // We build the JSON file using Groovy interpolation, then write it to disk.
+                        // This prevents the shell from ever seeing the special characters in the body.
+                        def jsonPayload = """
+                        {
+                            "tag_name": "${tagName}",
+                            "name": "Release ${tagName}",
+                            "body": ${escapedChangelog},
+                            "draft": false,
+                            "prerelease": ${isPrerelease}
+                        }
+                        """
+                        writeFile file: 'release.json', text: jsonPayload
 
-                    steps {
-                        script {
-                            echo "--- Preparing iOS Workspace ---"
-                            // Clean checkout on the new agent
-                            checkout scm
-                            
-                            dir('cartayaPos') {
-                                unstash 'config-files'
-                                unstash 'web-dist'
-
-                                // The iOS failure in build #16 was during `npx cap sync ios` when it ran:
-                                // `xcodebuild -project App.xcodeproj clean`
-                                // and Xcode refused to delete `ios/App/build` because it wasn't created by the build system.
-                                // Clear it proactively so `cap sync` can clean safely.
-                                dir('ios/App') {
-                                    sh 'rm -rf build || true'
-                                }
-
-                                // Install dependencies (recompiles native modules for M1/M2)
-                                sh '''
-                                    CACHE_KEY=$(md5sum package-lock.json | cut -d" " -f1)
-                                    CACHE_DIR="$HOME/.npm-cache/node-ios/$CACHE_KEY"
-                                    if [ -d "$CACHE_DIR/node_modules" ]; then
-                                        echo "Restoring node_modules from cache"
-                                        cp -r "$CACHE_DIR/node_modules" ./
-                                    else
-                                        echo "Cache miss, installing dependencies"
-                                        rm -rf node_modules
-                                        npm ci
-                                        mkdir -p "$CACHE_DIR"
-                                        cp -r node_modules "$CACHE_DIR/"
-                                    fi
-                                '''
-
-                                echo "--- Cleaning CocoaPods (Simulator) ---"
-                                // Remove any stale Pods/workspace created with the plugin enabled.
-                                dir('ios/App') {
-                                    sh '''
-                                        set -e
-                                        echo "CAPACITOR_THERMAL_PRINTER_ENABLED=${CAPACITOR_THERMAL_PRINTER_ENABLED}"
-                                        rm -rf Pods Podfile.lock App.xcworkspace
-                                        pod deintegrate || true
-                                    '''
-                                }
-
-                                echo "--- Syncing Capacitor iOS (Simulator) ---"
-                                // Ensure the env var is in effect for the internal CocoaPods run.
-                                sh 'CAPACITOR_THERMAL_PRINTER_ENABLED=0 npx cap sync ios'
-
-                                echo "--- Removing Thermal Printer from Plugin Registry (Simulator) ---"
-                                // Capacitor writes plugin registry to ios/App/App/capacitor.config.json.
-                                // The list is top-level: config.packageClassList
-                                dir('ios/App') {
-                                    sh '''
-                                        cat > /tmp/remove_plugin.js <<'SCRIPT'
-const fs = require("fs");
-const path = "ios/App/App/capacitor.config.json";
-const plugin = "CapacitorThermalPrinterPlugin";
-
-if (!fs.existsSync(path)) {
-  console.log("capacitor.config.json not found, skipping plugin registry patch");
-  process.exit(0);
-}
-
-const config = JSON.parse(fs.readFileSync(path, "utf8"));
-let changed = false;
-
-if (Array.isArray(config.packageClassList)) {
-  const before = config.packageClassList.length;
-  config.packageClassList = config.packageClassList.filter(p => p !== plugin);
-  changed = changed || before !== config.packageClassList.length;
-}
-
-if (config.ios && config.ios.capacitorPlugins && Array.isArray(config.ios.capacitorPlugins.packageClassList)) {
-  const before = config.ios.capacitorPlugins.packageClassList.length;
-  config.ios.capacitorPlugins.packageClassList = config.ios.capacitorPlugins.packageClassList.filter(p => p !== plugin);
-  changed = changed || before !== config.ios.capacitorPlugins.packageClassList.length;
-}
-
-if (changed) {
-  fs.writeFileSync(path, JSON.stringify(config, null, 2));
-  console.log("Removed " + plugin + " from capacitor.config.json");
-} else {
-  console.log("No " + plugin + " entry found in capacitor.config.json");
-}
-SCRIPT
-                                        node /tmp/remove_plugin.js
-
-                                        echo "--- Removing Thermal Printer from Podfile ---"
-                                        sed -i '' '/CapacitorThermalPrinter/d' Podfile
-
-                                        echo "--- Cleaning Pods to force regeneration without Thermal Printer ---"
-                                        rm -rf Pods Podfile.lock
-                                    '''
-                                }
-
-                                echo "--- Installing CocoaPods Dependencies (Simulator) ---"
-                                dir('ios/App') {
-                                    sh '''
-                                        set -e
-                                        echo "CAPACITOR_THERMAL_PRINTER_ENABLED=${CAPACITOR_THERMAL_PRINTER_ENABLED}"
-                                        pod install
-
-                                        echo "--- Verifying Thermal Printer not in Podfile.lock ---"
-                                        if grep -q "CapacitorThermalPrinter" Podfile.lock; then
-                                            echo "ERROR: CapacitorThermalPrinter still present in Podfile.lock"
-                                            grep "CapacitorThermalPrinter" Podfile.lock
-                                            exit 1
-                                        else
-                                            echo "SUCCESS: Thermal Printer not found in Podfile.lock"
-                                        fi
-                                    '''
-                                }
-
-                                echo "--- Verify Capacitor Config ---"
-                                sh 'cat ios/App/App/capacitor.config.json | head -30'
+                        // 7. Publish Release
+                        withCredentials([string(credentialsId: 'github-api-token', variable: 'GITHUB_TOKEN')]) {
+                            echo "--- Publishing Release ${tagName} ---"
+                            sh '''
+                                set -e
+                                REPO_SLUG="ezequieltejada/cartaya-pos"
                                 
+                                # Create release using the payload file
+                                RELEASE_RESPONSE=$(curl -s -X POST \
+                                    -H "Authorization: token $GITHUB_TOKEN" \
+                                    -H "Accept: application/vnd.github.v3+json" \
+                                    -H "Content-Type: application/json" \
+                                    "https://api.github.com/repos/$REPO_SLUG/releases" \
+                                    -d @release.json)
+                                
+                                # Check if release creation was successful
+                                if echo "$RELEASE_RESPONSE" | grep -q '"id":'; then
+                                    echo "✓ Release created successfully"
+                                else
+                                    echo "✗ Failed to create release: $RELEASE_RESPONSE"
+                                    exit 1
+                                fi
 
-                                echo "--- Building iOS Simulator App ---"
-                                dir('ios/App') {
-                                    // Xcode 26.2 with explicit simulator SDK and destination.
-                                    // -sdk iphonesimulator: force simulator SDK (overrides device-only SDKROOT settings)
-                                    // -destination: specify explicit simulator (iPhone 15 is widely available in Xcode 26.2)
-                                    // Add arm64e exclusion if needed for older simulators on Apple Silicon
-                                     sh '''
-                                         set -e
-                                         echo "Available simulators:"
-                                         xcrun simctl list devices available || true
-                                         
-                                         echo ""
-                                         echo "Building for simulator..."
-                                         xcodebuild -workspace App.xcworkspace \
-                                             -scheme App \
-                                             -configuration Debug \
-                                             -sdk iphonesimulator \
-                                             -destination 'platform=iOS Simulator,OS=26.1,name=iPhone 17' \
-                                             -derivedDataPath build \
-                                             clean build
-                                      '''
-                                }
-
-                                echo "--- Zipping App Bundle ---"
-                                // The .app bundle is a directory, so we zip it for the artifact
-                                dir('ios/App/build/Build/Products/Debug-iphonesimulator') {
-                                    sh 'zip -r App-Simulator.zip App.app'
-                                }
-                            }
-                        }
-                    }
-                    post {
-                        success {
-                            archiveArtifacts artifacts: 'cartayaPos/ios/App/build/Build/Products/Debug-iphonesimulator/App-Simulator.zip', fingerprint: true
-                        }
-                        failure {
-                            echo "iOS build failed. Collecting diagnostics..."
-                            dir('cartayaPos/ios/App') {
-                                sh '''
-                                    echo "=== Xcode Version ==="
-                                    xcodebuild -version
-                                    echo ""
-                                    echo "=== Available Simulators ==="
-                                    xcrun simctl list devices available || true
-                                    echo ""
-                                    echo "=== Workspace Info ==="
-                                    xcodebuild -list -workspace App.xcworkspace || true
-                                    echo ""
-                                    echo "=== Pod Status ==="
-                                    ls -la Pods/ || echo "Pods directory not found"
-                                ''' as String
-                            }
+                                # Extract Upload URL and Release ID for asset upload
+                                UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['upload_url'].replace('{?name,label}', ''))")
+                                RELEASE_ID=$(echo "$RELEASE_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['id'])")
+                                
+                                # Upload the APK asset
+                                echo "--- Uploading APK Asset ---"
+                                for apk in android/app/build/outputs/apk/debug/*.apk; do
+                                    FILENAME=$(basename "$apk")
+                                    echo "Uploading $FILENAME..."
+                                    
+                                    curl -s -X POST \
+                                        -H "Authorization: token $GITHUB_TOKEN" \
+                                        -H "Content-Type: application/vnd.android.package-archive" \
+                                        "${UPLOAD_URL}?name=${FILENAME}" \
+                                        --data-binary @"$apk"
+                                done
+                            '''
                         }
                     }
                 }
             }
         }
+    }
 
-        // -------------------------------------------------------------------------
-        // Stage 3: Publish Release to GitHub (Obtainium Integration)
-        // -------------------------------------------------------------------------
-        stage('Publish Release') {
-            agent { label 'linux' }
-            when {
-                // Only publish on successful builds
-                expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
-            }
-            steps {
-                script {
-                    dir('cartayaPos') {
-                        echo "GitHub Release Publisher for Obtainium App Update Tracking"
-                        
-                        // =====================================================
-                        // Step 1: Extract Version
-                        // =====================================================
-                        echo "--- Step 1: Extracting Version ---"
-                        def version = extractVersion()
-                        
-                        if (!version) {
-                            echo "WARNING: Could not extract version, skipping release publication"
-                            return
-                        }
-                        
-                        echo "✓ Extracted version: ${version}"
-                        
-                        // =====================================================
-                        // Step 2: Validate and normalize version
-                        // =====================================================
-                        echo "--- Step 2: Validating Version Format ---"
-                        def normalizedVersion = normalizeVersion(version)
-                        echo "✓ Normalized version: ${normalizedVersion}"
-                        
-                        def tagName = normalizedVersion.startsWith('v') ? normalizedVersion : "v${normalizedVersion}"
-                        def releaseVersion = normalizedVersion.replaceAll(/^v/, '')
-                        
-                        echo "Git tag: ${tagName}"
-                        echo "Release version: ${releaseVersion}"
-                        
-                        // =====================================================
-                        // Step 3: Ensure git tag exists
-                        // =====================================================
-                        echo "--- Step 3: Managing Git Tag ---"
-                        def tagExists = sh(
-                            script: "git rev-parse '${tagName}' > /dev/null 2>&1",
-                            returnStatus: true
-                        ) == 0
-                        
-                        if (!tagExists) {
-                            echo "Creating git tag: ${tagName}"
-                            sh '''
-                                git config user.email "jenkins@cartaya.app"
-                                git config user.name "Jenkins CI"
-                                git tag -a "${TAG_NAME}" \
-                                    -m "Automated release ${RELEASE_VERSION} from Jenkins Build #${BUILD_NUMBER}"
-                                echo "✓ Git tag created"
-                            '''.replace('${TAG_NAME}', tagName).replace('${RELEASE_VERSION}', releaseVersion).replace('${BUILD_NUMBER}', "${BUILD_NUMBER}")
-                        } else {
-                            echo "ℹ Git tag ${tagName} already exists"
-                        }
-                        
-                        // =====================================================
-                        // Step 4: Locate APK artifact
-                        // =====================================================
-                        echo "--- Step 4: Locating Build Artifacts ---"
-                        def apkPath = sh(
-                            script: 'find android/app/build/outputs/apk -name "*.apk" -type f | sort | head -1',
-                            returnStdout: true
-                        ).trim()
-                        
-                        if (!apkPath) {
-                            echo "ERROR: No APK found in android/app/build/outputs/apk"
-                            error "APK artifact not found"
-                        }
-                        
-                        def apkFileName = new File(apkPath).getName()
-                        echo "✓ APK found: ${apkPath}"
-                        echo "  Filename: ${apkFileName}"
-                        
-                        // =====================================================
-                        // Step 5: Publish to GitHub Releases
-                        // =====================================================
-                        echo "--- Step 5: Publishing to GitHub Releases ---"
-                        
-                        withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-                            sh '''
-                                set -e
-                                
-                                # Extract owner/repo from GIT_URL
-                                # Handles: https://github.com/owner/repo.git or git@github.com:owner/repo.git
-                                REPO_SLUG=$(echo "${GIT_URL}" | sed -E 's|.*github.com[:/](.*)(\\.git)?$|\\1|')
-                                echo "Repository: ${REPO_SLUG}"
-                                
-                                # Get commit info for release notes
-                                COMMIT_SHA=$(git rev-parse --short HEAD)
-                                COMMIT_MSG=$(git log -1 --pretty=%B | head -1)
-                                BUILD_URL="${JENKINS_URL}job/${JOB_NAME}/${BUILD_NUMBER}/"
-                                
-                                # Build release body
-                                RELEASE_BODY=$(cat <<EOF
-**Version:** ${RELEASE_VERSION}
-**Build:** #${BUILD_NUMBER}
-**Commit:** ${COMMIT_SHA}
-**Message:** ${COMMIT_MSG}
-
-**Build Details:**
-- Job: ${JOB_NAME}
-- Build URL: ${BUILD_URL}
-
-This is an automated release for Obtainium app update tracking.
-EOF
-)
-                                
-                                echo "Release Notes:"
-                                echo "${RELEASE_BODY}"
-                                
-                                # Check if release already exists
-                                echo "Checking for existing release..."
-                                RELEASE_RESPONSE=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \\
-                                    "https://api.github.com/repos/${REPO_SLUG}/releases/tags/${TAG_NAME}" 2>/dev/null || true)
-                                
-                                RELEASE_ID=$(echo "${RELEASE_RESPONSE}" | grep -o '"id"[[:space:]]*:[[:space:]]*[0-9]*' | head -1 | grep -o '[0-9]*' || true)
-                                
-                                if [ -n "${RELEASE_ID}" ]; then
-                                    echo "✓ Release already exists (ID: ${RELEASE_ID})"
-                                    RELEASE_EXISTS="true"
-                                else
-                                    echo "Creating new release..."
-                                    RELEASE_RESPONSE=$(curl -s -X POST \\
-                                        -H "Authorization: token ${GITHUB_TOKEN}" \\
-                                        -H "Accept: application/vnd.github.v3+json" \\
-                                        -d @- "https://api.github.com/repos/${REPO_SLUG}/releases" <<'PAYLOAD'
-{
-    "tag_name": "TAG_NAME_PLACEHOLDER",
-    "name": "Release TAG_NAME_PLACEHOLDER",
-    "body": "BODY_PLACEHOLDER",
-    "draft": false,
-    "prerelease": false
+    // Global Post-Build Actions
+    post {
+        always {
+            echo "Pipeline completed."
+        }
+    }
 }
-PAYLOAD
-)
-                                    echo "${RELEASE_RESPONSE}" | sed "s/TAG_NAME_PLACEHOLDER/${TAG_NAME}/g; s|BODY_PLACEHOLDER|${RELEASE_BODY}|g"
-                                    
-                                    RELEASE_ID=$(echo "${RELEASE_RESPONSE}" | grep -o '"id"[[:space:]]*:[[:space:]]*[0-9]*' | head -1 | grep -o '[0-9]*' || true)
-                                    if [ -n "${RELEASE_ID}" ]; then
-                                        echo "✓ Release created (ID: ${RELEASE_ID})"
-                                        RELEASE_EXISTS="true"
-                                    else
-                                        echo "ERROR: Failed to create release"
-                                        echo "Response: ${RELEASE_RESPONSE}"
-                                        exit 1
-                                    fi
-                                fi
-                                
-                                # Get upload URL
-                                UPLOAD_URL=$(echo "${RELEASE_RESPONSE}" | grep -o '"upload_url"[[:space:]]*:[[:space:]]*"[^"]*' | sed 's/"upload_url"[[:space:]]*:[[:space:]]*"//;s/{.*$//' || true)
-                                
-                                if [ -z "${UPLOAD_URL}" ]; then
-                                    echo "ERROR: Could not obtain upload URL from release response"
-                                    exit 1
-                                fi
-                                
-                                echo "Upload URL: ${UPLOAD_URL}"
-                                
-                                # Upload APK asset
-                                echo "Uploading APK asset: ${APK_FILENAME}"
-                                curl -X POST \\
-                                    -H "Authorization: token ${GITHUB_TOKEN}" \\
-                                    -H "Content-Type: application/octet-stream" \\
-                                    --data-binary @"${APK_PATH}" \\
-                                    "${UPLOAD_URL}?name=${APK_FILENAME}" \\
-                                    --fail-with-body \\
-                                    -o /dev/null -w "\\nHTTP Status: %{http_code}\\n"
-                                    
-                                echo "✓ APK asset uploaded"
                             '''
-                            .replace('${TAG_NAME}', tagName)
-                            .replace('${RELEASE_VERSION}', releaseVersion)
-                            .replace('${APK_PATH}', apkPath)
-                            .replace('${APK_FILENAME}', apkFileName)
-                            .replace('${BUILD_NUMBER}', "${BUILD_NUMBER}")
-                            .replace('${JOB_NAME}', "${env.JOB_NAME}")
-                            .replace('${JENKINS_URL}', "${env.JENKINS_URL}")
                         }
-                        
-                        echo "=== ✓ Release Publication Complete ==="
+
+                        echo "--- Building Debug APK ---"
+                        dir('android') {
+                            // Ensure Gradle wrapper is executable
+                            sh 'chmod +x gradlew'
+                            // Build Debug APK (no signing config requirements for Debug)
+                            sh './gradlew :app:assembleDebug --stacktrace'
+                        }
                     }
                 }
             }
             post {
+                success {
+                    // Archive the APK for download
+                    // Note: We need to match the path relative to workspace root, so we prepend cartayaPos/
+                    archiveArtifacts artifacts: 'cartayaPos/android/app/build/outputs/apk/debug/*.apk', fingerprint: true
+                    stash includes: 'cartayaPos/android/app/build/outputs/apk/debug/*.apk', name: 'release-asset-android'
+                }
                 failure {
-                    echo "ERROR: GitHub Release publication failed"
-                    echo "This may indicate: GitHub API error, missing credentials, or network issue"
+                    echo "Android build failed."
+                }
+            }
+        }
+
+// -------------------------------------------------------------------------
+        // Stage 3: Publish Release to GitHub (Fixed)
+        // -------------------------------------------------------------------------
+        stage('Publish Release') {
+            agent { label 'linux' }
+            when {
+                anyOf {
+                    branch 'main'
+                    triggeredBy 'UserIdCause' // Allows manual trigger 
+                }
+            }
+            steps {
+                script {
+                    dir('cartayaPos') {
+                        [cite_start]// 1. Unstash Android build artifacts [cite: 57]
+                        unstash 'release-asset-android'
+                        
+                        [cite_start]// 2. Extract and Normalize Version [cite: 58, 60]
+                        def rawVersion = extractVersion()
+                        if (!rawVersion) {
+                            echo "No version found, skipping release."
+                            return
+                        }
+                        def normVersion = normalizeVersion(rawVersion)
+                        
+                        [cite_start]// 3. Determine Tag Name and Prerelease status [cite: 61]
+                        def isMain = (env.BRANCH_NAME == 'main')
+                        def tagName = isMain ? "v${normVersion}" : "v${normVersion}-DEV-${env.BUILD_NUMBER}"
+                        def isPrerelease = !isMain
+                        
+                        // 4. Extract Changelog safely
+                        def changelogRaw = sh(script: 'git log -1 --pretty=%b', returnStdout: true).trim()
+                        def changelogBody = changelogRaw ?: "Automated build from branch: ${env.BRANCH_NAME}"
+                        
+                        // 5. Generate JSON content safely using Python
+                        // We write the body to a temp file first to avoid shell quoting issues with 'echo'
+                        writeFile file: 'changelog_raw.txt', text: changelogBody
+                        def escapedChangelog = sh(
+                            script: "python3 -c 'import json,sys; print(json.dumps(open(\"changelog_raw.txt\").read()))'", 
+                            returnStdout: true
+                        ).trim()
+
+                        // 6. Create the Release Payload File
+                        // We build the JSON file using Groovy interpolation, then write it to disk.
+                        // This prevents the shell from ever seeing the special characters in the body.
+                        def jsonPayload = """
+                        {
+                            "tag_name": "${tagName}",
+                            "name": "Release ${tagName}",
+                            "body": ${escapedChangelog},
+                            "draft": false,
+                            "prerelease": ${isPrerelease}
+                        }
+                        """
+                        writeFile file: 'release.json', text: jsonPayload
+
+                        [cite_start]// 7. Publish Release [cite: 70, 73]
+                        withCredentials([string(credentialsId: 'github-api-token', variable: 'GITHUB_TOKEN')]) {
+                            echo "--- Publishing Release ${tagName} ---"
+                            sh '''
+                                set -e
+                                REPO_SLUG="ezequieltejada/cartaya-pos"
+                                
+                                # Create release using the payload file
+                                RELEASE_RESPONSE=$(curl -s -X POST \
+                                    -H "Authorization: token $GITHUB_TOKEN" \
+                                    -H "Accept: application/vnd.github.v3+json" \
+                                    -H "Content-Type: application/json" \
+                                    "https://api.github.com/repos/$REPO_SLUG/releases" \
+                                    -d @release.json)
+                                
+                                # Check if release creation was successful
+                                if echo "$RELEASE_RESPONSE" | grep -q '"id":'; then
+                                    echo "✓ Release created successfully"
+                                else
+                                    echo "✗ Failed to create release: $RELEASE_RESPONSE"
+                                    exit 1
+                                fi
+
+                                # Extract Upload URL and Release ID for asset upload
+                                UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['upload_url'].replace('{?name,label}', ''))")
+                                RELEASE_ID=$(echo "$RELEASE_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['id'])")
+                                
+                                # Upload the APK asset
+                                echo "--- Uploading APK Asset ---"
+                                for apk in android/app/build/outputs/apk/debug/*.apk; do
+                                    FILENAME=$(basename "$apk")
+                                    echo "Uploading $FILENAME..."
+                                    
+                                    curl -s -X POST \
+                                        -H "Authorization: token $GITHUB_TOKEN" \
+                                        -H "Content-Type: application/vnd.android.package-archive" \
+                                        "${UPLOAD_URL}?name=${FILENAME}" \
+                                        --data-binary @"$apk"
+                                done
+                            '''
+                        }
+                    }
                 }
             }
         }
