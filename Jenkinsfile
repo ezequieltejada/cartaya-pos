@@ -461,7 +461,7 @@ SCRIPT
             steps {
                 script {
                     dir('cartayaPos') {
-                        echo "=== GitHub Release Publisher (Obtainium Integration) ==="
+                        echo "GitHub Release Publisher for Obtainium App Update Tracking"
                         
                         // =====================================================
                         // Step 1: Extract Version
