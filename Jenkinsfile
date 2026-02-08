@@ -415,10 +415,10 @@ EOF
             steps {
                 script {
                     dir('cartayaPos') {
-                        [cite_start]// 1. Unstash Android build artifacts [cite: 57]
+                        // 1. Unstash Android build artifacts
                         unstash 'release-asset-android'
                         
-                        [cite_start]// 2. Extract and Normalize Version [cite: 58, 60]
+                        // 2. Extract and Normalize Version
                         def rawVersion = extractVersion()
                         if (!rawVersion) {
                             echo "No version found, skipping release."
@@ -426,7 +426,7 @@ EOF
                         }
                         def normVersion = normalizeVersion(rawVersion)
                         
-                        [cite_start]// 3. Determine Tag Name and Prerelease status [cite: 61]
+                        // 3. Determine Tag Name and Prerelease status
                         def isMain = (env.BRANCH_NAME == 'main')
                         def tagName = isMain ? "v${normVersion}" : "v${normVersion}-DEV-${env.BUILD_NUMBER}"
                         def isPrerelease = !isMain
@@ -457,7 +457,7 @@ EOF
                         """
                         writeFile file: 'release.json', text: jsonPayload
 
-                        [cite_start]// 7. Publish Release [cite: 70, 73]
+                        // 7. Publish Release
                         withCredentials([string(credentialsId: 'github-api-token', variable: 'GITHUB_TOKEN')]) {
                             echo "--- Publishing Release ${tagName} ---"
                             sh '''
