@@ -78,9 +78,41 @@ pipeline {
 
     stages {
         // -------------------------------------------------------------------------
+        // Stage -1: Check Mac Agent Availability (Skip pipeline if offline)
+        // -------------------------------------------------------------------------
+        stage('Check Mac Availability') {
+            agent { label 'linux' }
+            steps {
+                script {
+                    echo "--- Checking for Online Mac Agents ---"
+                    // requires script approval for getLabel/getNodes/toComputer/isOnline
+                    def macLabel = jenkins.model.Jenkins.instance.getLabel('mac')
+                    
+                    def macOnline = false
+                    if (macLabel != null && !macLabel.getNodes().isEmpty()) {
+                        macOnline = macLabel.getNodes().any { node ->
+                            def computer = node.toComputer()
+                            return computer != null && computer.isOnline()
+                        }
+                    }
+
+                    if (!macOnline) {
+                        echo "⚠ No online agents found with label 'mac'. Skipping pipeline."
+                        env.SKIP_PIPELINE = 'true'
+                        currentBuild.result = 'NOT_BUILT'
+                    } else {
+                        echo "✓ Mac agent is online. Proceeding with build."
+                        env.SKIP_PIPELINE = 'false'
+                    }
+                }
+            }
+        }
+
+        // -------------------------------------------------------------------------
         // Stage 0: Environment Checks (Fail-Fast)
         // -------------------------------------------------------------------------
         stage('Environment Checks') {
+            when { expression { env.SKIP_PIPELINE != 'true' } }
             agent { label 'linux' }
             options {
                 timeout(time: 5, unit: 'MINUTES')
@@ -105,6 +137,7 @@ pipeline {
         // Stage 1: Build Web Assets (Angular/Ionic)
         // -------------------------------------------------------------------------
         stage('Build Web App') {
+            when { expression { env.SKIP_PIPELINE != 'true' } }
             agent { label 'linux' } // Uses the Linux (amd64) agent
 
             steps {
@@ -144,6 +177,7 @@ pipeline {
         // Stage 2: iOS Build
         // -------------------------------------------------------------------------
         stage('iOS Build') {
+            when { expression { env.SKIP_PIPELINE != 'true' } }
             agent { label 'mac' } // Uses the Mac OS X (aarch64) agent
             options {
                 timeout(time: 60, unit: 'MINUTES')
@@ -335,7 +369,10 @@ SCRIPT
         stage('Publish Release') {
             agent { label 'linux' }
             when {
-                expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+                allOf {
+                    expression { env.SKIP_PIPELINE != 'true' }
+                    expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+                }
             }
             steps {
                 script {
