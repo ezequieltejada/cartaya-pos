@@ -85,24 +85,17 @@ pipeline {
             steps {
                 script {
                     echo "--- Checking for Online Mac Agents ---"
-                    // requires script approval for getLabel/getNodes/toComputer/isOnline
-                    def macLabel = jenkins.model.Jenkins.instance.getLabel('mac')
-                    
-                    def macOnline = false
-                    if (macLabel != null && !macLabel.getNodes().isEmpty()) {
-                        macOnline = macLabel.getNodes().any { node ->
-                            def computer = node.toComputer()
-                            return computer != null && computer.isOnline()
+                    try {
+                        timeout(time: 1, unit: 'MINUTES') {
+                            node('mac') {
+                                echo "✓ Mac agent acquired. Proceeding with build."
+                                env.SKIP_PIPELINE = 'false'
+                            }
                         }
-                    }
-
-                    if (!macOnline) {
-                        echo "⚠ No online agents found with label 'mac'. Skipping pipeline."
+                    } catch (Exception e) {
+                        echo "⚠ No available agents found with label 'mac' (timeout). Skipping pipeline."
                         env.SKIP_PIPELINE = 'true'
-                        currentBuild.result = 'NOT_BUILT'
-                    } else {
-                        echo "✓ Mac agent is online. Proceeding with build."
-                        env.SKIP_PIPELINE = 'false'
+                        currentBuild.result = 'ABORTED'
                     }
                 }
             }
