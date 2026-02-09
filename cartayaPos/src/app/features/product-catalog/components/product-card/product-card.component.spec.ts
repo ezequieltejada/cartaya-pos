@@ -23,7 +23,7 @@ describe('ProductCardComponent', () => {
     name: 'Cheeseburger',
     sku: 'BURGER-001',
     description: 'Classic cheeseburger with lettuce, tomato, and special sauce',
-    category: 'Burgers',
+    category: { categoryId: 'cat-1', name: 'Burgers' },
     active: true,
     defaultPriceId: 'price-1',
     defaultPrice: {
@@ -122,12 +122,12 @@ describe('ProductCardComponent', () => {
       const categoryElement = compiled.query(By.css('.category'));
       expect(categoryElement).toBeTruthy();
       expect(categoryElement.nativeElement.textContent).toContain(
-        mockProduct.category
+        mockProduct.category?.name
       );
     });
 
     it('should not render category when absent', () => {
-      component.product = { ...mockProduct, category: undefined };
+      component.product = { ...mockProduct, category: null };
       fixture.detectChanges();
 
       const categoryElement = compiled.query(By.css('.category'));
@@ -180,6 +180,7 @@ describe('ProductCardComponent', () => {
         id: 'prod-2',
         name: 'Product without price',
         active: true,
+        category: null,
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
       };
@@ -261,7 +262,7 @@ describe('ProductCardComponent', () => {
 
   describe('Edge Cases', () => {
     it('should handle product with no category gracefully', () => {
-      component.product = { ...mockProduct, category: undefined };
+      component.product = { ...mockProduct, category: null };
       fixture.detectChanges();
 
       const categoryElement = compiled.query(By.css('.category'));
@@ -270,6 +271,7 @@ describe('ProductCardComponent', () => {
 
     it('should handle product with minimal properties', () => {
       const minimalProduct: Product = {
+      category: null,
         id: 'prod-minimal',
         name: 'Minimal Product',
         active: true,
@@ -446,7 +448,8 @@ describe('ProductCardComponent', () => {
     it('should display category for better context', () => {
       const categoryElement = compiled.query(By.css('.category'));
       expect(categoryElement).toBeTruthy();
-      expect(categoryElement.nativeElement.textContent).toContain('Burgers');
+      expect(categoryElement.nativeElement.textContent).toContain(
+        mockProduct.category?.name);
     });
 
     it('should display description for better product information', () => {

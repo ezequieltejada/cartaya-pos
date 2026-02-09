@@ -16,6 +16,6 @@
     <p class="description" *ngIf="hasDescription">
       {{ product.description }}
     </p>
-    <p class="category" *ngIf="product.category">{{ product.category }}</p>
+    <p class="category" *ngIf="product.category">{{ product.category.name }}</p>
   </ion-card-content>
 </ion-card>

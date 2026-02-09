@@ -12,9 +12,13 @@ import {
   IonFab,
   IonFabButton,
   IonGrid, IonIcon,
+  IonItem,
+  IonLabel,
   IonRouterOutlet,
   IonRow,
   IonSearchbar,
+  IonSelect,
+  IonSelectOption,
   IonSpinner, ToastController
 } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -23,6 +27,7 @@ import { alertCircleOutline, cartOutline, refreshOutline, searchOutline, setting
 import { Pos } from '../../core/models/pos.model';
 import { Product } from '../../core/models/product.model';
 import { AuthService } from '../../core/services/auth.service';
+import { CategoryService } from '../../core/services/category.service';
 import { ModifierService } from '../../core/services/modifier.service';
 import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
@@ -41,10 +46,12 @@ import { ProductCardComponent } from './components/product-card/product-card.com
  *
  * Responsible for:
  * - Fetching products using ProductService
+ * - Fetching categories using CategoryService
  * - Managing loading state during product fetch
  * - Displaying products in a responsive grid layout
  * - Showing loading spinner and empty state
  * - Displaying PoS info in header
+ * - Managing category filter
  *
  * Grid Layout:
  * - 2 columns on mobile (size="6")
@@ -72,6 +79,10 @@ import { ProductCardComponent } from './components/product-card/product-card.com
     IonCardContent,
     IonFab,
     IonFabButton,
+    IonItem,
+    IonLabel,
+    IonSelect,
+    IonSelectOption,
     PageHeaderComponent,
     ProductCardComponent,
   ],
@@ -80,6 +91,7 @@ import { ProductCardComponent } from './components/product-card/product-card.com
 })
 export class ProductCatalogPage implements OnInit, OnDestroy {
   private productService = inject(ProductService);
+  private categoryService = inject(CategoryService);
   private tenantService = inject(TenantService);
   private settingsService = inject(SettingsService);
   private posService = inject(PosService);
@@ -102,6 +114,20 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
    */
   itemCount = computed(() => this.orderService.itemCount());
 
+  /**
+   * Computed signal for categories with product counts
+   * Transforms categories to include product count and sorts alphabetically
+   */
+  categoriesWithCount = computed(() => {
+    return this.categoryService.sortedCategories().map((category) => ({
+      id: category.id,
+      name: category.name,
+      productCount: this.productService.products().filter(
+        (p) => p.category?.categoryId === category.id
+      ).length,
+    }));
+  });
+
   searchQuery = '';
   private modifierCheckCache = new Map<string, boolean>();
 
@@ -115,6 +141,7 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
 
     this.checkPosSelection();
     this.loadTenantSettings();
+    this.loadCategories();
     this.loadProducts();
   }
 
@@ -134,6 +161,28 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
       error: (error) => {
         console.error('Failed to load tenant settings:', error);
         // Continue anyway - OrderService will use fallback values
+      },
+    });
+  }
+
+  /**
+   * Load categories for the current tenant
+   * Clears cache when PoS changes to force fresh data
+   */
+  private loadCategories(): void {
+    const tenantId = this.tenantService.getCurrentTenantId();
+
+    if (!tenantId) {
+      console.warn('No tenant selected when attempting to load categories');
+      return;
+    }
+
+    this.categoryService.fetchCategories(tenantId).subscribe({
+      next: () => {
+        // Categories are updated in the signal
+      },
+      error: () => {
+        // Error is handled in the service
       },
     });
   }
@@ -221,6 +270,13 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
   }
 
   /**
+   * Get the currently selected category ID
+   */
+  get selectedCategoryId(): string {
+    return this.productService.selectedCategoryId;
+  }
+
+  /**
    * Handle search input with debouncing
    * Updates the ProductService filter text to trigger filtered products recomputation
    * @param event - The ionInput event from IonSearchbar
@@ -236,6 +292,16 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
   clearSearch(): void {
     this.searchQuery = '';
     this.productService.setFilterText('');
+  }
+
+  /**
+   * Handle category selection change
+   * Updates the ProductService selected category ID
+   * @param event - IonChange event from IonSelect
+   */
+  onCategoryChange(event: any): void {
+    const categoryId = event.detail.value;
+    this.productService.setSelectedCategoryId(categoryId);
   }
 
   /**
