@@ -16,7 +16,6 @@ describe('ProductCardComponent', () => {
   let component: ProductCardComponent;
   let fixture: ComponentFixture<ProductCardComponent>;
   let compiled: DebugElement;
-  let productService: ProductService;
 
   const mockProduct: Product = {
     id: 'prod-1',
@@ -48,7 +47,6 @@ describe('ProductCardComponent', () => {
       providers: [ProductService],
     }).compileComponents();
 
-    productService = TestBed.inject(ProductService);
     fixture = TestBed.createComponent(ProductCardComponent);
     component = fixture.componentInstance;
     compiled = fixture.debugElement;

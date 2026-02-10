@@ -70,7 +70,9 @@
     "GO_TO_SETTINGS": "Anar a Configuració",
     "CLEAR_SEARCH": "Netejar Recerca",
     "PRODUCT_ADDED": "afegit a la comanda",
-    "LOADING": "Carregant..."
+    "LOADING": "Carregant...",
+    "CATEGORY_FILTER": "Categoria",
+    "ALL_CATEGORIES": "Totes les Categories"
   },
   "MODIFIERS": {
     "TITLE": "Opcions del Producte",

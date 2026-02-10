@@ -11,14 +11,14 @@
 
 <ion-content id="product-catalog-content">
   <!-- Category Filter -->
-  <ion-item *ngIf="categoriesWithCount.length > 0" class="category-filter-item">
+  <ion-item *ngIf="categoriesWithCount().length > 0" class="category-filter-item">
     <ion-label>{{ 'PRODUCT_GRID.CATEGORY_FILTER' | translate }}</ion-label>
-    <ion-select 
+    <ion-select
       [value]="selectedCategoryId"
       (ionChange)="onCategoryChange($event)">
       <ion-select-option value="all">{{ 'PRODUCT_GRID.ALL_CATEGORIES' | translate }}</ion-select-option>
-      <ion-select-option *ngFor="let category of categoriesWithCount" [value]="category.id">
-        {{ category.name }} {{ category.productCount === 0 ? '(empty)' : '' }}
+      <ion-select-option *ngFor="let category of categoriesWithCount()" [value]="category.id">
+        {{ category.name | titlecase }} {{ category.productCount === 0 ? '(empty)' : '' }}
       </ion-select-option>
     </ion-select>
   </ion-item>

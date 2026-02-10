@@ -70,7 +70,9 @@
     "GO_TO_SETTINGS": "Ir a Configuración",
     "CLEAR_SEARCH": "Borrar Búsqueda",
     "PRODUCT_ADDED": "añadido al pedido",
-    "LOADING": "Cargando..."
+    "LOADING": "Cargando...",
+    "CATEGORY_FILTER": "Categoría",
+    "ALL_CATEGORIES": "Todas las Categorías"
   },
   "MODIFIERS": {
     "TITLE": "Opciones del Producto",

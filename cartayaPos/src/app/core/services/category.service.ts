@@ -47,7 +47,7 @@ export class CategoryService {
    * @param error - HTTP error object
    * @returns User-friendly error message
    */
-  private getErrorMessage(error: unknown): string {
+  private getErrorMessage(error: any): string {
     if (error.status === 0) {
       return 'No internet connection. Please check your network.';
     } else if (error.status === 401) {

@@ -1,5 +1,5 @@
 import { ScrollingModule } from '@angular/cdk/scrolling';
-import { CommonModule } from '@angular/common';
+import { CommonModule, TitleCasePipe } from '@angular/common';
 import { Component, computed, inject, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -66,6 +66,7 @@ import { ProductCardComponent } from './components/product-card/product-card.com
     FormsModule,
     ScrollingModule,
     TranslateModule,
+    TitleCasePipe,
     IonContent,
     IonButton,
     IonIcon,

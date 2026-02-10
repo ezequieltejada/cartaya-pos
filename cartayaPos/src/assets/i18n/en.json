@@ -70,7 +70,9 @@
     "GO_TO_SETTINGS": "Go to Settings",
     "CLEAR_SEARCH": "Clear Search",
     "PRODUCT_ADDED": "added to order",
-    "LOADING": "Loading..."
+    "LOADING": "Loading...",
+    "CATEGORY_FILTER": "Category",
+    "ALL_CATEGORIES": "All Categories"
   },
   "MODIFIERS": {
     "TITLE": "Product Options",

@@ -204,9 +204,9 @@ describe('CategoryService', () => {
   describe('getCategoryProductCount', () => {
     it('should return count of products in a category', () => {
       const mockProducts = [
-        { id: '1', category: { categoryId: 'cat-1', name: 'Burgers' } },
-        { id: '2', category: { categoryId: 'cat-1', name: 'Burgers' } },
-        { id: '3', category: { categoryId: 'cat-2', name: 'Beverages' } },
+        { id: '1', name: 'Product 1', category: { categoryId: 'cat-1', name: 'Burgers' }, active: true, createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
+        { id: '2', name: 'Product 2', category: { categoryId: 'cat-1', name: 'Burgers' }, active: true, createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
+        { id: '3', name: 'Product 3', category: { categoryId: 'cat-2', name: 'Beverages' }, active: true, createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
       ];
 
       const count = service.getCategoryProductCount('cat-1', mockProducts);
@@ -215,7 +215,7 @@ describe('CategoryService', () => {
 
     it('should return 0 for category with no products', () => {
       const mockProducts = [
-        { id: '1', category: { categoryId: 'cat-1', name: 'Burgers' } },
+        { id: '1', name: 'Product 1', category: { categoryId: 'cat-1', name: 'Burgers' }, active: true, createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
       ];
 
       const count = service.getCategoryProductCount('cat-2', mockProducts);
@@ -224,8 +224,8 @@ describe('CategoryService', () => {
 
     it('should handle products with null category', () => {
       const mockProducts = [
-        { id: '1', category: null },
-        { id: '2', category: { categoryId: 'cat-1', name: 'Burgers' } },
+        { id: '1', name: 'Product 1', category: null, active: true, createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
+        { id: '2', name: 'Product 2', category: { categoryId: 'cat-1', name: 'Burgers' }, active: true, createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
       ];
 
       const count = service.getCategoryProductCount('cat-1', mockProducts);

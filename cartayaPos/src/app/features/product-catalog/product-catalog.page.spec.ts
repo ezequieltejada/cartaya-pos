@@ -1235,6 +1235,7 @@ describe('ProductCatalogPage', () => {
       fixture.detectChanges();
 
       const initialCount = component.products.length;
+      expect(initialCount).toBe(mockProducts.length);
 
       // Perform search
       spyOn(productService, 'setFilterText');
