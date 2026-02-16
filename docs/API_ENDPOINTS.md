@@ -567,7 +567,7 @@ The Bearer plugin does not add HTTP endpoints. It adds support for authenticatin
 
 ---
 
-### Polar Plugin (enabled)
+### Polar Plugin (enabled when `POLAR_ENABLE=true`)
 
 #### POST /api/auth/checkout
 
@@ -1638,6 +1638,63 @@ Errors are returned in JSON format:
 ```
 
 **Error Responses:** `401`, `403`, `500`
+
+---
+
+### GET /api/tenants/:tenantId/stock/events
+
+**Authorization:** Tenant member
+
+**Query Parameters:**
+- `posId?: string` (optional POS filter)
+
+**Headers:**
+- `Accept: text/event-stream`
+
+**SSE Event Names:**
+- `ping` (heartbeat)
+- `stock.updated`
+- `stock.movement.created`
+
+**SSE Data Payload (`stock.updated` / `stock.movement.created`):**
+```
+{
+  eventId: string,
+  tenantId: string,
+  productId: string,
+  posId: string | null,
+  quantityChange: number,
+  quantityBefore: number,
+  quantityAfter: number,
+  movementType: string,
+  orderId: string | null,
+  createdAt: string
+}
+```
+
+**Response (200):** `text/event-stream` (long-lived connection)
+
+**Error Responses:** `401`, `403`
+
+**Reconnect guidance:**
+- The stream includes SSE `id` using `eventId`.
+- Clients can reconnect automatically with `EventSource` and pass `Last-Event-ID`.
+- Server currently does not replay missed events from `Last-Event-ID`; clients should refresh stock snapshot after reconnect.
+
+**Example (browser):**
+```
+const source = new EventSource(`/api/tenants/${tenantId}/stock/events?posId=${posId}`);
+
+source.addEventListener('stock.updated', (event) => {
+  const payload = JSON.parse(event.data);
+  // Update local cache/store for payload.productId
+});
+
+source.addEventListener('stock.movement.created', (event) => {
+  const payload = JSON.parse(event.data);
+  // Optional: append to movement timeline
+});
+```
 
 ---
 
