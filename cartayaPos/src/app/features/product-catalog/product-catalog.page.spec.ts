@@ -39,7 +39,7 @@ describe('ProductCatalogPage', () => {
       name: 'Product 1',
       sku: 'SKU001',
       description: 'Test product 1',
-      category: 'Electronics',
+      category: { categoryId: 'cat-1', name: 'Electronics' },
       active: true,
       defaultPriceId: 'price1',
       createdAt: '2025-01-01T00:00:00Z',
@@ -50,7 +50,7 @@ describe('ProductCatalogPage', () => {
       name: 'Product 2',
       sku: 'SKU002',
       description: 'Test product 2',
-      category: 'Electronics',
+      category: { categoryId: 'cat-1', name: 'Electronics' },
       active: true,
       defaultPriceId: 'price2',
       createdAt: '2025-01-01T00:00:00Z',
@@ -837,6 +837,7 @@ describe('ProductCatalogPage', () => {
 
     it('should handle products with missing optional properties', () => {
       const minimalProduct: Product = {
+      category: null,
         id: 'minimal',
         name: 'Minimal Product',
         active: true,
@@ -856,7 +857,7 @@ describe('ProductCatalogPage', () => {
         name: `Product ${i} - Performance Test`,
         sku: `SKU-${String(i).padStart(6, '0')}`,
         description: `Performance test product with index ${i}`,
-        category: `Category-${i % 10}`,
+        category: { categoryId: `cat-${i % 10}`, name: `Category-${i % 10}` },
         active: true,
         defaultPriceId: `price-${i}`,
         createdAt: '2025-01-01T00:00:00Z',
@@ -1234,6 +1235,7 @@ describe('ProductCatalogPage', () => {
       fixture.detectChanges();
 
       const initialCount = component.products.length;
+      expect(initialCount).toBe(mockProducts.length);
 
       // Perform search
       spyOn(productService, 'setFilterText');

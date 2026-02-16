@@ -19,7 +19,7 @@ describe('ProductService', () => {
       name: 'Cheeseburger',
       sku: 'BURGER-001',
       description: 'Classic burger',
-      category: 'Burgers',
+      category: { categoryId: 'cat-1', name: 'Burgers' },
       active: true,
       defaultPriceId: 'price-1',
       createdAt: '2024-01-01T00:00:00Z',
@@ -30,7 +30,7 @@ describe('ProductService', () => {
       name: 'French Fries',
       sku: 'FRIES-001',
       description: 'Crispy fries',
-      category: 'Sides',
+      category: { categoryId: 'cat-2', name: 'Sides' },
       active: true,
       defaultPriceId: 'price-2',
       createdAt: '2024-01-01T00:00:00Z',
@@ -40,7 +40,7 @@ describe('ProductService', () => {
       id: 'product-3',
       name: 'Coca Cola',
       description: 'Soft drink',
-      category: 'Beverages',
+      category: { categoryId: 'cat-3', name: 'Beverages' },
       active: true,
       defaultPriceId: 'price-3',
       createdAt: '2024-01-01T00:00:00Z',
@@ -51,7 +51,7 @@ describe('ProductService', () => {
       name: 'Grilled Chicken Sandwich',
       sku: 'CHICKEN-001',
       description: 'Juicy grilled chicken',
-      category: 'Sandwiches',
+      category: { categoryId: 'cat-4', name: 'Sandwiches' },
       active: false,
       defaultPriceId: 'price-4',
       createdAt: '2024-01-01T00:00:00Z',
@@ -849,4 +849,87 @@ describe('ProductService', () => {
       req1.flush({ data: tenant1Products });
     });
   });
+  // ===== Category Filtering Tests =====
+
+  describe('Category Filtering', () => {
+    beforeEach(() => {
+      // Set up products with categories
+      service.products.set(mockProducts);
+    });
+
+    it('should initialize with all categories selected', () => {
+      expect(service.selectedCategoryId).toBe('all');
+      expect(service.selectedCategoryIds()).toEqual(['all']);
+    });
+
+    it('should set selected category ID', () => {
+      service.setSelectedCategoryId('cat-1');
+      expect(service.selectedCategoryId).toBe('cat-1');
+      expect(service.selectedCategoryIds()).toEqual(['cat-1']);
+    });
+
+    it('should reset to all when setting all', () => {
+      service.setSelectedCategoryId('cat-1');
+      expect(service.selectedCategoryId).toBe('cat-1');
+      
+      service.setSelectedCategoryId('all');
+      expect(service.selectedCategoryId).toBe('all');
+      expect(service.selectedCategoryIds()).toEqual(['all']);
+    });
+
+    it('should filter products by single category', () => {
+      service.setSelectedCategoryId('cat-1');
+      const filtered = service.filteredProducts();
+      
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].id).toBe('product-1');
+    });
+
+    it('should show all products when all categories selected', () => {
+      service.setSelectedCategoryId('all');
+      const filtered = service.filteredProducts();
+      
+      // Should show all products with categories
+      expect(filtered.length).toBeGreaterThan(0);
+    });
+
+    it('should combine text filter with category filter', () => {
+      service.setSelectedCategoryId('cat-3');
+      service.setFilterText('cola');
+      
+      const filtered = service.filteredProducts();
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].name).toBe('Coca Cola');
+    });
+
+    it('should return empty when text filter matches but category does not', () => {
+      service.setSelectedCategoryId('cat-1');
+      service.setFilterText('cola');
+      
+      const filtered = service.filteredProducts();
+      expect(filtered.length).toBe(0);
+    });
+
+    it('should handle products with null category', () => {
+      const productsWithNull = [
+        ...mockProducts,
+        {
+          id: 'product-5',
+          name: 'No Category Product',
+          active: true,
+          category: null,
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+        }
+      ];
+      service.products.set(productsWithNull);
+      
+      service.setSelectedCategoryId('cat-1');
+      const filtered = service.filteredProducts();
+      
+      // Should not include product with null category
+      expect(filtered.find(p => p.id === 'product-5')).toBeUndefined();
+    });
+  });
 });
+

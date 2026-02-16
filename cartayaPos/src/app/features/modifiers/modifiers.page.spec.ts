@@ -58,6 +58,7 @@ describe('ModifiersPage', () => {
     active: true,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
+    category: { categoryId: 'cat-1', name: 'Burgers' },
     defaultPrice: {
       id: 'price-1',
       amount: 12.99,

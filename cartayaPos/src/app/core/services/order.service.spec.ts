@@ -16,6 +16,7 @@ describe('OrderService', () => {
     sku: 'BURGER-001',
     description: 'Classic cheeseburger',
     active: true,
+    category: { categoryId: 'cat-1', name: 'Burgers' },
     defaultPriceId: 'price-1',
     defaultPrice: {
       id: 'price-1',

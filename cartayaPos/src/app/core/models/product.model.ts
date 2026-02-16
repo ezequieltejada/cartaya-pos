@@ -19,7 +19,7 @@ export interface Product {
   name: string;
   sku?: string;
   description?: string;
-  category?: string;
+  category: { categoryId: string; name: string } | null;
   active: boolean;
   defaultPriceId?: string;
   defaultPrice?: {

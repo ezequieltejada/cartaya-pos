@@ -48,19 +48,49 @@ export class ProductService {
   // Writable signals
   readonly products = signal<Product[]>([]);
   readonly filterText = signal<string>('');
+  readonly selectedCategoryIds = signal<string[]>(['all']);
   readonly isLoading = signal(false);
   readonly error = signal<string | null>(null);
 
+  // UI-facing getter for single category selection (for now)
+  get selectedCategoryId(): string {
+    const ids = this.selectedCategoryIds();
+    return ids.length === 1 && ids[0] === 'all' ? 'all' : ids[0];
+  }
+
+  /**
+   * Set selected category ID
+   * Updates internal array-based selection for future multi-select support
+   * @param categoryId - Category ID to select ('all' to show all categories)
+   */
+  setSelectedCategoryId(categoryId: string): void {
+    this.selectedCategoryIds.set(categoryId === 'all' ? ['all'] : [categoryId]);
+  }
+
   // Computed signal for filtered products
   readonly filteredProducts = computed(() => {
-    const query = this.filterText().toLowerCase();
-    if (!query) return this.products();
+    let filtered = this.products();
 
-    return this.products().filter(
-      (product) =>
-        product.name.toLowerCase().includes(query) ||
-        product.sku?.toLowerCase().includes(query)
-    );
+    // Text filter
+    const query = this.filterText().toLowerCase();
+    if (query) {
+      filtered = filtered.filter(
+        (product) =>
+          product.name.toLowerCase().includes(query) ||
+          product.sku?.toLowerCase().includes(query)
+      );
+    }
+
+    // Category filter
+    const categoryIds = this.selectedCategoryIds();
+    if (!categoryIds.includes('all')) {
+      filtered = filtered.filter(
+        (product) =>
+          product.category && categoryIds.includes(product.category.categoryId)
+      );
+    }
+
+    return filtered;
   });
 
   /**
