@@ -15,7 +15,8 @@
     <ion-label>{{ 'PRODUCT_GRID.CATEGORY_FILTER' | translate }}</ion-label>
     <ion-select
       [value]="selectedCategoryId"
-      (ionChange)="onCategoryChange($event)">
+      (ionChange)="onCategoryChange($event)"
+      interface="action-sheet">
       <ion-select-option value="all">{{ 'PRODUCT_GRID.ALL_CATEGORIES' | translate }}</ion-select-option>
       <ion-select-option *ngFor="let category of categoriesWithCount()" [value]="category.id">
         {{ category.name | titlecase }} {{ category.productCount === 0 ? '(empty)' : '' }}
