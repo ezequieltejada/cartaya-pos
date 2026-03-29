@@ -154,8 +154,6 @@ export class AuthService {
             map((tenants) => {
               if (tenants.length === 0) {
                 console.warn('User has no assigned tenants');
-              } else {
-                console.log('Tenants fetched successfully:', tenants);
               }
               this.isLoading.set(false);
               return user;
