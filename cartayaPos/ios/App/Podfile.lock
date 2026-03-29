@@ -12,9 +12,9 @@ PODS:
     - Capacitor
   - CapacitorKeyboard (7.0.3):
     - Capacitor
-  - CapacitorStatusBar (7.0.3):
+  - CapacitorNetwork (7.0.2):
     - Capacitor
-  - CapacitorThermalPrinter (0.2.5):
+  - CapacitorStatusBar (7.0.3):
     - Capacitor
 
 DEPENDENCIES:
@@ -25,8 +25,8 @@ DEPENDENCIES:
   - "CapacitorDialog (from `../../node_modules/@capacitor/dialog`)"
   - "CapacitorHaptics (from `../../node_modules/@capacitor/haptics`)"
   - "CapacitorKeyboard (from `../../node_modules/@capacitor/keyboard`)"
+  - "CapacitorNetwork (from `../../node_modules/@capacitor/network`)"
   - "CapacitorStatusBar (from `../../node_modules/@capacitor/status-bar`)"
-  - CapacitorThermalPrinter (from `../../node_modules/capacitor-thermal-printer`)
 
 EXTERNAL SOURCES:
   Capacitor:
@@ -43,10 +43,10 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capacitor/haptics"
   CapacitorKeyboard:
     :path: "../../node_modules/@capacitor/keyboard"
+  CapacitorNetwork:
+    :path: "../../node_modules/@capacitor/network"
   CapacitorStatusBar:
     :path: "../../node_modules/@capacitor/status-bar"
-  CapacitorThermalPrinter:
-    :path: "../../node_modules/capacitor-thermal-printer"
 
 SPEC CHECKSUMS:
   Capacitor: 28d6c01026a9a3f7156529498ec1f389a2a28dbc
@@ -56,9 +56,9 @@ SPEC CHECKSUMS:
   CapacitorDialog: 5bf72a94b747fb339df6f64ef60812e5e4630ad2
   CapacitorHaptics: b3fb2869e72c4466e18ce9ccbeb60a3d8723b3d4
   CapacitorKeyboard: 62f36104f26d53d8b3a2a43f2a69fe714f1777d5
+  CapacitorNetwork: 695069886b3c5ed514db69aa3d026b8dc3c03a6b
   CapacitorStatusBar: 0659ddc7b1713764a05831463d215b177a15d054
-  CapacitorThermalPrinter: 37ba847a690c296fb94499c1b3c37fd696cc1f82
 
-PODFILE CHECKSUM: d82332959d1ba182604254b6db00505817666a9c
+PODFILE CHECKSUM: 9c4cd7f1bfa0f10f59ac7206d69424ed1b3e7c16
 
 COCOAPODS: 1.16.2
