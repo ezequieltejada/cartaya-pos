@@ -87,6 +87,14 @@
         <ion-card-title>{{ 'SETTINGS.AVAILABLE_PRINTERS' | translate }}</ion-card-title>
       </ion-card-header>
       <ion-card-content>
+        <!-- Permission error banner -->
+        @if (printerService.permissionError) {
+          <div class="permission-error">
+            <ion-icon name="close-circle-outline" color="danger"></ion-icon>
+            <p>{{ printerService.permissionError }}</p>
+          </div>
+        }
+
         <ion-button 
           (click)="scanForPrinters()" 
           [disabled]="isScanning"
