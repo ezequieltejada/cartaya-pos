@@ -1,6 +1,6 @@
 {
   "name": "cartayaPos",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "author": "Ionic Framework",
   "homepage": "https://ionicframework.com/",
   "scripts": {
@@ -10,7 +10,11 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:i18n": "ng test --include='**/language.service.spec.ts'",
-    "lint": "ng lint"
+    "lint": "ng lint",
+    "version:patch": "node scripts/bump-version.mjs patch",
+    "version:minor": "node scripts/bump-version.mjs minor",
+    "version:major": "node scripts/bump-version.mjs major",
+    "version:set": "node scripts/bump-version.mjs"
   },
   "private": true,
   "dependencies": {
