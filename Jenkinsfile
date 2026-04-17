@@ -81,7 +81,7 @@ pipeline {
         // Stage 0: Environment Checks (Fail-Fast)
         // -------------------------------------------------------------------------
         stage('Environment Checks') {
-            agent { label 'linux' }
+            agent { label 'jenkins-agent' }
             options {
                 timeout(time: 5, unit: 'MINUTES')
             }
@@ -105,7 +105,7 @@ pipeline {
         // Stage 1: Build Web Assets (Angular/Ionic)
         // -------------------------------------------------------------------------
         stage('Build Web App') {
-            agent { label 'linux' } // Uses the Linux (amd64) agent
+            agent { label 'jenkins-agent' } // Uses the Linux (amd64) agent
 
             steps {
                 dir('cartayaPos') {
@@ -147,7 +147,7 @@ pipeline {
             options {
                 timeout(time: 45, unit: 'MINUTES')
             }
-            agent { label 'linux' }
+            agent { label 'jenkins-agent' }
 
             environment {
                 // Prefer Jenkins-managed ANDROID_SDK_ROOT/ANDROID_HOME, otherwise fall back to the repo default.
@@ -269,7 +269,7 @@ EOF
 // Stage 3: Publish Release to GitHub (Fixed)
 // -------------------------------------------------------------------------
         stage('Publish Release') {
-            agent { label 'linux' }
+            agent { label 'jenkins-agent' }
             when {
                 anyOf {
                     branch 'main'
