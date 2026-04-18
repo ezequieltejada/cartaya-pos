@@ -1,6 +1,9 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { ErrorHandler, inject, provideAppInitializer } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
-import { PreloadAllModules, RouteReuseStrategy, provideRouter, withPreloading } from '@angular/router';
+import { PreloadAllModules, RouteReuseStrategy, Router, provideRouter, withPreloading } from '@angular/router';
+import * as Sentry from '@sentry/capacitor';
+import * as SentryAngular from '@sentry/angular';
 import { IonicRouteStrategy, provideIonicAngular } from '@ionic/angular/standalone';
 import { Storage } from '@ionic/storage-angular';
 import { MissingTranslationHandler, provideTranslateService } from '@ngx-translate/core';
@@ -13,6 +16,16 @@ import { authInterceptor } from './app/core/interceptors/auth.interceptor';
 import { capacitorHttpInterceptor } from './app/core/interceptors/capacitor-http.interceptor';
 import { languageHeaderInterceptor } from './app/core/interceptors/language-header.interceptor';
 import { offlineInterceptor } from './app/core/interceptors/offline.interceptor';
+import { environment } from './environments/environment';
+
+Sentry.init(
+  {
+    dsn: environment.sentry.dsn,
+    integrations: [SentryAngular.browserTracingIntegration()],
+    tracesSampleRate: environment.sentry.tracesSampleRate,
+  },
+  SentryAngular.init
+);
 
 bootstrapApplication(AppComponent, {
   providers: [
@@ -43,6 +56,17 @@ bootstrapApplication(AppComponent, {
         prefix: './assets/i18n/',
         suffix: '.json',
       }),
+    }),
+    {
+      provide: ErrorHandler,
+      useValue: SentryAngular.createErrorHandler(),
+    },
+    {
+      provide: SentryAngular.TraceService,
+      deps: [Router],
+    },
+    provideAppInitializer(() => {
+      inject(SentryAngular.TraceService);
     }),
   ],
 });
