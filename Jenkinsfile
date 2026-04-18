@@ -330,7 +330,8 @@ EOF
                                 API_URL="https://api.github.com/repos/$REPO_SLUG"
                                 TAG_NAME=$(python3 -c "import json; print(json.load(open('release.json'))['tag_name'])")
                                 
-                                # Create a release, or update the existing one when the tag already exists.
+                                # Create a release. If the tag already has a release, skip publishing
+                                # instead of overwriting the existing release or assets.
                                 CREATE_RESPONSE_FILE=$(mktemp)
                                 CREATE_STATUS=$(curl -sS -o "$CREATE_RESPONSE_FILE" -w "%{http_code}" -X POST \
                                     -H "Authorization: token $GITHUB_TOKEN" \
@@ -360,70 +361,22 @@ already_exists = any(
 sys.exit(0 if already_exists else 1)
 PY
                                 then
-                                    echo "Release for $TAG_NAME already exists. Updating it instead."
-                                    EXISTING_RELEASE_FILE=$(mktemp)
-                                    EXISTING_STATUS=$(curl -sS -o "$EXISTING_RELEASE_FILE" -w "%{http_code}" \
-                                        -H "Authorization: token $GITHUB_TOKEN" \
-                                        -H "Accept: application/vnd.github.v3+json" \
-                                        "$API_URL/releases/tags/$TAG_NAME")
-
-                                    if [ "$EXISTING_STATUS" != "200" ]; then
-                                        echo "✗ Failed to fetch existing release for tag $TAG_NAME (HTTP $EXISTING_STATUS)"
-                                        cat "$EXISTING_RELEASE_FILE"
-                                        exit 1
-                                    fi
-
-                                    RELEASE_ID=$(python3 -c "import json; print(json.load(open('$EXISTING_RELEASE_FILE'))['id'])")
-                                    UPDATE_RESPONSE_FILE=$(mktemp)
-                                    UPDATE_STATUS=$(curl -sS -o "$UPDATE_RESPONSE_FILE" -w "%{http_code}" -X PATCH \
-                                        -H "Authorization: token $GITHUB_TOKEN" \
-                                        -H "Accept: application/vnd.github.v3+json" \
-                                        -H "Content-Type: application/json" \
-                                        "$API_URL/releases/$RELEASE_ID" \
-                                        -d @release.json)
-
-                                    if [ "$UPDATE_STATUS" != "200" ]; then
-                                        echo "✗ Failed to update existing release for tag $TAG_NAME (HTTP $UPDATE_STATUS)"
-                                        cat "$UPDATE_RESPONSE_FILE"
-                                        exit 1
-                                    fi
-
-                                    RELEASE_RESPONSE=$(cat "$UPDATE_RESPONSE_FILE")
-                                    echo "✓ Existing release updated successfully"
+                                    echo "Release for $TAG_NAME already exists. Skipping publish to avoid overwriting it."
+                                    exit 0
                                 else
                                     echo "✗ Failed to create release (HTTP $CREATE_STATUS)"
                                     cat "$CREATE_RESPONSE_FILE"
                                     exit 1
                                 fi
 
-                                # Extract upload and assets URLs for asset replacement/upload.
+                                # Extract upload URL for asset upload.
                                 UPLOAD_URL=$(printf '%s' "$RELEASE_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['upload_url'].replace('{?name,label}', ''))")
-                                ASSETS_URL=$(printf '%s' "$RELEASE_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['assets_url'])")
                                 
                                 # Upload the APK asset
                                 echo "--- Uploading APK Asset ---"
                                 for apk in android/app/build/outputs/apk/debug/*.apk; do
                                     FILENAME=$(basename "$apk")
                                     echo "Uploading $FILENAME..."
-
-                                    EXISTING_ASSET_ID=$(curl -sS \
-                                        -H "Authorization: token $GITHUB_TOKEN" \
-                                        -H "Accept: application/vnd.github.v3+json" \
-                                        "$ASSETS_URL" | python3 -c "import json, sys; assets=json.load(sys.stdin); target='$FILENAME'; print(next((str(asset['id']) for asset in assets if asset.get('name') == target), ''))")
-
-                                    if [ -n "$EXISTING_ASSET_ID" ]; then
-                                        DELETE_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" -X DELETE \
-                                            -H "Authorization: token $GITHUB_TOKEN" \
-                                            -H "Accept: application/vnd.github.v3+json" \
-                                            "$API_URL/releases/assets/$EXISTING_ASSET_ID")
-
-                                        if [ "$DELETE_STATUS" != "204" ]; then
-                                            echo "✗ Failed to delete existing asset $FILENAME (HTTP $DELETE_STATUS)"
-                                            exit 1
-                                        fi
-
-                                        echo "Removed existing asset $FILENAME"
-                                    fi
                                     
                                     UPLOAD_RESPONSE_FILE=$(mktemp)
                                     UPLOAD_STATUS=$(curl -sS -o "$UPLOAD_RESPONSE_FILE" -w "%{http_code}" -X POST \
