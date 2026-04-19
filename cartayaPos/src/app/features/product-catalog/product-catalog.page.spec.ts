@@ -301,7 +301,7 @@ describe('ProductCatalogPage', () => {
         jasmine.objectContaining({
           message: `"${productWithPrice.name}" added to order`,
           duration: 2000,
-          position: 'bottom',
+          position: 'top',
           color: 'success',
           icon: 'checkmark-circle-outline',
         })
@@ -484,7 +484,7 @@ describe('ProductCatalogPage', () => {
         jasmine.objectContaining({
           message: 'Test message',
           duration: 2000,
-          position: 'bottom',
+          position: 'top',
           color: 'success',
           icon: 'checkmark-circle-outline',
         })

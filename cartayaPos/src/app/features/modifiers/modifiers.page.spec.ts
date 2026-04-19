@@ -334,7 +334,13 @@ describe('ModifiersPage', () => {
       component.confirmSelection();
 
       setTimeout(() => {
-        expect(toastController.create).toHaveBeenCalled();
+        expect(toastController.create).toHaveBeenCalledWith(
+          jasmine.objectContaining({
+            duration: 2000,
+            position: 'top',
+            color: 'success',
+          })
+        );
         done();
       }, 100);
     });
@@ -379,7 +385,13 @@ describe('ModifiersPage', () => {
       component.addWithoutModifiers();
 
       setTimeout(() => {
-        expect(toastController.create).toHaveBeenCalled();
+        expect(toastController.create).toHaveBeenCalledWith(
+          jasmine.objectContaining({
+            duration: 2000,
+            position: 'top',
+            color: 'success',
+          })
+        );
         done();
       }, 100);
     });
