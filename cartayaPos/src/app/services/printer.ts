@@ -92,12 +92,17 @@ export class Printer implements OnDestroy {
 
   constructor() {
     console.log('PRINTER_DEBUG: Printer service constructed');
-    void this.initializeConnectionListeners();
-    void this.initializeAppStateListener();
   }
 
   ngOnDestroy(): void {
     void this.removeConnectionListeners();
+  }
+
+  private async ensureNativeLifecycleReady(): Promise<void> {
+    await Promise.all([
+      this.initializeConnectionListeners(),
+      this.initializeAppStateListener(),
+    ]);
   }
 
   private async initializeConnectionListeners(): Promise<void> {
@@ -316,6 +321,7 @@ export class Printer implements OnDestroy {
   }
 
   private async connectOrThrow(address: string): Promise<void> {
+    await this.ensureNativeLifecycleReady();
     this.clearConnectionError();
 
     if (!address) {
@@ -547,6 +553,7 @@ export class Printer implements OnDestroy {
    */
   async disconnect(manualDisconnect: boolean = true): Promise<void> {
     try {
+      await this.ensureNativeLifecycleReady();
       console.log(`PRINTER_DEBUG: disconnect() called, manualDisconnect=${manualDisconnect}`);
       await CapacitorThermalPrinter.disconnect();
       this.isConnected = false;
@@ -565,6 +572,7 @@ export class Printer implements OnDestroy {
   // ---------------------------------------------------------------------------
 
   async scanForPrinters() {
+    await this.ensureNativeLifecycleReady();
     console.log('PRINTER_DEBUG: scanForPrinters() entered');
     this.permissionError = null;
     this.clearConnectionError();

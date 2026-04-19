@@ -17,6 +17,9 @@ describe('Printer', () => {
   };
   const eventHandlers = new Map<string, (payload?: unknown) => void>();
   const appEventHandlers = new Map<string, (payload?: unknown) => void>();
+  const ensureNativeLifecycleReady = async (): Promise<void> => {
+    await (service as unknown as { ensureNativeLifecycleReady: () => Promise<void> }).ensureNativeLifecycleReady();
+  };
 
   beforeEach(async () => {
     localStorage.clear();
@@ -39,8 +42,6 @@ describe('Printer', () => {
 
     TestBed.configureTestingModule({});
     service = TestBed.inject(Printer);
-    await (service as Printer & { connectionListenersReady: Promise<void> | null }).connectionListenersReady;
-    await (service as Printer & { appStateListenerReady: Promise<void> | null }).appStateListenerReady;
 
     builder = {
       align: jasmine.createSpy('align'),
@@ -60,11 +61,25 @@ describe('Printer', () => {
     expect(service).toBeTruthy();
   });
 
-  it('should register native printer connection listeners', () => {
-    expect(addListenerSpy.calls.allArgs().map(([eventName]) => eventName)).toEqual(['connected', 'disconnected']);
+  it('should not register native listeners on creation', () => {
+    expect(addListenerSpy).not.toHaveBeenCalled();
+    expect(appAddListenerSpy).not.toHaveBeenCalled();
   });
 
-  it('should register an app resume listener', () => {
+  it('should register native listeners on first printer interaction', async () => {
+    service.selectedPrinter = {
+      address: 'AA:BB:CC:DD:EE:FF',
+      name: 'Kitchen Printer',
+    };
+    service.selectedAddress = service.selectedPrinter.address;
+    service.isConnected = true;
+
+    spyOn(CapacitorThermalPrinter, 'isConnected').and.resolveTo(true);
+    spyOn(CapacitorThermalPrinter, 'begin').and.returnValue(builder as never);
+
+    await service.printReceipt('test receipt');
+
+    expect(addListenerSpy.calls.allArgs().map(([eventName]) => eventName)).toEqual(['connected', 'disconnected']);
     expect(appAddListenerSpy).toHaveBeenCalledWith('appStateChange', jasmine.any(Function));
   });
 
@@ -159,7 +174,8 @@ describe('Printer', () => {
     expect(service.status()).toBe('found-not-connected');
   });
 
-  it('should update status when the native connected event fires', () => {
+  it('should update status when the native connected event fires', async () => {
+    await ensureNativeLifecycleReady();
     const device = {
       address: 'AA:BB:CC:DD:EE:FF',
       name: 'Kitchen Printer',
@@ -174,7 +190,8 @@ describe('Printer', () => {
     expect(service.status()).toBe('connected');
   });
 
-  it('should keep the selected printer and report found-not-connected when the native disconnected event fires', () => {
+  it('should keep the selected printer and report found-not-connected when the native disconnected event fires', async () => {
+    await ensureNativeLifecycleReady();
     service.selectedPrinter = {
       address: 'AA:BB:CC:DD:EE:FF',
       name: 'Kitchen Printer',
@@ -215,6 +232,9 @@ describe('Printer', () => {
   }));
 
   it('should refresh connection status when the app resumes', fakeAsync(() => {
+    void ensureNativeLifecycleReady();
+    flushMicrotasks();
+
     service.selectedPrinter = {
       address: 'AA:BB:CC:DD:EE:FF',
       name: 'Kitchen Printer',
