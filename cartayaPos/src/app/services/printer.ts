@@ -31,6 +31,7 @@ export class Printer {
    * silently showing "no printers found".
    */
   permissionError: string | null = null;
+  connectionError: string | null = null;
 
   // Track if user manually disconnected from the printer
   // If true, the app should NOT attempt to reconnect automatically
@@ -44,6 +45,125 @@ export class Printer {
 
   constructor() {
     console.log('PRINTER_DEBUG: Printer service constructed');
+  }
+
+  private clearConnectionError(): void {
+    this.connectionError = null;
+  }
+
+  private createConnectionError(message: string, cause?: unknown): Error {
+    this.connectionError = message;
+
+    const error = new Error(message) as Error & { cause?: unknown };
+    if (cause !== undefined) {
+      error.cause = cause;
+    }
+
+    return error;
+  }
+
+  private describePrinter(address: string): string {
+    const printerName = this.selectedPrinter?.name;
+    return printerName ? `"${printerName}" (${address})` : address;
+  }
+
+  private buildInterruptedConnectionMessage(address: string): string {
+    return [
+      `Failed to connect to printer ${this.describePrinter(address)}.`,
+      'The native Bluetooth connection was interrupted before the printer became ready.',
+      'Verify that the printer is powered on, nearby, and still paired, then reconnect from Settings.'
+    ].join(' ');
+  }
+
+  private buildUnexpectedConnectionMessage(address: string, error: unknown): string {
+    const details = error instanceof Error ? error.message : String(error);
+
+    if (!details || details === '[object Object]') {
+      return `Failed to connect to printer ${this.describePrinter(address)}.`;
+    }
+
+    return `Failed to connect to printer ${this.describePrinter(address)}. ${details}`;
+  }
+
+  private async hasActiveConnection(expectedAddress?: string): Promise<boolean> {
+    if (!this.isConnected) {
+      return false;
+    }
+
+    try {
+      const connected = await CapacitorThermalPrinter.isConnected();
+      this.isConnected = connected;
+
+      if (!connected) {
+        return false;
+      }
+    } catch (error) {
+      console.warn('PRINTER_DEBUG: isConnected() check failed, falling back to cached state', error);
+    }
+
+    if (!expectedAddress) {
+      return true;
+    }
+
+    const activeAddress = this.selectedPrinter?.address || this.selectedAddress;
+    return !activeAddress || activeAddress === expectedAddress;
+  }
+
+  private async connectOrThrow(address: string): Promise<void> {
+    this.clearConnectionError();
+
+    if (!address) {
+      this.isConnected = false;
+      throw this.createConnectionError('No printer address provided for the Bluetooth connection attempt.');
+    }
+
+    if (await this.hasActiveConnection(address)) {
+      console.log(`PRINTER_DEBUG: Reusing existing printer connection for address=${address}`);
+      return;
+    }
+
+    const permissionsOk = await this.ensureBluetoothPermissions();
+    if (!permissionsOk) {
+      this.isConnected = false;
+      throw this.createConnectionError(
+        this.permissionError || 'Bluetooth permissions are required before connecting to a printer.'
+      );
+    }
+
+    try {
+      this.userManuallyDisconnected = false;
+
+      console.log(`PRINTER_DEBUG: Calling CapacitorThermalPrinter.connect({ address: ${address} })`);
+      const device = await CapacitorThermalPrinter.connect({ address });
+
+      if (device === null) {
+        this.isConnected = false;
+        throw this.createConnectionError(this.buildInterruptedConnectionMessage(address));
+      }
+
+      console.log(`PRINTER_DEBUG: Connected successfully to device name=${device.name} address=${device.address}`);
+      this.isConnected = true;
+      this.clearConnectionError();
+
+      if (!this.selectedPrinter || this.selectedPrinter.address !== device.address) {
+        this.selectedPrinter = device;
+        this.selectedAddress = device.address;
+      }
+    } catch (error) {
+      this.isConnected = false;
+
+      if (error instanceof Error && error.message === this.connectionError) {
+        throw error;
+      }
+
+      const permErr = this.extractPermissionError(error);
+      if (permErr) {
+        this.permissionError = permErr;
+        throw this.createConnectionError(permErr, error);
+      }
+
+      throw this.createConnectionError(this.buildUnexpectedConnectionMessage(address, error), error);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -170,13 +290,22 @@ export class Printer {
    * @returns Promise<boolean> - true if connection successful, false otherwise
    */
   async connect(): Promise<boolean> {
+    this.clearConnectionError();
+
     if (!this.selectedPrinter) {
-      console.error('PRINTER_DEBUG: connect() called with no printer selected');
+      this.connectionError = 'No printer selected';
+      console.warn('PRINTER_DEBUG: connect() called with no printer selected');
       return false;
     }
 
     console.log(`PRINTER_DEBUG: Attempting connect to address=${this.selectedPrinter.address} name=${this.selectedPrinter.name}`);
-    return this.connectByAddress(this.selectedPrinter.address);
+
+    try {
+      await this.connectOrThrow(this.selectedPrinter.address);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -188,48 +317,18 @@ export class Printer {
    */
   async connectByAddress(address: string): Promise<boolean> {
     console.log(`PRINTER_DEBUG: connectByAddress called with address=${address}`);
+    this.clearConnectionError();
 
     if (!address) {
-      console.error('PRINTER_DEBUG: connectByAddress – no address provided');
-      return false;
-    }
-
-    const permissionsOk = await this.ensureBluetoothPermissions();
-    if (!permissionsOk) {
-      console.warn(`PRINTER_DEBUG: connectByAddress – permission check failed: ${this.permissionError}`);
+      this.connectionError = 'No printer address provided for the Bluetooth connection attempt.';
+      console.warn('PRINTER_DEBUG: connectByAddress – no address provided');
       return false;
     }
 
     try {
-      // Reset manual disconnection flag when user attempts to connect
-      this.userManuallyDisconnected = false;
-
-      console.log(`PRINTER_DEBUG: Calling CapacitorThermalPrinter.connect({ address: ${address} })`);
-      const device = await CapacitorThermalPrinter.connect({ address });
-
-      if (device === null) {
-        console.error('PRINTER_DEBUG: connect() returned null – connection failed');
-        this.isConnected = false;
-        return false;
-      }
-
-      console.log(`PRINTER_DEBUG: Connected successfully to device name=${device.name} address=${device.address}`);
-      this.isConnected = true;
-      // Always keep selectedPrinter in sync with the last successfully connected device
-      if (!this.selectedPrinter || this.selectedPrinter.address !== device.address) {
-        this.selectedPrinter = device;
-        this.selectedAddress = device.address;
-      }
+      await this.connectOrThrow(address);
       return true;
-    } catch (error) {
-      const permErr = this.extractPermissionError(error);
-      if (permErr) {
-        this.permissionError = permErr;
-        console.error(`PRINTER_DEBUG: connect() – permission error: ${permErr}`);
-      } else {
-        console.error('PRINTER_DEBUG: connect() – caught exception:', error);
-      }
-      this.isConnected = false;
+    } catch {
       return false;
     }
   }
@@ -244,6 +343,7 @@ export class Printer {
       console.log(`PRINTER_DEBUG: disconnect() called, manualDisconnect=${manualDisconnect}`);
       await CapacitorThermalPrinter.disconnect();
       this.isConnected = false;
+      this.clearConnectionError();
       this.userManuallyDisconnected = manualDisconnect;
       console.log('PRINTER_DEBUG: Disconnected from printer');
     } catch (error) {
@@ -260,6 +360,7 @@ export class Printer {
   async scanForPrinters() {
     console.log('PRINTER_DEBUG: scanForPrinters() entered');
     this.permissionError = null;
+    this.clearConnectionError();
 
     const permissionsOk = await this.ensureBluetoothPermissions();
     if (!permissionsOk) {
@@ -342,6 +443,7 @@ export class Printer {
     console.log(`PRINTER_DEBUG: selectPrinter called with address=${address}`);
     this.selectedAddress = address;
     this.selectedPrinter = this.discoveredPrinters.find(p => p.address === address) || null;
+    this.clearConnectionError();
     console.log(`PRINTER_DEBUG: selectedPrinter=${JSON.stringify(this.selectedPrinter)}`);
 
     // Reset manual disconnection flag when user selects a printer
@@ -360,6 +462,7 @@ export class Printer {
     console.log('PRINTER_DEBUG: clearPrinterSelection()');
     this.selectedPrinter = null;
     this.selectedAddress = '';
+    this.clearConnectionError();
     this.userManuallyDisconnected = false;
 
     // Remove from localStorage
@@ -486,18 +589,12 @@ export class Printer {
 
   async printSample() {
     if (!this.selectedPrinter) {
-      console.error('PRINTER_DEBUG: printSample() – no printer selected');
+      console.warn('PRINTER_DEBUG: printSample() – no printer selected');
       return;
     }
 
     try {
-      // Use the new connect method
-      const connected = await this.connect();
-
-      if (!connected) {
-        console.error('PRINTER_DEBUG: printSample() – failed to connect to printer');
-        return;
-      }
+      await this.connectOrThrow(this.selectedPrinter.address);
 
       console.log('PRINTER_DEBUG: printSample() – connected, sending print job');
 
@@ -525,11 +622,7 @@ export class Printer {
     }
 
     try {
-      const connected = await this.connect();
-
-      if (!connected) {
-        throw new Error('Failed to connect to printer');
-      }
+      await this.connectOrThrow(this.selectedPrinter.address);
 
       console.log('PRINTER_DEBUG: printReceipt() – sending receipt');
 

@@ -95,6 +95,13 @@
           </div>
         }
 
+        @if (printerService.connectionError) {
+          <div class="permission-error">
+            <ion-icon name="close-circle-outline" color="danger"></ion-icon>
+            <p>{{ printerService.connectionError }}</p>
+          </div>
+        }
+
         <ion-button 
           (click)="scanForPrinters()" 
           [disabled]="isScanning"

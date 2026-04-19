@@ -296,12 +296,7 @@ export class OrderSummaryComponent {
     // Format receipt content
     const receiptContent = this.formatReceipt(response);
 
-    try {
-      await this.printer.printReceipt(receiptContent);
-    } catch (error) {
-      console.error('Error printing receipt:', error);
-      this.showToast('ORDER_SUMMARY.PRINT_FAILED', 'top');
-    }
+    await this.printer.printReceipt(receiptContent);
   }
 
   /**
