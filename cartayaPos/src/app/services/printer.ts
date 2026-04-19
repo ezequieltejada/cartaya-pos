@@ -1,5 +1,5 @@
-import { computed, inject, Injectable, NgZone, signal } from '@angular/core';
-import { Capacitor } from '@capacitor/core';
+import { computed, inject, Injectable, NgZone, OnDestroy, signal } from '@angular/core';
+import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { Device } from '@capacitor/device';
 import { CapacitorThermalPrinter } from 'capacitor-thermal-printer';
 
@@ -12,15 +12,23 @@ const ANDROID_12_VERSION = 12;
 
 export type PrinterStatus = 'connected' | 'found-not-connected' | 'not-found';
 
+type PrinterDevice = {
+  name: string;
+  address: string;
+};
+
 @Injectable({
   providedIn: 'root'
 })
-export class Printer {
+export class Printer implements OnDestroy {
   // Storage keys for persisting printer selection and connection state
   private readonly STORAGE_KEY = 'selected_printer';
   private readonly CONNECTION_STATE_KEY = 'printer_connection_state';
   private readonly selectedPrinterState = signal<any>(null);
   private readonly connectedState = signal(false);
+  private connectionListenersReady: Promise<void> | null = null;
+  private connectedListenerHandle: PluginListenerHandle | null = null;
+  private disconnectedListenerHandle: PluginListenerHandle | null = null;
 
   // Public properties
   discoveredPrinters: any[] = [];
@@ -73,6 +81,87 @@ export class Printer {
 
   constructor() {
     console.log('PRINTER_DEBUG: Printer service constructed');
+    void this.initializeConnectionListeners();
+  }
+
+  ngOnDestroy(): void {
+    void this.removeConnectionListeners();
+  }
+
+  private async initializeConnectionListeners(): Promise<void> {
+    if (this.connectionListenersReady) {
+      return this.connectionListenersReady;
+    }
+
+    this.connectionListenersReady = this.registerConnectionListeners();
+    return this.connectionListenersReady;
+  }
+
+  private async registerConnectionListeners(): Promise<void> {
+    try {
+      this.connectedListenerHandle = await CapacitorThermalPrinter.addListener('connected', (device) => {
+        this.handleNativeConnected(device);
+      });
+
+      this.disconnectedListenerHandle = await CapacitorThermalPrinter.addListener('disconnected', () => {
+        this.handleNativeDisconnected();
+      });
+
+      console.log('PRINTER_DEBUG: Printer connection listeners registered');
+    } catch (error) {
+      console.error('PRINTER_DEBUG: Failed to register printer connection listeners:', error);
+      this.connectionListenersReady = null;
+    }
+  }
+
+  private async removeConnectionListeners(): Promise<void> {
+    const handles = [this.connectedListenerHandle, this.disconnectedListenerHandle];
+
+    this.connectedListenerHandle = null;
+    this.disconnectedListenerHandle = null;
+    this.connectionListenersReady = null;
+
+    await Promise.all(handles.map(async (handle) => {
+      if (!handle) {
+        return;
+      }
+
+      try {
+        await handle.remove();
+      } catch (error) {
+        console.warn('PRINTER_DEBUG: Failed to remove printer listener:', error);
+      }
+    }));
+  }
+
+  private handleNativeConnected(device: PrinterDevice): void {
+    this.ngZone.run(() => {
+      console.log(`PRINTER_DEBUG: Native connected event received for address=${device.address}`);
+      this.isConnected = true;
+      this.printerAvailable.set(true);
+      this.clearConnectionError();
+      this.userManuallyDisconnected = false;
+
+      if (!this.selectedPrinter || this.selectedPrinter.address !== device.address) {
+        this.selectedPrinter = device;
+        this.savePrinterToStorage(device);
+      }
+
+      this.selectedAddress = device.address;
+    });
+  }
+
+  private handleNativeDisconnected(): void {
+    this.ngZone.run(() => {
+      console.warn('PRINTER_DEBUG: Native disconnected event received');
+      this.isConnected = false;
+      this.printerAvailable.set(true);
+      this.clearConnectionError();
+
+      if (!this.selectedAddress && this.selectedPrinter?.address) {
+        this.selectedAddress = this.selectedPrinter.address;
+      }
+    });
   }
 
   private clearConnectionError(): void {

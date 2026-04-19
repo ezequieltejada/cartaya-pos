@@ -5,6 +5,7 @@ import { Printer } from './printer';
 
 describe('Printer', () => {
   let service: Printer;
+  let addListenerSpy: jasmine.Spy;
   let builder: {
     align: jasmine.Spy;
     text: jasmine.Spy;
@@ -12,11 +13,22 @@ describe('Printer', () => {
     cutPaper: jasmine.Spy;
     write: jasmine.Spy;
   };
+  const eventHandlers = new Map<string, (payload?: unknown) => void>();
 
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear();
+    eventHandlers.clear();
+
+    addListenerSpy = spyOn(CapacitorThermalPrinter, 'addListener').and.callFake(async (eventName, handler) => {
+      eventHandlers.set(eventName, handler as (payload?: unknown) => void);
+      return {
+        remove: jasmine.createSpy(`remove-${eventName}`),
+      } as never;
+    });
+
     TestBed.configureTestingModule({});
     service = TestBed.inject(Printer);
+    await (service as Printer & { connectionListenersReady: Promise<void> | null }).connectionListenersReady;
 
     builder = {
       align: jasmine.createSpy('align'),
@@ -34,6 +46,10 @@ describe('Printer', () => {
 
   it('should be created', () => {
     expect(service).toBeTruthy();
+  });
+
+  it('should register native printer connection listeners', () => {
+    expect(addListenerSpy.calls.allArgs().map(([eventName]) => eventName)).toEqual(['connected', 'disconnected']);
   });
 
   it('should reuse the current connection when printing a receipt', async () => {
@@ -124,6 +140,44 @@ describe('Printer', () => {
       address: 'AA:BB:CC:DD:EE:FF',
       name: 'Kitchen Printer',
     });
+    expect(service.status()).toBe('found-not-connected');
+  });
+
+  it('should update status when the native connected event fires', () => {
+    const device = {
+      address: 'AA:BB:CC:DD:EE:FF',
+      name: 'Kitchen Printer',
+    };
+
+    eventHandlers.get('connected')?.(device);
+
+    expect(service.selectedPrinter).toEqual(device);
+    expect(service.selectedAddress).toBe(device.address);
+    expect(service.isConnected).toBeTrue();
+    expect(service.printerAvailable()).toBeTrue();
+    expect(service.status()).toBe('connected');
+  });
+
+  it('should keep the selected printer and report found-not-connected when the native disconnected event fires', () => {
+    service.selectedPrinter = {
+      address: 'AA:BB:CC:DD:EE:FF',
+      name: 'Kitchen Printer',
+    };
+    service.selectedAddress = service.selectedPrinter.address;
+    service.isConnected = true;
+    service.printerAvailable.set(true);
+    service.connectionError = 'Previous error';
+
+    eventHandlers.get('disconnected')?.();
+
+    expect(service.selectedPrinter).toEqual({
+      address: 'AA:BB:CC:DD:EE:FF',
+      name: 'Kitchen Printer',
+    });
+    expect(service.selectedAddress).toBe('AA:BB:CC:DD:EE:FF');
+    expect(service.isConnected).toBeFalse();
+    expect(service.printerAvailable()).toBeTrue();
+    expect(service.connectionError).toBeNull();
     expect(service.status()).toBe('found-not-connected');
   });
 });
