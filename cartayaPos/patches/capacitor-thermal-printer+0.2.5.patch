@@ -1,0 +1,45 @@
+diff --git a/node_modules/capacitor-thermal-printer/android/src/main/java/com/malik12tree/bluetooth_print/CapacitorThermalPrinterPlugin.java b/node_modules/capacitor-thermal-printer/android/src/main/java/com/malik12tree/bluetooth_print/CapacitorThermalPrinterPlugin.java
+index 7f46e54..89197e2 100644
+--- a/node_modules/capacitor-thermal-printer/android/src/main/java/com/malik12tree/bluetooth_print/CapacitorThermalPrinterPlugin.java
++++ b/node_modules/capacitor-thermal-printer/android/src/main/java/com/malik12tree/bluetooth_print/CapacitorThermalPrinterPlugin.java
+@@ -126,8 +126,7 @@ public class CapacitorThermalPrinterPlugin extends Plugin implements PrinterObse
+             } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
+                 notifyListeners("discoveryFinish", null);
+                 mBluetoothAdapter.cancelDiscovery();
+-                getContext().unregisterReceiver(mBluetoothReceiver);
+-                mRegistered = false;
++                unregisterBluetoothReceiverIfNeeded();
+             }
+         }
+     }
+@@ -152,12 +151,28 @@ public class CapacitorThermalPrinterPlugin extends Plugin implements PrinterObse
+         Log.d(TAG, "Loading Bluetooth Permissions: " + bluetoothPermissions);
+     }
+ 
++    private void unregisterBluetoothReceiverIfNeeded() {
++        if (!mRegistered || mBluetoothReceiver == null) {
++            mBluetoothReceiver = null;
++            mRegistered = false;
++            return;
++        }
++
++        try {
++            getContext().unregisterReceiver(mBluetoothReceiver);
++        } catch (IllegalArgumentException e) {
++            Log.w(TAG, "Bluetooth receiver was already unregistered", e);
++        } finally {
++            mBluetoothReceiver = null;
++            mRegistered = false;
++        }
++    }
++
+     @Override
+     protected void handleOnDestroy() {
+         super.handleOnDestroy();
+ 
+-        getContext().unregisterReceiver(mBluetoothReceiver);
+-        mRegistered = false;
++        unregisterBluetoothReceiverIfNeeded();
+ 
+         PrinterObserverManager.getInstance().remove(this);
+     }
