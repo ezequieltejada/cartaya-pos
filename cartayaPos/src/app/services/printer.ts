@@ -1,4 +1,5 @@
 import { computed, inject, Injectable, NgZone, OnDestroy, signal } from '@angular/core';
+import { App } from '@capacitor/app';
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { Device } from '@capacitor/device';
 import { CapacitorThermalPrinter } from 'capacitor-thermal-printer';
@@ -9,6 +10,7 @@ import { CapacitorThermalPrinter } from 'capacitor-thermal-printer';
  * Note: this is the Android *version* number (12), not the API level (31).
  */
 const ANDROID_12_VERSION = 12;
+const CONNECTION_STATUS_POLL_INTERVAL_MS = 2000;
 
 export type PrinterStatus = 'connected' | 'found-not-connected' | 'not-found';
 
@@ -27,8 +29,11 @@ export class Printer implements OnDestroy {
   private readonly selectedPrinterState = signal<any>(null);
   private readonly connectedState = signal(false);
   private connectionListenersReady: Promise<void> | null = null;
+  private appStateListenerReady: Promise<void> | null = null;
   private connectedListenerHandle: PluginListenerHandle | null = null;
   private disconnectedListenerHandle: PluginListenerHandle | null = null;
+  private appStateListenerHandle: PluginListenerHandle | null = null;
+  private connectionStatusPollTimer: ReturnType<typeof setInterval> | null = null;
 
   // Public properties
   discoveredPrinters: any[] = [];
@@ -50,6 +55,12 @@ export class Printer implements OnDestroy {
 
   set isConnected(connected: boolean) {
     this.connectedState.set(connected);
+
+    if (connected) {
+      this.startConnectionStatusPolling();
+    } else {
+      this.stopConnectionStatusPolling();
+    }
   }
 
   /**
@@ -82,6 +93,7 @@ export class Printer implements OnDestroy {
   constructor() {
     console.log('PRINTER_DEBUG: Printer service constructed');
     void this.initializeConnectionListeners();
+    void this.initializeAppStateListener();
   }
 
   ngOnDestroy(): void {
@@ -95,6 +107,15 @@ export class Printer implements OnDestroy {
 
     this.connectionListenersReady = this.registerConnectionListeners();
     return this.connectionListenersReady;
+  }
+
+  private async initializeAppStateListener(): Promise<void> {
+    if (this.appStateListenerReady) {
+      return this.appStateListenerReady;
+    }
+
+    this.appStateListenerReady = this.registerAppStateListener();
+    return this.appStateListenerReady;
   }
 
   private async registerConnectionListeners(): Promise<void> {
@@ -114,12 +135,30 @@ export class Printer implements OnDestroy {
     }
   }
 
+  private async registerAppStateListener(): Promise<void> {
+    try {
+      this.appStateListenerHandle = await App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) {
+          void this.refreshConnectionStatus('app-resume');
+        }
+      });
+
+      console.log('PRINTER_DEBUG: Printer app state listener registered');
+    } catch (error) {
+      console.error('PRINTER_DEBUG: Failed to register printer app state listener:', error);
+      this.appStateListenerReady = null;
+    }
+  }
+
   private async removeConnectionListeners(): Promise<void> {
-    const handles = [this.connectedListenerHandle, this.disconnectedListenerHandle];
+    const handles = [this.connectedListenerHandle, this.disconnectedListenerHandle, this.appStateListenerHandle];
 
     this.connectedListenerHandle = null;
     this.disconnectedListenerHandle = null;
+    this.appStateListenerHandle = null;
     this.connectionListenersReady = null;
+    this.appStateListenerReady = null;
+    this.stopConnectionStatusPolling();
 
     await Promise.all(handles.map(async (handle) => {
       if (!handle) {
@@ -137,7 +176,6 @@ export class Printer implements OnDestroy {
   private handleNativeConnected(device: PrinterDevice): void {
     this.ngZone.run(() => {
       console.log(`PRINTER_DEBUG: Native connected event received for address=${device.address}`);
-      this.isConnected = true;
       this.printerAvailable.set(true);
       this.clearConnectionError();
       this.userManuallyDisconnected = false;
@@ -148,20 +186,69 @@ export class Printer implements OnDestroy {
       }
 
       this.selectedAddress = device.address;
+      this.isConnected = true;
     });
   }
 
   private handleNativeDisconnected(): void {
     this.ngZone.run(() => {
-      console.warn('PRINTER_DEBUG: Native disconnected event received');
-      this.isConnected = false;
-      this.printerAvailable.set(true);
-      this.clearConnectionError();
-
-      if (!this.selectedAddress && this.selectedPrinter?.address) {
-        this.selectedAddress = this.selectedPrinter.address;
-      }
+      this.handleDetectedDisconnection('native-event');
     });
+  }
+
+  private startConnectionStatusPolling(): void {
+    if (this.connectionStatusPollTimer !== null) {
+      return;
+    }
+
+    if (!this.selectedPrinter?.address && !this.selectedAddress) {
+      return;
+    }
+
+    this.connectionStatusPollTimer = setInterval(() => {
+      void this.refreshConnectionStatus('poll');
+    }, CONNECTION_STATUS_POLL_INTERVAL_MS);
+  }
+
+  private stopConnectionStatusPolling(): void {
+    if (this.connectionStatusPollTimer === null) {
+      return;
+    }
+
+    clearInterval(this.connectionStatusPollTimer);
+    this.connectionStatusPollTimer = null;
+  }
+
+  private async refreshConnectionStatus(source: 'poll' | 'app-resume'): Promise<void> {
+    if (!this.isConnected || (!this.selectedPrinter?.address && !this.selectedAddress)) {
+      return;
+    }
+
+    try {
+      const connected = await CapacitorThermalPrinter.isConnected();
+
+      this.ngZone.run(() => {
+        if (connected) {
+          this.printerAvailable.set(true);
+          return;
+        }
+
+        this.handleDetectedDisconnection(source);
+      });
+    } catch (error) {
+      console.warn(`PRINTER_DEBUG: Connection status probe failed during ${source}`, error);
+    }
+  }
+
+  private handleDetectedDisconnection(source: 'active-check' | 'app-resume' | 'native-event' | 'poll'): void {
+    console.warn(`PRINTER_DEBUG: Printer connection lost via ${source}`);
+    this.isConnected = false;
+    this.printerAvailable.set(true);
+    this.clearConnectionError();
+
+    if (!this.selectedAddress && this.selectedPrinter?.address) {
+      this.selectedAddress = this.selectedPrinter.address;
+    }
   }
 
   private clearConnectionError(): void {
@@ -209,11 +296,13 @@ export class Printer implements OnDestroy {
 
     try {
       const connected = await CapacitorThermalPrinter.isConnected();
-      this.isConnected = connected;
 
       if (!connected) {
+        this.handleDetectedDisconnection('active-check');
         return false;
       }
+
+      this.isConnected = true;
     } catch (error) {
       console.warn('PRINTER_DEBUG: isConnected() check failed, falling back to cached state', error);
     }
@@ -258,15 +347,15 @@ export class Printer implements OnDestroy {
         throw this.createConnectionError(this.buildInterruptedConnectionMessage(address));
       }
 
-      console.log(`PRINTER_DEBUG: Connected successfully to device name=${device.name} address=${device.address}`);
-      this.isConnected = true;
-      this.printerAvailable.set(true);
-      this.clearConnectionError();
-
       if (!this.selectedPrinter || this.selectedPrinter.address !== device.address) {
         this.selectedPrinter = device;
         this.selectedAddress = device.address;
       }
+
+      console.log(`PRINTER_DEBUG: Connected successfully to device name=${device.name} address=${device.address}`);
+      this.isConnected = true;
+      this.printerAvailable.set(true);
+      this.clearConnectionError();
     } catch (error) {
       this.isConnected = false;
 
@@ -572,6 +661,10 @@ export class Printer implements OnDestroy {
     if (this.selectedPrinter) {
       this.savePrinterToStorage(this.selectedPrinter);
     }
+
+    if (this.isConnected) {
+      this.startConnectionStatusPolling();
+    }
   }
 
   /**
@@ -584,6 +677,7 @@ export class Printer implements OnDestroy {
     this.printerAvailable.set(true);
     this.clearConnectionError();
     this.userManuallyDisconnected = false;
+    this.stopConnectionStatusPolling();
 
     // Remove from localStorage
     try {

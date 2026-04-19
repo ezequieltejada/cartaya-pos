@@ -1,4 +1,5 @@
-import { TestBed } from '@angular/core/testing';
+import { fakeAsync, flushMicrotasks, TestBed, tick } from '@angular/core/testing';
+import { App } from '@capacitor/app';
 import { CapacitorThermalPrinter } from 'capacitor-thermal-printer';
 
 import { Printer } from './printer';
@@ -6,6 +7,7 @@ import { Printer } from './printer';
 describe('Printer', () => {
   let service: Printer;
   let addListenerSpy: jasmine.Spy;
+  let appAddListenerSpy: jasmine.Spy;
   let builder: {
     align: jasmine.Spy;
     text: jasmine.Spy;
@@ -14,10 +16,12 @@ describe('Printer', () => {
     write: jasmine.Spy;
   };
   const eventHandlers = new Map<string, (payload?: unknown) => void>();
+  const appEventHandlers = new Map<string, (payload?: unknown) => void>();
 
   beforeEach(async () => {
     localStorage.clear();
     eventHandlers.clear();
+    appEventHandlers.clear();
 
     addListenerSpy = spyOn(CapacitorThermalPrinter, 'addListener').and.callFake(async (eventName, handler) => {
       eventHandlers.set(eventName, handler as (payload?: unknown) => void);
@@ -26,9 +30,17 @@ describe('Printer', () => {
       } as never;
     });
 
+    appAddListenerSpy = spyOn(App, 'addListener').and.callFake(async (eventName, handler) => {
+      appEventHandlers.set(eventName, handler as (payload?: unknown) => void);
+      return {
+        remove: jasmine.createSpy(`remove-app-${eventName}`),
+      } as never;
+    });
+
     TestBed.configureTestingModule({});
     service = TestBed.inject(Printer);
     await (service as Printer & { connectionListenersReady: Promise<void> | null }).connectionListenersReady;
+    await (service as Printer & { appStateListenerReady: Promise<void> | null }).appStateListenerReady;
 
     builder = {
       align: jasmine.createSpy('align'),
@@ -50,6 +62,10 @@ describe('Printer', () => {
 
   it('should register native printer connection listeners', () => {
     expect(addListenerSpy.calls.allArgs().map(([eventName]) => eventName)).toEqual(['connected', 'disconnected']);
+  });
+
+  it('should register an app resume listener', () => {
+    expect(appAddListenerSpy).toHaveBeenCalledWith('appStateChange', jasmine.any(Function));
   });
 
   it('should reuse the current connection when printing a receipt', async () => {
@@ -180,4 +196,38 @@ describe('Printer', () => {
     expect(service.connectionError).toBeNull();
     expect(service.status()).toBe('found-not-connected');
   });
+
+  it('should mark the printer as disconnected when the status poll detects a dropped connection', fakeAsync(() => {
+    service.selectedPrinter = {
+      address: 'AA:BB:CC:DD:EE:FF',
+      name: 'Kitchen Printer',
+    };
+    service.selectedAddress = service.selectedPrinter.address;
+
+    spyOn(CapacitorThermalPrinter, 'isConnected').and.resolveTo(false);
+
+    service.isConnected = true;
+    tick(2000);
+    flushMicrotasks();
+
+    expect(service.isConnected).toBeFalse();
+    expect(service.status()).toBe('found-not-connected');
+  }));
+
+  it('should refresh connection status when the app resumes', fakeAsync(() => {
+    service.selectedPrinter = {
+      address: 'AA:BB:CC:DD:EE:FF',
+      name: 'Kitchen Printer',
+    };
+    service.selectedAddress = service.selectedPrinter.address;
+    service.isConnected = true;
+
+    spyOn(CapacitorThermalPrinter, 'isConnected').and.resolveTo(false);
+
+    appEventHandlers.get('appStateChange')?.({ isActive: true });
+    flushMicrotasks();
+
+    expect(service.isConnected).toBeFalse();
+    expect(service.status()).toBe('found-not-connected');
+  }));
 });
