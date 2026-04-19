@@ -85,7 +85,7 @@ function handle401Error(
       isRefreshing = false;
       authService.clearSession();
       showSessionExpiredToast(toastController);
-      router.navigate(['/auth/login']);
+      router.navigate(['/auth/login'], { replaceUrl: true });
       return throwError(() => new Error('No refresh token available'));
     }
 
@@ -110,7 +110,7 @@ function handle401Error(
         // Refresh failed, clear session and redirect
         authService.clearSession();
         showSessionExpiredToast(toastController);
-        router.navigate(['/auth/login']);
+        router.navigate(['/auth/login'], { replaceUrl: true });
         
         return throwError(() => error);
       })

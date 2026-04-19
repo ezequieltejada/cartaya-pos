@@ -187,13 +187,13 @@ export class AuthService {
         await this.imageCacheService.clearCache();
         await this.clearSession();
         this.isLoading.set(false);
-        this.router.navigate(['/auth/login']);
+        this.router.navigate(['/auth/login'], { replaceUrl: true });
       }),
       catchError((error) => {
         return new Observable<void>((observer) => {
           this.clearSession().then(() => {
             this.isLoading.set(false);
-            this.router.navigate(['/auth/login']);
+            this.router.navigate(['/auth/login'], { replaceUrl: true });
             observer.next();
             observer.complete();
           });
@@ -245,7 +245,7 @@ export class AuthService {
           console.error('Failed to refresh token:', error);
           // If refresh fails, clear session and redirect to login
           this.clearSession();
-          this.router.navigate(['/auth/login']);
+          this.router.navigate(['/auth/login'], { replaceUrl: true });
           return throwError(() => error);
         })
       );

@@ -63,7 +63,7 @@ export class LoginPage implements OnInit {
 
     this.authService.login(email, password).subscribe({
       next: (): void => {
-        this.router.navigate(['/pos-selection']);
+        this.router.navigate(['/pos-selection'], { replaceUrl: true });
       },
       error: async (error: unknown): Promise<void> => {
         let messageKey = 'AUTH.ERRORS.LOGIN_FAILED';

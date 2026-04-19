@@ -56,7 +56,7 @@ export class PosSelectionPage implements OnInit {
   private loadAvailablePos(): void {
     const currentUser = this.authService.getCurrentUser();
     if (!currentUser) {
-      this.router.navigate(['/auth/login']);
+      this.router.navigate(['/auth/login'], { replaceUrl: true });
       return;
     }
 
@@ -82,7 +82,7 @@ export class PosSelectionPage implements OnInit {
 
     if (selected) {
       await this.posService.selectPos(selected);
-      this.router.navigate(['/products']);
+      this.router.navigate(['/products'], { replaceUrl: true });
     }
   }
 
