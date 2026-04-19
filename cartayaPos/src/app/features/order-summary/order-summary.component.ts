@@ -86,6 +86,9 @@ export class OrderSummaryComponent {
   readonly hasItems = computed(() => this.orderService.hasItems());
   readonly isSubmitting = computed(() => this.orderService.isSubmitting());
 
+  private isShowingCancelConfirmation = false;
+  private isShowingCashConfirmation = false;
+
   constructor() {
     addIcons({ pencil, trash, close, checkmark, chevronUp, chevronDown });
   }
@@ -95,6 +98,9 @@ export class OrderSummaryComponent {
    * Uses native Dialog plugin on iOS/Android, falls back to Ionic AlertController on web
    */
   async showCancelConfirmation(): Promise<void> {
+    if (this.isShowingCancelConfirmation) return;
+    this.isShowingCancelConfirmation = true;
+
     const title = this.translate.instant('ORDER_SUMMARY.CANCEL_CONFIRMATION');
     const message = this.translate.instant('ORDER_SUMMARY.CANCEL_MESSAGE');
     const okButtonTitle = this.translate.instant('COMMON.BUTTONS.YES');
@@ -133,6 +139,8 @@ export class OrderSummaryComponent {
       });
 
       await alert.present();
+    } finally {
+      this.isShowingCancelConfirmation = false;
     }
   }
 
@@ -152,6 +160,8 @@ export class OrderSummaryComponent {
    * Uses native Dialog plugin on iOS/Android, falls back to Ionic AlertController on web
    */
   async showCashConfirmation(): Promise<void> {
+    if (this.isShowingCashConfirmation) return;
+    this.isShowingCashConfirmation = true;
     const currencyCode = this.currencyCode();
     const total = this.orderTotal().toFixed(2);
     const formattedTotal = this.currencyPipe.transform(total, currencyCode, 'symbol', '1.2-2');
@@ -200,6 +210,8 @@ export class OrderSummaryComponent {
       });
 
       await alert.present();
+    } finally {
+      this.isShowingCashConfirmation = false;
     }
   }
 
