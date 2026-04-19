@@ -16,6 +16,7 @@ import { authInterceptor } from './app/core/interceptors/auth.interceptor';
 import { capacitorHttpInterceptor } from './app/core/interceptors/capacitor-http.interceptor';
 import { languageHeaderInterceptor } from './app/core/interceptors/language-header.interceptor';
 import { offlineInterceptor } from './app/core/interceptors/offline.interceptor';
+import { ErrorReportingService } from './app/core/services/error-reporting.service';
 import { environment } from './environments/environment';
 
 Sentry.init(
@@ -67,6 +68,7 @@ bootstrapApplication(AppComponent, {
     },
     provideAppInitializer(() => {
       inject(SentryAngular.TraceService);
+      inject(ErrorReportingService).installConsoleErrorCapture();
     }),
   ],
 });
