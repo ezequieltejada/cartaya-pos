@@ -129,6 +129,20 @@ pipeline {
                         echo "--- Building Angular App ---"
                         // Generates the 'www' directory
                         sh 'npm run build'
+
+                        echo "--- Uploading Sentry Source Maps ---"
+                        sh '''
+                            if [ -n "${SENTRY_AUTH_TOKEN:-}" ]; then
+                                export SENTRY_ORG=estudio-pws
+                                export SENTRY_PROJECT=cartaya-pos
+                                npm run sentry:sourcemaps
+                            elif [ "${BRANCH_NAME:-}" = "main" ]; then
+                                echo "SENTRY_AUTH_TOKEN is required on main to upload Sentry source maps."
+                                exit 1
+                            else
+                                echo "Skipping Sentry source map upload because SENTRY_AUTH_TOKEN is not set."
+                            fi
+                        '''
                     }
                 }
             }
