@@ -68,6 +68,18 @@ def normalizeVersion(String version) {
     return normalized
 }
 
+/**
+ * Convert a branch name into a tag-safe suffix for prerelease tags.
+ */
+def sanitizeTagSuffix(String value) {
+    def sanitized = (value ?: 'branch')
+        .toLowerCase()
+        .replaceAll(/[^0-9a-z]+/, '-')
+        .replaceAll(/^-+|-+$/, '')
+
+    return sanitized ?: 'branch'
+}
+
 pipeline {
     agent none
 
@@ -129,6 +141,20 @@ pipeline {
                         echo "--- Building Angular App ---"
                         // Generates the 'www' directory
                         sh 'npm run build'
+
+                        echo "--- Uploading Sentry Source Maps ---"
+                        sh '''
+                            if [ -n "${SENTRY_AUTH_TOKEN:-}" ]; then
+                                export SENTRY_ORG=estudio-pws
+                                export SENTRY_PROJECT=cartaya-pos
+                                npm run sentry:sourcemaps
+                            elif [ "${BRANCH_NAME:-}" = "main" ]; then
+                                echo "SENTRY_AUTH_TOKEN is required on main to upload Sentry source maps."
+                                exit 1
+                            else
+                                echo "Skipping Sentry source map upload because SENTRY_AUTH_TOKEN is not set."
+                            fi
+                        '''
                     }
                 }
             }
@@ -270,12 +296,6 @@ EOF
 // -------------------------------------------------------------------------
         stage('Publish Release') {
             agent { label 'jenkins-agent' }
-            when {
-                anyOf {
-                    branch 'main'
-                    triggeredBy 'UserIdCause' // Allows manual trigger 
-                }
-            }
             steps {
                 script {
                     dir('cartayaPos') {
@@ -292,7 +312,9 @@ EOF
                         
                         // 3. Determine Tag Name and Prerelease status
                         def isMain = (env.BRANCH_NAME == 'main')
-                        def tagName = isMain ? "v${normVersion}" : "v${normVersion}-DEV-${env.BUILD_NUMBER}"
+                        def branchNameForTag = env.CHANGE_BRANCH ?: env.BRANCH_NAME
+                        def branchTagSuffix = sanitizeTagSuffix(branchNameForTag)
+                        def tagName = isMain ? "v${normVersion}" : "v${normVersion}-${branchTagSuffix}-${env.BUILD_NUMBER}"
                         def isPrerelease = !isMain
                         
                         // 4. Extract Changelog safely

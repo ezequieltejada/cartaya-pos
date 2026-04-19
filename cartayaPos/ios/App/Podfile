@@ -18,9 +18,8 @@ def capacitor_pods
   pod 'CapacitorKeyboard', :path => '../../node_modules/@capacitor/keyboard'
   pod 'CapacitorNetwork', :path => '../../node_modules/@capacitor/network'
   pod 'CapacitorStatusBar', :path => '../../node_modules/@capacitor/status-bar'
-  if ENV.fetch('CAPACITOR_THERMAL_PRINTER_ENABLED', '1') == '1'
-    pod 'CapacitorThermalPrinter', :path => '../../node_modules/capacitor-thermal-printer'
-  end
+  pod 'SentryCapacitor', :path => '../../node_modules/@sentry/capacitor'
+  pod 'CapacitorThermalPrinter', :path => '../../node_modules/capacitor-thermal-printer'
 end
 
 target 'App' do

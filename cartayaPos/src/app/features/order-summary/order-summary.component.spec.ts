@@ -125,7 +125,15 @@ describe('OrderSummaryComponent', () => {
       currency: signal('USD'),
     });
 
-    mockPrinter = jasmine.createSpyObj('Printer', ['scanForPrinters', 'selectPrinter', 'printSample']);
+    mockPrinter = jasmine.createSpyObj('Printer', [
+      'scanForPrinters',
+      'selectPrinter',
+      'printSample',
+      'printReceipt',
+      'isUserManuallyDisconnected',
+    ]);
+    mockPrinter.selectedPrinter = null;
+    mockPrinter.isUserManuallyDisconnected.and.returnValue(false);
 
     mockRouter = jasmine.createSpyObj('Router', ['navigate']);
     mockRouter.navigate.and.returnValue(Promise.resolve(true));
@@ -320,6 +328,8 @@ describe('OrderSummaryComponent', () => {
     it('should navigate to /products even if receipt printing fails', async () => {
       // Setup
       mockOrderService.submitOrder.and.returnValue(of(mockSubmitOrderResponse));
+      mockPrinter.selectedPrinter = { address: 'AA:BB:CC:DD:EE:FF', name: 'Kitchen Printer' };
+      mockPrinter.printReceipt.and.returnValue(Promise.reject(new Error('Printer offline')));
       (mockOrderService.orderTotal as jasmine.Spy).and.returnValue(16.5);
       (mockOrderService.orderItems as jasmine.Spy).and.returnValue(mockOrderItems);
 
@@ -335,6 +345,25 @@ describe('OrderSummaryComponent', () => {
 
       // Assert - should navigate even if printing fails
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/products']);
+      expect(mockToastController.create).toHaveBeenCalled();
+    });
+
+    it('should attempt printing when a printer is selected', async () => {
+      mockOrderService.submitOrder.and.returnValue(of(mockSubmitOrderResponse));
+      mockPrinter.selectedPrinter = { address: 'AA:BB:CC:DD:EE:FF', name: 'Kitchen Printer' };
+      mockPrinter.printReceipt.and.returnValue(Promise.resolve());
+      (mockOrderService.orderTotal as jasmine.Spy).and.returnValue(16.5);
+      (mockOrderService.orderItems as jasmine.Spy).and.returnValue(mockOrderItems);
+
+      await component.showCashConfirmation();
+      const alertConfig = (mockAlertController.create as jasmine.Spy).calls.mostRecent().args[0];
+      const confirmButton = alertConfig.buttons.find((btn: any) => btn.text === 'Confirm');
+
+      confirmButton.handler();
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(mockPrinter.printReceipt).toHaveBeenCalled();
     });
 
     it('should show error toast on submission failure', async () => {

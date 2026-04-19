@@ -266,7 +266,7 @@ export class ProductService {
 
               // Handle 401 Unauthorized - redirect to login
               if (error.status === 401) {
-                this.router.navigate(['/auth/login']);
+                this.router.navigate(['/auth/login'], { replaceUrl: true });
                 return of([]);
               }
 

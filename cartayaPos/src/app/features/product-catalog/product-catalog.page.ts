@@ -408,7 +408,7 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
     const toast = await this.toastController.create({
       message,
       duration: 2000,
-      position: 'bottom',
+      position: 'top',
       color: 'success',
       icon: 'checkmark-circle-outline',
     });

@@ -1,10 +1,12 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { App } from '@capacitor/app';
 import { Device } from '@capacitor/device';
 import { IonApp, IonBadge, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonItem, IonItemDivider, IonLabel, IonList, IonMenu, IonMenuToggle, IonRouterOutlet, IonTitle, IonToolbar, MenuController, Platform } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
 import { cartOutline, checkmarkCircleOutline, close, closeCircleOutline, cloudUploadOutline, gridOutline, homeOutline, imageOutline, logOutOutline, menu, receiptOutline, settingsOutline } from 'ionicons/icons';
+import { Subscription } from 'rxjs';
 import { AuthService } from './core/services/auth.service';
 import { LanguageService } from './core/services/language.service';
 import { OrderQueueService } from './core/services/order-queue.service';
@@ -12,6 +14,7 @@ import { PosService } from './core/services/pos.service';
 import { StorageService } from './core/services/storage.service';
 import { SyncCoordinatorService } from './core/services/sync-coordinator.service';
 import { TenantService } from './core/services/tenant.service';
+import { Printer } from './services/printer';
 @Component({
   selector: 'app-root',
   templateUrl: 'app.component.html',
@@ -27,9 +30,11 @@ export class AppComponent implements OnInit, OnDestroy {
   private tenantService = inject(TenantService);
   private posService = inject(PosService);
   private syncCoordinator = inject(SyncCoordinatorService);
+  private printerService = inject(Printer);
   queueService = inject(OrderQueueService);
   private router = inject(Router);
   private translate = inject(TranslateService);
+  private backButtonSubscription?: Subscription;
 
   constructor() {
     addIcons({ menu, imageOutline, cartOutline, checkmarkCircleOutline, logOutOutline, homeOutline, gridOutline, settingsOutline, closeCircleOutline, receiptOutline, cloudUploadOutline, close });
@@ -38,6 +43,7 @@ export class AppComponent implements OnInit, OnDestroy {
   async ngOnInit() {
     // Wait for platform to be ready
     await this.platform.ready();
+    this.registerBackButtonHandler();
 
     // Initialize storage first (required by LanguageService)
     try {
@@ -47,6 +53,7 @@ export class AppComponent implements OnInit, OnDestroy {
       // After storage is initialized, restore tenant and PoS selections
       await this.tenantService.restoreSelectedTenant();
       await this.posService.restoreSelectedPos();
+      this.printerService.loadPersistedPrinter();
     } catch (error) {
       console.error('Failed to initialize storage:', error);
     }
@@ -67,15 +74,15 @@ export class AppComponent implements OnInit, OnDestroy {
       next: (user) => {
         if (user) {
           // User has valid session, navigate to products
-          this.router.navigate(['/products']);
+          this.router.navigate(['/products'], { replaceUrl: true });
         } else {
           // No session, navigate to login
-          this.router.navigate(['/auth/login']);
+          this.router.navigate(['/auth/login'], { replaceUrl: true });
         }
       },
       error: () => {
         // Error checking session, navigate to login
-        this.router.navigate(['/auth/login']);
+        this.router.navigate(['/auth/login'], { replaceUrl: true });
       },
     });
   }
@@ -85,7 +92,42 @@ export class AppComponent implements OnInit, OnDestroy {
    * Destroys the SyncCoordinator service
    */
   ngOnDestroy(): void {
+    this.backButtonSubscription?.unsubscribe();
     this.syncCoordinator.destroy();
+  }
+
+  private registerBackButtonHandler(): void {
+    this.backButtonSubscription = this.platform.backButton.subscribeWithPriority(
+      10,
+      (processNextHandler) => {
+        void this.handleBackButton(processNextHandler);
+      }
+    );
+  }
+
+  private async handleBackButton(
+    processNextHandler?: () => void
+  ): Promise<void> {
+    if (!this.platform.is('android')) {
+      processNextHandler?.();
+      return;
+    }
+
+    if (await this.menuController.isOpen('main-menu')) {
+      await this.menuController.close('main-menu');
+      return;
+    }
+
+    if (this.isProductCatalogRootRoute()) {
+      await App.exitApp();
+      return;
+    }
+
+    processNextHandler?.();
+  }
+
+  private isProductCatalogRootRoute(): boolean {
+    return this.router.url.split('?')[0].split('#')[0] === '/products';
   }
 
   /**
@@ -161,11 +203,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   logout() {
-    this.authService.logout().subscribe({
-      next: () => {
-        this.router.navigate(['/auth/login']);
-      },
-    });
+    this.authService.logout().subscribe();
   }
 
   closeMenu() {
