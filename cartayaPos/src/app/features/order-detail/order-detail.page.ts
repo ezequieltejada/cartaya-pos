@@ -133,10 +133,15 @@ export class OrderDetailPage implements OnInit {
    */
   private async enrichOrderWithProductNames(order: Order, tenantId: string): Promise<Order> {
     try {
-      // Fetch all products for this tenant using ProductService
-      const products = await firstValueFrom(
-        this.productService.fetchProducts(tenantId)
-      );
+      // Use products already loaded in the signal to avoid overwriting the shared
+      // products signal (which includes enriched price data) with raw un-priced products.
+      // Fall back to fetchProductsWithPrices only when the signal is empty.
+      let products = this.productService.products();
+      if (products.length === 0) {
+        products = await firstValueFrom(
+          this.productService.fetchProductsWithPrices(tenantId)
+        );
+      }
 
       // Build map of productId -> productName for quick lookup
       const productNameMap = new Map<string, string>();
