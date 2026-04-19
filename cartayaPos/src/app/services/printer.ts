@@ -1,4 +1,4 @@
-import { inject, Injectable, NgZone, signal } from '@angular/core';
+import { computed, inject, Injectable, NgZone, signal } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import { Device } from '@capacitor/device';
 import { CapacitorThermalPrinter } from 'capacitor-thermal-printer';
@@ -10,6 +10,8 @@ import { CapacitorThermalPrinter } from 'capacitor-thermal-printer';
  */
 const ANDROID_12_VERSION = 12;
 
+export type PrinterStatus = 'connected' | 'found-not-connected' | 'not-found';
+
 @Injectable({
   providedIn: 'root'
 })
@@ -17,13 +19,30 @@ export class Printer {
   // Storage keys for persisting printer selection and connection state
   private readonly STORAGE_KEY = 'selected_printer';
   private readonly CONNECTION_STATE_KEY = 'printer_connection_state';
+  private readonly selectedPrinterState = signal<any>(null);
+  private readonly connectedState = signal(false);
 
   // Public properties
   discoveredPrinters: any[] = [];
-  selectedPrinter: any = null;
+
+  get selectedPrinter(): any {
+    return this.selectedPrinterState();
+  }
+
+  set selectedPrinter(printer: any) {
+    this.selectedPrinterState.set(printer);
+  }
+
   selectedAddress: string = '';
   isScanning: boolean = false;
-  isConnected: boolean = false;
+
+  get isConnected(): boolean {
+    return this.connectedState();
+  }
+
+  set isConnected(connected: boolean) {
+    this.connectedState.set(connected);
+  }
 
   /**
    * Populated with a human-readable message when a permission check or request
@@ -40,6 +59,15 @@ export class Printer {
 
   // Signal for tracking printer availability status
   printerAvailable = signal<boolean>(true);
+  readonly status = computed<PrinterStatus>(() => {
+    const selectedPrinter = this.selectedPrinterState();
+
+    if (!selectedPrinter || !this.printerAvailable()) {
+      return 'not-found';
+    }
+
+    return this.connectedState() ? 'connected' : 'found-not-connected';
+  });
 
   ngZone = inject(NgZone);
 
@@ -143,6 +171,7 @@ export class Printer {
 
       console.log(`PRINTER_DEBUG: Connected successfully to device name=${device.name} address=${device.address}`);
       this.isConnected = true;
+      this.printerAvailable.set(true);
       this.clearConnectionError();
 
       if (!this.selectedPrinter || this.selectedPrinter.address !== device.address) {
@@ -443,6 +472,7 @@ export class Printer {
     console.log(`PRINTER_DEBUG: selectPrinter called with address=${address}`);
     this.selectedAddress = address;
     this.selectedPrinter = this.discoveredPrinters.find(p => p.address === address) || null;
+    this.printerAvailable.set(true);
     this.clearConnectionError();
     console.log(`PRINTER_DEBUG: selectedPrinter=${JSON.stringify(this.selectedPrinter)}`);
 
@@ -462,6 +492,7 @@ export class Printer {
     console.log('PRINTER_DEBUG: clearPrinterSelection()');
     this.selectedPrinter = null;
     this.selectedAddress = '';
+    this.printerAvailable.set(true);
     this.clearConnectionError();
     this.userManuallyDisconnected = false;
 
@@ -485,6 +516,7 @@ export class Printer {
         const savedPrinter = JSON.parse(savedPrinterJson);
         this.selectedPrinter = savedPrinter;
         this.selectedAddress = savedPrinter.address || '';
+        this.printerAvailable.set(true);
         console.log(`PRINTER_DEBUG: Loaded persisted printer: name="${savedPrinter.name}" address="${savedPrinter.address}"`);
       } else {
         console.log('PRINTER_DEBUG: No persisted printer found in localStorage');

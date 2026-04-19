@@ -14,6 +14,7 @@ describe('Printer', () => {
   };
 
   beforeEach(() => {
+    localStorage.clear();
     TestBed.configureTestingModule({});
     service = TestBed.inject(Printer);
 
@@ -68,5 +69,61 @@ describe('Printer', () => {
       /Failed to connect to printer "Kitchen Printer" \(AA:BB:CC:DD:EE:FF\)/
     );
     expect(service.connectionError).toContain('Failed to connect to printer');
+  });
+
+  it('should report connected status when a selected printer is connected', () => {
+    service.selectedPrinter = {
+      address: 'AA:BB:CC:DD:EE:FF',
+      name: 'Kitchen Printer',
+    };
+    service.isConnected = true;
+    service.printerAvailable.set(true);
+
+    expect(service.status()).toBe('connected');
+  });
+
+  it('should report found-not-connected status when a printer is selected but disconnected', () => {
+    service.selectedPrinter = {
+      address: 'AA:BB:CC:DD:EE:FF',
+      name: 'Kitchen Printer',
+    };
+    service.isConnected = false;
+    service.printerAvailable.set(true);
+
+    expect(service.status()).toBe('found-not-connected');
+  });
+
+  it('should report not-found status when no printer is selected', () => {
+    service.selectedPrinter = null;
+    service.isConnected = false;
+    service.printerAvailable.set(true);
+
+    expect(service.status()).toBe('not-found');
+  });
+
+  it('should report not-found status when the selected printer becomes unavailable', () => {
+    service.selectedPrinter = {
+      address: 'AA:BB:CC:DD:EE:FF',
+      name: 'Kitchen Printer',
+    };
+    service.isConnected = true;
+    service.printerAvailable.set(false);
+
+    expect(service.status()).toBe('not-found');
+  });
+
+  it('should restore a persisted printer as found-not-connected status', () => {
+    localStorage.setItem('selected_printer', JSON.stringify({
+      address: 'AA:BB:CC:DD:EE:FF',
+      name: 'Kitchen Printer',
+    }));
+
+    service.loadPersistedPrinter();
+
+    expect(service.selectedPrinter).toEqual({
+      address: 'AA:BB:CC:DD:EE:FF',
+      name: 'Kitchen Printer',
+    });
+    expect(service.status()).toBe('found-not-connected');
   });
 });

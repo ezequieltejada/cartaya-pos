@@ -12,6 +12,7 @@ import { PosService } from './core/services/pos.service';
 import { StorageService } from './core/services/storage.service';
 import { SyncCoordinatorService } from './core/services/sync-coordinator.service';
 import { TenantService } from './core/services/tenant.service';
+import { Printer } from './services/printer';
 @Component({
   selector: 'app-root',
   templateUrl: 'app.component.html',
@@ -27,6 +28,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private tenantService = inject(TenantService);
   private posService = inject(PosService);
   private syncCoordinator = inject(SyncCoordinatorService);
+  private printerService = inject(Printer);
   queueService = inject(OrderQueueService);
   private router = inject(Router);
   private translate = inject(TranslateService);
@@ -47,6 +49,7 @@ export class AppComponent implements OnInit, OnDestroy {
       // After storage is initialized, restore tenant and PoS selections
       await this.tenantService.restoreSelectedTenant();
       await this.posService.restoreSelectedPos();
+      this.printerService.loadPersistedPrinter();
     } catch (error) {
       console.error('Failed to initialize storage:', error);
     }
