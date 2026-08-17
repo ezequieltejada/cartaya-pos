@@ -33,6 +33,7 @@
       "CARD_TITLE": "Iniciar Sessió",
       "EMAIL_LABEL": "Correu Electrònic",
       "PASSWORD_LABEL": "Contrasenya",
+      "SHOW_PASSWORD": "Mostra la contrasenya",
       "LOGIN_BUTTON": "Iniciar Sessió",
       "FORGOT_PASSWORD": "Heu oblidat la vostra contrasenya?",
       "LOGGING_IN": "Iniciant sessió...",

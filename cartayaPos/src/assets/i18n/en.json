@@ -33,6 +33,7 @@
       "CARD_TITLE": "Login",
       "EMAIL_LABEL": "Email",
       "PASSWORD_LABEL": "Password",
+      "SHOW_PASSWORD": "Show password",
       "LOGIN_BUTTON": "Login",
       "FORGOT_PASSWORD": "Forgot password?",
       "LOGGING_IN": "Logging in...",

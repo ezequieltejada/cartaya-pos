@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { IonButton, IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonContent, IonInput, IonSpinner, IonText, ToastController } from '@ionic/angular/standalone';
+import { IonButton, IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonContent, IonInput, IonItem, IonLabel, IonSpinner, IonText, IonToggle, ToastController } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../../core/services/auth.service';
 
@@ -22,6 +22,9 @@ import { AuthService } from '../../../core/services/auth.service';
     IonButton,
     IonSpinner,
     IonText,
+    IonItem,
+    IonLabel,
+    IonToggle,
   ],
   templateUrl: './login.page.html',
   styleUrls: ['./login.page.scss'],
@@ -35,8 +38,14 @@ export class LoginPage implements OnInit {
 
   loginForm!: FormGroup;
 
+  showPassword = false;
+
   ngOnInit(): void {
     this.initializeForm();
+  }
+
+  togglePasswordVisibility(): void {
+    this.showPassword = !this.showPassword;
   }
 
   private initializeForm(): void {

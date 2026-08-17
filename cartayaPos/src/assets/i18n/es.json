@@ -33,6 +33,7 @@
       "CARD_TITLE": "Iniciar Sesión",
       "EMAIL_LABEL": "Correo Electrónico",
       "PASSWORD_LABEL": "Contraseña",
+      "SHOW_PASSWORD": "Mostrar contraseña",
       "LOGIN_BUTTON": "Iniciar Sesión",
       "FORGOT_PASSWORD": "¿Olvidó su contraseña?",
       "LOGGING_IN": "Iniciando sesión...",

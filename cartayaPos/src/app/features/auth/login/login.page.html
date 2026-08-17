@@ -8,13 +8,14 @@
       </ion-card-header>
 
       <ion-card-content>
-        <form [formGroup]="loginForm">
+        <form [formGroup]="loginForm" (ngSubmit)="onLogin()">
           <div class="form-group">
             <ion-input
               formControlName="email"
               type="email"
               [placeholder]="'AUTH.LOGIN.EMAIL_LABEL' | translate"
               [class.input-error]="email?.invalid && email?.touched"
+              (keydown.enter)="onLogin()"
               class="ion-margin-bottom"
             />
             <ion-text
@@ -30,11 +31,20 @@
           <div class="form-group">
             <ion-input
               formControlName="password"
-              type="password"
+              [type]="showPassword ? 'text' : 'password'"
               [placeholder]="'AUTH.LOGIN.PASSWORD_LABEL' | translate"
               [class.input-error]="password?.invalid && password?.touched"
+              (keydown.enter)="onLogin()"
               class="ion-margin-bottom"
             />
+            <ion-item lines="none" class="show-password-toggle">
+              <ion-toggle
+                slot="start"
+                [checked]="showPassword"
+                (ionChange)="togglePasswordVisibility()"
+              ></ion-toggle>
+              <ion-label>{{ 'AUTH.LOGIN.SHOW_PASSWORD' | translate }}</ion-label>
+            </ion-item>
             <ion-text
               color="danger"
               *ngIf="password?.invalid && password?.touched"
@@ -47,7 +57,7 @@
 
           <ion-button
             expand="block"
-            (click)="onLogin()"
+            type="submit"
             [disabled]="loginForm.invalid || isLoading"
             class="ion-margin-top"
           >
