@@ -50,9 +50,8 @@ export class AppComponent implements OnInit, OnDestroy {
       await this.storageService.init();
       await this.authService.loadTokensFromStorage();
 
-      // After storage is initialized, restore tenant and PoS selections
+      // After storage is initialized, restore tenant selection
       await this.tenantService.restoreSelectedTenant();
-      await this.posService.restoreSelectedPos();
       this.printerService.loadPersistedPrinter();
     } catch (error) {
       console.error('Failed to initialize storage:', error);
@@ -71,12 +70,12 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // Check for existing session
     this.authService.checkSession().subscribe({
-      next: (user) => {
+      next: async (user) => {
         if (user) {
-          // User has valid session, navigate to products
+          // Restore the user's PoS selection now that the user is known
+          await this.posService.restoreSelectedPos();
           this.router.navigate(['/products'], { replaceUrl: true });
         } else {
-          // No session, navigate to login
           this.router.navigate(['/auth/login'], { replaceUrl: true });
         }
       },

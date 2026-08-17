@@ -64,12 +64,28 @@ export class PosSelectionPage implements OnInit {
     // The tenant ID is automatically retrieved from TenantService
     this.posService.fetchAvailablePos().subscribe({
       next: () => {
-        // Available PoS are updated in the signal
+        void this.applyInitialSelection();
       },
       error: () => {
         // Error is handled in the service
       },
     });
+  }
+
+  private async applyInitialSelection(): Promise<void> {
+    const posList = this.availablePos;
+    if (posList.length === 0) {
+      return;
+    }
+
+    await this.posService.restoreSelectedPos();
+    const savedPos = this.posService.getSelectedPos();
+
+    if (savedPos && posList.some((pos) => pos.id === savedPos.id)) {
+      this.selectedPosId = savedPos.id;
+    } else {
+      this.selectedPosId = posList[0].id;
+    }
   }
 
   async onContinue(): Promise<void> {

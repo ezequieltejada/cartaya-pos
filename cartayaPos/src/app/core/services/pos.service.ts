@@ -3,6 +3,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { Observable, catchError, map, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Pos } from '../models/pos.model';
+import { AuthService } from './auth.service';
 import { StorageService } from './storage.service';
 import { TenantService } from './tenant.service';
 
@@ -17,6 +18,7 @@ export class PosService {
   private httpClient = inject(HttpClient);
   private storageService = inject(StorageService);
   private tenantService = inject(TenantService);
+  private authService = inject(AuthService);
 
   private readonly API_URL = `${environment.apiUrl}/api`;
 
@@ -24,6 +26,16 @@ export class PosService {
   readonly availablePos = signal<Pos[]>([]);
   readonly selectedPos = signal<Pos | null>(null);
   readonly isLoading = signal(false);
+
+  /**
+   * Storage key for the PoS selection, scoped to the current user
+   * so another user on the same device does not see the previous
+   * user's selection. Returns null when no user is logged in.
+   */
+  private getSelectedPosKey(): string | null {
+    const userId = this.authService.getCurrentUser()?.id;
+    return userId ? `selectedPos:${userId}` : null;
+  }
 
   /**
    * Fetch available PoS locations for the current tenant
@@ -64,7 +76,11 @@ export class PosService {
    */
   async selectPos(pos: Pos): Promise<void> {
     this.selectedPos.set(pos);
-    await this.storageService.set('selectedPos', pos);
+    const key = this.getSelectedPosKey();
+    if (!key) {
+      return;
+    }
+    await this.storageService.set(key, pos);
   }
 
   /**
@@ -72,7 +88,11 @@ export class PosService {
    */
   async clearSelection(): Promise<void> {
     this.selectedPos.set(null);
-    await this.storageService.remove('selectedPos');
+    const key = this.getSelectedPosKey();
+    if (!key) {
+      return;
+    }
+    await this.storageService.remove(key);
   }
 
   /**
@@ -88,7 +108,11 @@ export class PosService {
    */
   async restoreSelectedPos(): Promise<void> {
     try {
-      const pos = await this.storageService.get<Pos>('selectedPos');
+      const key = this.getSelectedPosKey();
+      if (!key) {
+        return;
+      }
+      const pos = await this.storageService.get<Pos>(key);
       if (pos) {
         this.selectedPos.set(pos);
       }
