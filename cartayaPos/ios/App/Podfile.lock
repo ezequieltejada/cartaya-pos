@@ -1,21 +1,29 @@
 PODS:
-  - Capacitor (7.4.3):
+  - Capacitor (8.5.0):
     - CapacitorCordova
-  - CapacitorApp (7.1.0):
+  - CapacitorApp (8.1.1):
     - Capacitor
-  - CapacitorCordova (7.4.3)
-  - CapacitorDevice (7.0.2):
+  - CapacitorCordova (8.5.0)
+  - CapacitorDevice (8.0.3):
     - Capacitor
-  - CapacitorDialog (7.0.2):
+  - CapacitorDialog (8.0.1):
     - Capacitor
-  - CapacitorHaptics (7.0.2):
+  - CapacitorHaptics (8.0.2):
     - Capacitor
-  - CapacitorKeyboard (7.0.3):
+  - CapacitorKeyboard (8.0.5):
     - Capacitor
-  - CapacitorNetwork (7.0.2):
+  - CapacitorNetwork (8.0.1):
     - Capacitor
-  - CapacitorStatusBar (7.0.3):
+  - CapacitorStatusBar (8.0.3):
     - Capacitor
+  - CapacitorThermalPrinter (0.2.5):
+    - Capacitor
+  - Sentry (9.8.0):
+    - Sentry/Core (= 9.8.0)
+  - Sentry/Core (9.8.0)
+  - SentryCapacitor (3.2.1):
+    - Capacitor
+    - Sentry (= 9.8.0)
 
 DEPENDENCIES:
   - "Capacitor (from `../../node_modules/@capacitor/ios`)"
@@ -27,6 +35,12 @@ DEPENDENCIES:
   - "CapacitorKeyboard (from `../../node_modules/@capacitor/keyboard`)"
   - "CapacitorNetwork (from `../../node_modules/@capacitor/network`)"
   - "CapacitorStatusBar (from `../../node_modules/@capacitor/status-bar`)"
+  - CapacitorThermalPrinter (from `../../node_modules/capacitor-thermal-printer`)
+  - "SentryCapacitor (from `../../node_modules/@sentry/capacitor`)"
+
+SPEC REPOS:
+  trunk:
+    - Sentry
 
 EXTERNAL SOURCES:
   Capacitor:
@@ -47,18 +61,25 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capacitor/network"
   CapacitorStatusBar:
     :path: "../../node_modules/@capacitor/status-bar"
+  CapacitorThermalPrinter:
+    :path: "../../node_modules/capacitor-thermal-printer"
+  SentryCapacitor:
+    :path: "../../node_modules/@sentry/capacitor"
 
 SPEC CHECKSUMS:
-  Capacitor: 28d6c01026a9a3f7156529498ec1f389a2a28dbc
-  CapacitorApp: 26587c2ce485d88ddb39adb21cac64f8e481afe3
-  CapacitorCordova: 435121e81a2df4d0034f0fb11fcefab5104cfdb5
-  CapacitorDevice: 81ae78d5d1942707caad79276badd458bf6ec603
-  CapacitorDialog: 5bf72a94b747fb339df6f64ef60812e5e4630ad2
-  CapacitorHaptics: b3fb2869e72c4466e18ce9ccbeb60a3d8723b3d4
-  CapacitorKeyboard: 62f36104f26d53d8b3a2a43f2a69fe714f1777d5
-  CapacitorNetwork: 695069886b3c5ed514db69aa3d026b8dc3c03a6b
-  CapacitorStatusBar: 0659ddc7b1713764a05831463d215b177a15d054
+  Capacitor: 00b87168591cc006ea6f5c0de681ec5c39a2c8eb
+  CapacitorApp: 305bd13c44f6f9d164e2ee66a4faa956ed8c0e06
+  CapacitorCordova: 9d3acbb574048e7167d2af127a0af2123e619f2f
+  CapacitorDevice: 708e742b60a61572cd593e44c809592e8f31da14
+  CapacitorDialog: 854c5dac405081cae697c177ca43bcaa95ae67bf
+  CapacitorHaptics: 296f771ecd89c7a1bd92a7b6826a7d268e2e70f5
+  CapacitorKeyboard: b6b0744890cdb1d9a96e2cafcc9253fdcc55de3b
+  CapacitorNetwork: 8812ce60d11fb63d8f2e4ba51a49b2e59892ebe2
+  CapacitorStatusBar: eca7bc2b58d9f886f1ef9edb66e57a9b29c121af
+  CapacitorThermalPrinter: 37ba847a690c296fb94499c1b3c37fd696cc1f82
+  Sentry: 88746bf877eff714bc45315a39ad1d1efea2cdda
+  SentryCapacitor: 179536d84866b2ffde1ecd8ed1ded541caf3e950
 
-PODFILE CHECKSUM: 9c4cd7f1bfa0f10f59ac7206d69424ed1b3e7c16
+PODFILE CHECKSUM: 77341172951989b18014fd6ed96e8ea67ca8e17b
 
-COCOAPODS: 1.16.2
+COCOAPODS: 1.17.0

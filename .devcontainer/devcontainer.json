@@ -5,7 +5,10 @@
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
 	"image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
 	"features": {
-		"ghcr.io/devcontainers-extra/features/ionic-cli:2": {}
+		"ghcr.io/devcontainers-extra/features/ionic-cli:2": {},
+		"ghcr.io/devcontainers/features/java:1": {
+			"version": "21"
+		}
 	},
 
 	"shutdownAction": "stopContainer",
