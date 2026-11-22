@@ -4,7 +4,7 @@
 
 export const environment = {
   production: false,
-  apiUrl: 'https://api-dev.cartaya.app', // Cloudflare Tunnel URL for development
+  apiUrl: 'https://cartaya-api-dev.tailbc95f3.ts.net', // Tailscale URL of the local backend
   sentry: {
     dsn: 'https://f95c5f8fcb4fe592d54068c2b42ee3fc@o4509323360272384.ingest.us.sentry.io/4511242496245760',
     tracesSampleRate: 1.0,
