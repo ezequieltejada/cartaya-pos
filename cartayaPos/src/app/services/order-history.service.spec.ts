@@ -3,6 +3,7 @@ import {
     HttpTestingController,
 } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { TranslateModule } from '@ngx-translate/core';
 import {
     Order,
     OrderHistoryResponse
@@ -12,11 +13,10 @@ import { OrderHistoryService } from './order-history.service';
 describe('OrderHistoryService', () => {
   let service: OrderHistoryService;
   let httpMock: HttpTestingController;
-  const apiUrl = 'http://localhost:3000';
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
+      imports: [HttpClientTestingModule, TranslateModule.forRoot()],
       providers: [OrderHistoryService],
     });
     service = TestBed.inject(OrderHistoryService);
@@ -122,7 +122,7 @@ describe('OrderHistoryService', () => {
       service.getOrderHistory(tenantId, posId, 24).subscribe(
         () => fail('should have failed with 401 error'),
         (error) => {
-          expect(error.message).toContain('Authentication required');
+          expect(error.message).toBe('API_ERRORS.SESSION_EXPIRED');
           done();
         }
       );
@@ -133,7 +133,7 @@ describe('OrderHistoryService', () => {
         )
       );
       req.flush(
-        { code: 'UNAUTHORIZED', message: 'Authentication required' },
+        { code: 'SESSION_EXPIRED', message: 'Authentication required' },
         { status: 401, statusText: 'Unauthorized' }
       );
     });
@@ -145,7 +145,7 @@ describe('OrderHistoryService', () => {
       service.getOrderHistory(tenantId, posId, 24).subscribe(
         () => fail('should have failed with 403 error'),
         (error) => {
-          expect(error.message).toContain('Access denied');
+          expect(error.message).toBe('API_ERRORS.MISSING_PERMISSIONS');
           done();
         }
       );
@@ -157,7 +157,7 @@ describe('OrderHistoryService', () => {
       );
       req.flush(
         {
-          code: 'FORBIDDEN',
+          code: 'MISSING_PERMISSIONS',
           message: 'Access denied. You do not have permission to view orders for this POS.',
         },
         { status: 403, statusText: 'Forbidden' }
@@ -171,7 +171,7 @@ describe('OrderHistoryService', () => {
       service.getOrderHistory(tenantId, posId, 24).subscribe(
         () => fail('should have failed with 404 error'),
         (error) => {
-          expect(error.message).toContain('Point of Sale not found');
+          expect(error.message).toBe('API_ERRORS.POS_NOT_FOUND');
           done();
         }
       );
@@ -182,7 +182,7 @@ describe('OrderHistoryService', () => {
         )
       );
       req.flush(
-        { code: 'NOT_FOUND', message: 'Point of Sale not found' },
+        { code: 'POS_NOT_FOUND', message: 'Point of Sale not found' },
         { status: 404, statusText: 'Not Found' }
       );
     });
@@ -194,7 +194,7 @@ describe('OrderHistoryService', () => {
       service.getOrderHistory(tenantId, posId, 24).subscribe(
         () => fail('should have failed with 500 error'),
         (error) => {
-          expect(error.message).toContain('Server error');
+          expect(error.message).toBe('API_ERRORS.INTERNAL_ERROR');
           done();
         }
       );

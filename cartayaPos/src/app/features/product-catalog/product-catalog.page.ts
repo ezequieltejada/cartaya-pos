@@ -158,12 +158,7 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
       return;
     }
 
-    this.settingsService.fetchTenantSettings(tenantId).subscribe({
-      error: (error) => {
-        console.error('Failed to load tenant settings:', error);
-        // Continue anyway - OrderService will use fallback values
-      },
-    });
+    this.settingsService.loadTenantSettings(tenantId);
   }
 
   /**

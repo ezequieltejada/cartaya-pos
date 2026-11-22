@@ -1,5 +1,6 @@
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { environment } from '../../../environments/environment';
 import { TenantSettings } from '../models/tenant-settings.model';
 import { UserSettings } from '../models/user.model';
 import { SettingsService } from './settings.service';
@@ -7,7 +8,7 @@ import { SettingsService } from './settings.service';
 describe('SettingsService', () => {
   let service: SettingsService;
   let httpMock: HttpTestingController;
-  const apiUrl = 'http://localhost:3000/api';
+  const apiUrl = `${environment.apiUrl}/api`;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -144,7 +145,7 @@ describe('SettingsService', () => {
       it('should return null when language not set', () => {
         service.userSettings.set({});
 
-        expect(service.getUserLanguage()).toBeUndefined();
+        expect(service.getUserLanguage()).toBeNull();
       });
     });
 

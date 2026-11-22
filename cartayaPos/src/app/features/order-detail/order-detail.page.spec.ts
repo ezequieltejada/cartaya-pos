@@ -1,3 +1,7 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { TranslateModule } from '@ngx-translate/core';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
@@ -5,8 +9,10 @@ import {
     ToastController,
 } from '@ionic/angular/standalone';
 import { of } from 'rxjs';
+import { ProductService } from '../../core/services/product.service';
 import { PosService } from '../../core/services/pos.service';
 import { TenantService } from '../../core/services/tenant.service';
+import { shortOrderRef } from '../../core/utils/order-ref';
 import { Order, OrderItem } from '../../models/order.model';
 import { OrderHistoryService } from '../../services/order-history.service';
 import { Printer } from '../../services/printer';
@@ -94,8 +100,14 @@ describe('OrderDetailPage - Print Functionality', () => {
     } as any);
 
     await TestBed.configureTestingModule({
-      imports: [OrderDetailPage],
+      imports: [OrderDetailPage, TranslateModule.forRoot()],
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: ProductService,
+          useValue: jasmine.createSpyObj('ProductService', ['fetchProductsWithPrices'], { products: signal([]) }),
+        },
         { provide: Printer, useValue: mockPrinter },
         { provide: ToastController, useValue: mockToastCtrl },
         { provide: LoadingController, useValue: mockLoadingCtrl },
@@ -168,7 +180,7 @@ describe('OrderDetailPage - Print Functionality', () => {
       const receiptData = mockPrinter.printReceipt.calls.mostRecent()
         .args[0] as string;
       expect(receiptData).toContain('*** REPRINT ***');
-      expect(receiptData).toContain('ORD-001');
+      expect(receiptData).toContain(shortOrderRef(mockOrder.orderId));
       expect(receiptData).toContain('Cheeseburger');
     });
 
@@ -230,7 +242,7 @@ describe('OrderDetailPage - Print Functionality', () => {
       component.order.set(mockOrder);
       const formattedReceipt = component['formatOrderForReceipt'](mockOrder);
 
-      expect(formattedReceipt).toContain(`Order #: ${mockOrder.orderId}`);
+      expect(formattedReceipt).toContain(`Order #: ${shortOrderRef(mockOrder.orderId)}`);
     });
 
     it('should include order date in receipt', () => {
@@ -267,7 +279,8 @@ describe('OrderDetailPage - Print Functionality', () => {
       const formattedReceipt = component['formatOrderForReceipt'](mockOrder);
 
       expect(formattedReceipt).toContain(`Total:`);
-      expect(formattedReceipt).toContain(`Currency: ${mockOrder.currency}`);
+      // The currency is part of every formatted amount instead of a separate line
+      expect(formattedReceipt).not.toContain('Currency:');
     });
 
     it('should handle orders with multiple items', () => {
@@ -375,10 +388,6 @@ describe('OrderDetailPage - Print Functionality', () => {
     it('should disable print button when isPrinting is true', () => {
       component.order.set(mockOrder);
       component.isPrinting.set(true);
-
-      const printButton = fixture.debugElement.query(
-        (el) => el.name === 'ion-button' && el.nativeElement.getAttribute('title')?.includes('Printing')
-      );
 
       // Component state is correct
       expect(component.isPrinting()).toBe(true);

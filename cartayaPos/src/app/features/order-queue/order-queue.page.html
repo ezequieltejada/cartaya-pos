@@ -38,11 +38,11 @@
       @for (order of queueService.queuedOrders(); track order.id) {
         <ion-item>
           <ion-label>
-            <h2>{{ 'ORDER_QUEUE.ORDER_PREFIX' | translate }}{{ order.metadata?.orderNumber || order.id.slice(-6) }}</h2>
-            <p>{{ order.metadata?.itemCount || 0 }} {{ 'ORDER_QUEUE.ITEMS_CONNECTOR' | translate }} {{ order.metadata?.total || 0 | currency }}</p>
+            <h2>{{ 'ORDER_QUEUE.ORDER_PREFIX' | translate }}{{ shortRef(order.metadata?.orderNumber || order.id) }}</h2>
+            <p>{{ order.metadata?.itemCount || 0 }} {{ 'ORDER_QUEUE.ITEMS_CONNECTOR' | translate }} {{ order.metadata?.total || 0 | money }}</p>
             <p class="timestamp">{{ formatDate(order.createdAt) }}</p>
-            @if (order.error) {
-              <p class="error-text">{{ order.error }}</p>
+            @if (errorText(order); as text) {
+              <p class="error-text">{{ text }}</p>
             }
           </ion-label>
 

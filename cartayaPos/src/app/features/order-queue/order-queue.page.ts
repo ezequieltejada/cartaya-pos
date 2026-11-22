@@ -16,6 +16,8 @@ import { chevronDownCircleOutline, refreshOutline, syncOutline, trashOutline } f
 import { NetworkService } from '../../core/services/network.service';
 import { OrderQueueService, QueuedOrder } from '../../core/services/order-queue.service';
 import { SyncCoordinatorService } from '../../core/services/sync-coordinator.service';
+import { shortOrderRef } from '../../core/utils/order-ref';
+import { MoneyPipe } from '../../shared/pipes/money.pipe';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 @Component({
@@ -35,6 +37,7 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
     IonRefresher,
     IonRefresherContent,
     PageHeaderComponent,
+    MoneyPipe,
   ],
   templateUrl: './order-queue.page.html',
   styleUrls: ['./order-queue.page.scss'],
@@ -46,6 +49,19 @@ export class OrderQueuePage {
   private loadingCtrl = inject(LoadingController);
   private toastCtrl = inject(ToastController);
   private translate = inject(TranslateService);
+
+  readonly shortRef = shortOrderRef;
+
+  /** Translated reason of the last failed sync (from the stored code, not English text). */
+  errorText(order: QueuedOrder): string | null {
+    if (order.errorCode === 'SERVER_UNREACHABLE') {
+      return this.translate.instant('AUTH.ERRORS.SERVER_UNREACHABLE');
+    }
+    if (order.errorCode) {
+      return this.translate.instant(`API_ERRORS.${order.errorCode}`, order.errorParams ?? {});
+    }
+    return order.error;
+  }
 
   // Icons
   refreshOutline = refreshOutline;

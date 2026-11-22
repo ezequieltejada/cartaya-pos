@@ -15,11 +15,15 @@ describe('LanguageService', () => {
   let settingsService: jasmine.SpyObj<SettingsService>;
   let languageState: LanguageState;
 
+
+  /** The backend sync is fire-and-forget, so let it settle before asserting on its outcome. */
+  const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
   beforeEach(() => {
     // Create spy objects for dependencies
     const translateSpy = jasmine.createSpyObj('TranslateService', ['use', 'getBrowserLang']);
     const storageSpy = jasmine.createSpyObj('StorageService', ['get', 'set']);
-    const authSpy = jasmine.createSpyObj('AuthService', ['getCurrentUser']);
+    const authSpy = jasmine.createSpyObj('AuthService', ['getCurrentUser', 'getAccessToken']);
     const settingsSpy = jasmine.createSpyObj('SettingsService', ['setUserLanguage']);
 
     TestBed.configureTestingModule({
@@ -46,6 +50,7 @@ describe('LanguageService', () => {
     storageSpy.get.and.returnValue(Promise.resolve(null));
     storageSpy.set.and.returnValue(Promise.resolve());
     authSpy.getCurrentUser.and.returnValue(null);
+    authSpy.getAccessToken.and.returnValue('access-token');
     settingsSpy.setUserLanguage.and.returnValue(of({}));
   });
 
@@ -212,6 +217,7 @@ describe('LanguageService', () => {
       spyOn(console, 'error');
 
       await service.setLanguage('es');
+        await settle();
 
       expect(languageState.isSynced()).toBe(false);
       expect(console.error).toHaveBeenCalled();
@@ -352,6 +358,16 @@ describe('LanguageService', () => {
         expect(settingsService.setUserLanguage).toHaveBeenCalledWith('es');
       });
 
+      it('should skip the backend sync and stay unsynced when there is no access token', async () => {
+        authService.getAccessToken.and.returnValue(null);
+
+        await service.setLanguage('es');
+        await settle();
+
+        expect(settingsService.setUserLanguage).not.toHaveBeenCalled();
+        expect(languageState.isSynced()).toBe(false);
+      });
+
       it('should set isSynced to true on successful sync', async () => {
         settingsService.setUserLanguage.and.returnValue(of({ preferredLanguage: 'es' }));
         await service.setLanguage('es');
@@ -363,6 +379,7 @@ describe('LanguageService', () => {
         spyOn(console, 'error');
 
         await service.setLanguage('es');
+        await settle();
 
         expect(languageState.isSynced()).toBe(false);
         expect(service.getCurrentLanguage()).toBe('es');

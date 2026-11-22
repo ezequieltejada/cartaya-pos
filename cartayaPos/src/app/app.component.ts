@@ -1,6 +1,5 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
-import { App } from '@capacitor/app';
 import { Device } from '@capacitor/device';
 import { IonApp, IonBadge, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonItem, IonItemDivider, IonLabel, IonList, IonMenu, IonMenuToggle, IonRouterOutlet, IonTitle, IonToolbar, MenuController, Platform } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -12,8 +11,10 @@ import { LanguageService } from './core/services/language.service';
 import { OrderQueueService } from './core/services/order-queue.service';
 import { PosService } from './core/services/pos.service';
 import { StorageService } from './core/services/storage.service';
+import { SettingsService } from './core/services/settings.service';
 import { SyncCoordinatorService } from './core/services/sync-coordinator.service';
 import { TenantService } from './core/services/tenant.service';
+import { CAPACITOR_APP } from './core/tokens/capacitor-app.token';
 import { Printer } from './services/printer';
 @Component({
   selector: 'app-root',
@@ -29,11 +30,13 @@ export class AppComponent implements OnInit, OnDestroy {
   private languageService = inject(LanguageService);
   private tenantService = inject(TenantService);
   private posService = inject(PosService);
+  private settingsService = inject(SettingsService);
   private syncCoordinator = inject(SyncCoordinatorService);
   private printerService = inject(Printer);
   queueService = inject(OrderQueueService);
   private router = inject(Router);
   private translate = inject(TranslateService);
+  private capApp = inject(CAPACITOR_APP);
   private backButtonSubscription?: Subscription;
 
   constructor() {
@@ -74,13 +77,33 @@ export class AppComponent implements OnInit, OnDestroy {
         if (user) {
           // Restore the user's PoS selection now that the user is known
           await this.posService.restoreSelectedPos();
-          this.router.navigate(['/products'], { replaceUrl: true });
+
+          // Load the tenant's currency/timezone for every screen (deep links
+          // may land on a page other than the catalog)
+          const tenantId = this.tenantService.getCurrentTenantId();
+          if (tenantId) {
+            this.settingsService.loadTenantSettings(tenantId);
+          }
+
+          // Unblock guarded routes: a deep link (/cart, /order-history, ...)
+          // that was waiting for the session now continues to its target.
+          this.authService.sessionChecked.set(true);
+
+          // Only the login page needs redirecting; '/' already redirects to
+          // /products and other URLs are deep links we keep.
+          if (this.router.url.startsWith('/auth')) {
+            this.router.navigate(['/products'], { replaceUrl: true });
+          }
         } else {
-          this.router.navigate(['/auth/login'], { replaceUrl: true });
+          this.authService.sessionChecked.set(true);
+          if (!this.router.url.startsWith('/auth')) {
+            this.router.navigate(['/auth/login'], { replaceUrl: true });
+          }
         }
       },
       error: () => {
         // Error checking session, navigate to login
+        this.authService.sessionChecked.set(true);
         this.router.navigate(['/auth/login'], { replaceUrl: true });
       },
     });
@@ -118,7 +141,7 @@ export class AppComponent implements OnInit, OnDestroy {
     }
 
     if (this.isProductCatalogRootRoute()) {
-      await App.exitApp();
+      await this.capApp.exitApp();
       return;
     }
 

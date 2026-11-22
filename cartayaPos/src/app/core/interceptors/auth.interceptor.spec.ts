@@ -1,8 +1,11 @@
-import { HttpClient, HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { ToastController } from '@ionic/angular/standalone';
+import { TranslateService } from '@ngx-translate/core';
+import { of, throwError } from 'rxjs';
+
 import { AuthService } from '../services/auth.service';
 import { authInterceptor } from './auth.interceptor';
 
@@ -15,27 +18,28 @@ describe('authInterceptor', () => {
 
   beforeEach(() => {
     const authServiceSpy = jasmine.createSpyObj('AuthService', [
-      'login',
-      'logout',
-      'checkSession',
+      'getAccessToken',
+      'getRefreshToken',
+      'refreshAccessToken',
       'clearSession',
-      'getCurrentUser',
-      'getIsAuthenticated',
     ]);
+    authServiceSpy.getAccessToken.and.returnValue('access-1');
+    authServiceSpy.getRefreshToken.and.returnValue('refresh-1');
+    authServiceSpy.clearSession.and.returnValue(Promise.resolve());
 
     const routerSpy = jasmine.createSpyObj('Router', ['navigate']);
 
     const toastSpy = jasmine.createSpyObj('ToastController', ['create']);
-    const mockToast = jasmine.createSpyObj('Toast', ['present']);
-    toastSpy.create.and.returnValue(Promise.resolve(mockToast));
+    toastSpy.create.and.returnValue(Promise.resolve(jasmine.createSpyObj('Toast', ['present'])));
 
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
+        provideHttpClientTesting(),
         { provide: AuthService, useValue: authServiceSpy },
         { provide: Router, useValue: routerSpy },
         { provide: ToastController, useValue: toastSpy },
+        { provide: TranslateService, useValue: { instant: (key: string) => key } },
       ],
     });
 
@@ -50,94 +54,107 @@ describe('authInterceptor', () => {
     httpMock.verify();
   });
 
-  it('should add withCredentials to requests', () => {
+  it('should add the Bearer token to API requests', () => {
     httpClient.get('/test').subscribe();
 
     const req = httpMock.expectOne('/test');
-    expect(req.request.withCredentials).toBe(true);
+    expect(req.request.headers.get('Authorization')).toBe('Bearer access-1');
     req.flush({});
   });
 
-  it('should handle 401 errors by clearing session', (done) => {
-    authService.clearSession.and.returnValue(Promise.resolve());
+  it('should not add the token to auth endpoints', () => {
+    httpClient.post('/api/auth/sign-in/email', {}).subscribe();
 
-    httpClient.get('/test').subscribe(
-      () => {
-        fail('should have errored');
-      },
-      () => {
-        expect(authService.clearSession).toHaveBeenCalled();
-        done();
-      }
-    );
-
-    const req = httpMock.expectOne('/test');
-    req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+    const req = httpMock.expectOne('/api/auth/sign-in/email');
+    expect(req.request.headers.has('Authorization')).toBeFalse();
+    req.flush({});
   });
 
-  it('should redirect to login on 401 error', (done) => {
-    authService.clearSession.and.returnValue(Promise.resolve());
-
-    httpClient.get('/test').subscribe(
-      () => {
-        fail('should have errored');
-      },
-      () => {
-        expect(router.navigate).toHaveBeenCalledWith(['/auth/login']);
-        done();
-      }
-    );
-
-    const req = httpMock.expectOne('/test');
-    req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
-  });
-
-  it('should show toast notification on 401 error', (done) => {
-    authService.clearSession.and.returnValue(Promise.resolve());
-
-    httpClient.get('/test').subscribe(
-      () => {
-        fail('should have errored');
-      },
-      () => {
-        // Give async operations time to complete
-        setTimeout(() => {
-          expect(toastController.create).toHaveBeenCalled();
-          done();
-        }, 100);
-      }
-    );
-
-    const req = httpMock.expectOne('/test');
-    req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
-  });
-
-  it('should pass through non-401 errors', (done) => {
-    httpClient.get('/test').subscribe(
-      () => {
-        fail('should have errored');
-      },
-      (error: HttpErrorResponse) => {
-        expect(error.status).toBe(500);
-        expect(authService.clearSession).not.toHaveBeenCalled();
-        done();
-      }
-    );
-
-    const req = httpMock.expectOne('/test');
-    req.flush('Server error', { status: 500, statusText: 'Internal Server Error' });
-  });
-
-  it('should allow successful requests to pass through', (done) => {
-    const testData = { message: 'success' };
-
-    httpClient.get('/test').subscribe((data) => {
-      expect(data).toEqual(testData);
+  it('should pass successful requests through', (done) => {
+    httpClient.get('/test').subscribe((body) => {
+      expect(body).toEqual({ ok: true });
       done();
     });
 
-    const req = httpMock.expectOne('/test');
-    expect(req.request.withCredentials).toBe(true);
-    req.flush(testData);
+    httpMock.expectOne('/test').flush({ ok: true });
+  });
+
+  it('should pass non-401 errors through without touching the session', (done) => {
+    httpClient.get('/test').subscribe({
+      next: () => fail('should have errored'),
+      error: (error) => {
+        expect(error.status).toBe(500);
+        expect(authService.clearSession).not.toHaveBeenCalled();
+        done();
+      },
+    });
+
+    httpMock.expectOne('/test').flush({}, { status: 500, statusText: 'Server Error' });
+  });
+
+  it('should not try to refresh when a sign-in attempt itself returns 401', (done) => {
+    httpClient.post('/api/auth/sign-in/email', {}).subscribe({
+      next: () => fail('should have errored'),
+      error: (error) => {
+        expect(error.status).toBe(401);
+        expect(authService.refreshAccessToken).not.toHaveBeenCalled();
+        done();
+      },
+    });
+
+    httpMock
+      .expectOne('/api/auth/sign-in/email')
+      .flush({ code: 'INVALID_CREDENTIALS' }, { status: 401, statusText: 'Unauthorized' });
+  });
+
+  it('should refresh the token on 401 and retry the request with the new token', (done) => {
+    authService.refreshAccessToken.and.returnValue(
+      of({ accessToken: 'access-2', refreshToken: 'refresh-2' }) as unknown as ReturnType<AuthService['refreshAccessToken']>
+    );
+
+    httpClient.get('/test').subscribe((body) => {
+      expect(body).toEqual({ ok: true });
+      done();
+    });
+
+    httpMock.expectOne('/test').flush({}, { status: 401, statusText: 'Unauthorized' });
+
+    const retry = httpMock.expectOne('/test');
+    expect(retry.request.headers.get('Authorization')).toBe('Bearer access-2');
+    retry.flush({ ok: true });
+  });
+
+  it('should clear the session, warn with a translated toast and go to login when the refresh fails', (done) => {
+    authService.refreshAccessToken.and.returnValue(throwError(() => new Error('refresh failed')));
+
+    httpClient.get('/test').subscribe({
+      next: () => fail('should have errored'),
+      error: () => {
+        expect(authService.clearSession).toHaveBeenCalled();
+        expect(router.navigate).toHaveBeenCalledWith(['/auth/login'], { replaceUrl: true });
+        expect(toastController.create).toHaveBeenCalledWith(
+          jasmine.objectContaining({ message: 'API_ERRORS.SESSION_EXPIRED' })
+        );
+        done();
+      },
+    });
+
+    httpMock.expectOne('/test').flush({}, { status: 401, statusText: 'Unauthorized' });
+  });
+
+  it('should go to login without refreshing when there is no refresh token', (done) => {
+    authService.getRefreshToken.and.returnValue(null);
+
+    httpClient.get('/test').subscribe({
+      next: () => fail('should have errored'),
+      error: () => {
+        expect(authService.refreshAccessToken).not.toHaveBeenCalled();
+        expect(authService.clearSession).toHaveBeenCalled();
+        expect(router.navigate).toHaveBeenCalledWith(['/auth/login'], { replaceUrl: true });
+        done();
+      },
+    });
+
+    httpMock.expectOne('/test').flush({}, { status: 401, statusText: 'Unauthorized' });
   });
 });

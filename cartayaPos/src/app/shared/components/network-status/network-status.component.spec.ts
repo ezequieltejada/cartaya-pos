@@ -1,3 +1,4 @@
+import { TranslateModule } from '@ngx-translate/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NetworkService } from '../../../core/services/network.service';
 import { NetworkStatusComponent } from './network-status.component';
@@ -13,7 +14,7 @@ describe('NetworkStatusComponent', () => {
     });
 
     await TestBed.configureTestingModule({
-      imports: [NetworkStatusComponent],
+      imports: [NetworkStatusComponent, TranslateModule.forRoot()],
       providers: [
         { provide: NetworkService, useValue: networkServiceSpy },
       ],

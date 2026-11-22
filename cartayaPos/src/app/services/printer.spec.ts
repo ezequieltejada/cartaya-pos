@@ -1,11 +1,14 @@
 import { fakeAsync, flushMicrotasks, TestBed, tick } from '@angular/core/testing';
-import { App } from '@capacitor/app';
-import { CapacitorThermalPrinter } from 'capacitor-thermal-printer';
+import type { App } from '@capacitor/app';
+import type { CapacitorThermalPrinter } from 'capacitor-thermal-printer';
 
-import { Printer } from './printer';
+import { CAPACITOR_APP } from '../core/tokens/capacitor-app.token';
+import { Printer, THERMAL_PRINTER } from './printer';
 
 describe('Printer', () => {
   let service: Printer;
+  let thermal: jasmine.SpyObj<typeof CapacitorThermalPrinter>;
+  let capApp: jasmine.SpyObj<typeof App>;
   let addListenerSpy: jasmine.Spy;
   let appAddListenerSpy: jasmine.Spy;
   let builder: {
@@ -23,24 +26,33 @@ describe('Printer', () => {
 
   beforeEach(async () => {
     localStorage.clear();
+    thermal = jasmine.createSpyObj('CapacitorThermalPrinter', [
+      'addListener', 'isConnected', 'connect', 'begin', 'disconnect', 'startScan', 'stopScan',
+    ]);
+    capApp = jasmine.createSpyObj('App', ['addListener']);
     eventHandlers.clear();
     appEventHandlers.clear();
 
-    addListenerSpy = spyOn(CapacitorThermalPrinter, 'addListener').and.callFake(async (eventName, handler) => {
+    addListenerSpy = thermal.addListener.and.callFake(async (eventName, handler) => {
       eventHandlers.set(eventName, handler as (payload?: unknown) => void);
       return {
         remove: jasmine.createSpy(`remove-${eventName}`),
       } as never;
     });
 
-    appAddListenerSpy = spyOn(App, 'addListener').and.callFake(async (eventName, handler) => {
+    appAddListenerSpy = capApp.addListener.and.callFake(async (eventName, handler) => {
       appEventHandlers.set(eventName, handler as (payload?: unknown) => void);
       return {
         remove: jasmine.createSpy(`remove-app-${eventName}`),
       } as never;
     });
 
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: THERMAL_PRINTER, useValue: thermal },
+        { provide: CAPACITOR_APP, useValue: capApp },
+      ],
+    });
     service = TestBed.inject(Printer);
 
     builder = {
@@ -74,8 +86,8 @@ describe('Printer', () => {
     service.selectedAddress = service.selectedPrinter.address;
     service.isConnected = true;
 
-    spyOn(CapacitorThermalPrinter, 'isConnected').and.resolveTo(true);
-    spyOn(CapacitorThermalPrinter, 'begin').and.returnValue(builder as never);
+    thermal.isConnected.and.resolveTo(true);
+    thermal.begin.and.returnValue(builder as never);
 
     await service.printReceipt('test receipt');
 
@@ -91,9 +103,9 @@ describe('Printer', () => {
     service.selectedAddress = service.selectedPrinter.address;
     service.isConnected = true;
 
-    spyOn(CapacitorThermalPrinter, 'isConnected').and.resolveTo(true);
-    const connectSpy = spyOn(CapacitorThermalPrinter, 'connect').and.resolveTo(service.selectedPrinter);
-    spyOn(CapacitorThermalPrinter, 'begin').and.returnValue(builder as never);
+    thermal.isConnected.and.resolveTo(true);
+    const connectSpy = thermal.connect.and.resolveTo(service.selectedPrinter);
+    thermal.begin.and.returnValue(builder as never);
 
     await service.printReceipt('test receipt');
 
@@ -109,7 +121,7 @@ describe('Printer', () => {
     };
     service.selectedAddress = service.selectedPrinter.address;
 
-    spyOn(CapacitorThermalPrinter, 'connect').and.resolveTo(null);
+    thermal.connect.and.resolveTo(null);
     spyOn(service, 'ensureBluetoothPermissions').and.resolveTo(true);
 
     await expectAsync(service.printReceipt('test receipt')).toBeRejectedWithError(
@@ -221,7 +233,7 @@ describe('Printer', () => {
     };
     service.selectedAddress = service.selectedPrinter.address;
 
-    spyOn(CapacitorThermalPrinter, 'isConnected').and.resolveTo(false);
+    thermal.isConnected.and.resolveTo(false);
 
     service.isConnected = true;
     tick(2000);
@@ -242,7 +254,7 @@ describe('Printer', () => {
     service.selectedAddress = service.selectedPrinter.address;
     service.isConnected = true;
 
-    spyOn(CapacitorThermalPrinter, 'isConnected').and.resolveTo(false);
+    thermal.isConnected.and.resolveTo(false);
 
     appEventHandlers.get('appStateChange')?.({ isActive: true });
     flushMicrotasks();

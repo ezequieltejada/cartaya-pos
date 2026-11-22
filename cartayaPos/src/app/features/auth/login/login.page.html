@@ -13,6 +13,7 @@
             <ion-input
               formControlName="email"
               type="email"
+              autocomplete="off"
               [placeholder]="'AUTH.LOGIN.EMAIL_LABEL' | translate"
               [class.input-error]="email?.invalid && email?.touched"
               (keydown.enter)="onLogin()"
@@ -31,6 +32,7 @@
           <div class="form-group">
             <ion-input
               formControlName="password"
+              autocomplete="off"
               [type]="showPassword ? 'text' : 'password'"
               [placeholder]="'AUTH.LOGIN.PASSWORD_LABEL' | translate"
               [class.input-error]="password?.invalid && password?.touched"
@@ -54,6 +56,10 @@
               <small *ngIf="password?.errors?.['minlength']">{{ 'AUTH.LOGIN.VALIDATION.PASSWORD_MIN_LENGTH' | translate }}</small>
             </ion-text>
           </div>
+
+          <ion-text color="danger" *ngIf="errorKey() as key" class="login-error" role="alert">
+            <p>{{ key | translate }}</p>
+          </ion-text>
 
           <ion-button
             expand="block"

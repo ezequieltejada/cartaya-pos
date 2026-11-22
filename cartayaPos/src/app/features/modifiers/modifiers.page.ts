@@ -27,11 +27,18 @@ import { Modifier } from '../../core/models/modifier.model';
 import { SelectedModifier } from '../../core/models/order.model';
 import { Product } from '../../core/models/product.model';
 import { MenuService } from '../../core/services/menu.service';
+import { MoneyService } from '../../core/services/money.service';
 import { ModifierService } from '../../core/services/modifier.service';
 import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
 import { ProductService } from '../../core/services/product.service';
 import { TenantService } from '../../core/services/tenant.service';
+
+/**
+ * Default maximum quantity per modifier when the modifier does not define
+ * its own limit.
+ */
+export const DEFAULT_MAX_MODIFIER_QUANTITY = 10;
 
 /**
  * ModifiersPage
@@ -119,7 +126,7 @@ import { TenantService } from '../../core/services/tenant.service';
           <ion-label>
             <h2>{{ modifier.name }}</h2>
             <p [class.positive]="modifier.priceDelta > 0" [class.negative]="modifier.priceDelta < 0">
-              {{ formatPriceDelta(modifier.priceDelta, modifier.currency) }}
+              {{ formatPriceDelta(modifier.priceDelta) }}
             </p>
             <!-- Display included quantity text when present -->
             <p class="included-quantity-info" *ngIf="getIncludedQuantityText(modifier)">
@@ -152,6 +159,7 @@ import { TenantService } from '../../core/services/tenant.service';
             <ion-button
               fill="outline"
               size="small"
+              [disabled]="isIncrementDisabled(modifier)"
               (click)="incrementModifier(modifier.id)"
               [attr.aria-label]="'Increase ' + modifier.name"
             >
@@ -268,6 +276,7 @@ export class ModifiersPage implements OnInit, OnDestroy {
   private toastController = inject(ToastController);
   private menuService = inject(MenuService);
   private translate = inject(TranslateService);
+  private moneyService = inject(MoneyService);
 
   private destroy$ = new Subject<void>();
 
@@ -367,7 +376,7 @@ export class ModifiersPage implements OnInit, OnDestroy {
             this.error.set('Product not found');
           }
         },
-        error: (err) => {
+        error: () => {
           this.error.set('Failed to load product');
         }
       });
@@ -395,7 +404,7 @@ export class ModifiersPage implements OnInit, OnDestroy {
           this.initializeDefaultModifiers(modifiers);
           this.isLoading.set(false);
         },
-        error: (err) => {
+        error: () => {
           this.error.set('Failed to load modifiers. Please try again.');
           this.isLoading.set(false);
         },
@@ -447,11 +456,29 @@ export class ModifiersPage implements OnInit, OnDestroy {
   }
 
   /**
-   * Increment the quantity for a specific modifier
+   * Maximum selectable quantity for a modifier: the modifier's own limit
+   * when the API provides one, otherwise DEFAULT_MAX_MODIFIER_QUANTITY.
+   */
+  getMaxQuantity(modifier: Modifier): number {
+    const max = modifier.maxQuantity;
+    return typeof max === 'number' && max > 0 ? max : DEFAULT_MAX_MODIFIER_QUANTITY;
+  }
+
+  isIncrementDisabled(modifier: Modifier): boolean {
+    const current = this.selectedModifiers().get(modifier.id) || 0;
+    return current >= this.getMaxQuantity(modifier);
+  }
+
+  /**
+   * Increment the quantity for a specific modifier (capped at its maximum)
    * @param modifierId Modifier ID to increment
    */
   incrementModifier(modifierId: string): void {
     const current = this.selectedModifiers().get(modifierId) || 0;
+    const modifier = this.modifiersList().find((m) => m.id === modifierId);
+    if (modifier && current >= this.getMaxQuantity(modifier)) {
+      return;
+    }
     const updated = new Map(this.selectedModifiers());
     updated.set(modifierId, current + 1);
     this.selectedModifiers.set(updated);
@@ -483,22 +510,11 @@ export class ModifiersPage implements OnInit, OnDestroy {
   /**
    * Format price delta as currency with + or - sign
    * @param delta Price delta value
-   * @param currency Currency code
+   * Always uses the tenant's currency via the shared formatter
    * @returns Formatted currency string
    */
-  formatPriceDelta(delta: number, currency: string): string {
-    try {
-      const formatter = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currency,
-        signDisplay: 'always',
-      } as any);
-      return formatter.format(delta);
-    } catch (e) {
-      // Fallback formatting if currency is invalid
-      const sign = delta > 0 ? '+' : '';
-      return `${sign}$${delta.toFixed(2)}`;
-    }
+  formatPriceDelta(delta: number): string {
+    return this.moneyService.format(delta, { signed: true });
   }
 
   /**
@@ -560,20 +576,20 @@ export class ModifiersPage implements OnInit, OnDestroy {
     // If some quantity is not included (selected > included)
     const billableQty = selectedQty - includedQty;
     const charge = modifier.priceDelta * billableQty;
-    const chargeFormatted = charge.toFixed(2);
+    const chargeFormatted = this.moneyService.format(charge);
     
     if (includedQty === 0) {
       // No included quantity, show all as extra (charged)
-      return `${selectedQty} × ${this.formatPriceDelta(modifier.priceDelta, modifier.currency)}`;
+      return `${selectedQty} × ${this.formatPriceDelta(modifier.priceDelta)}`;
     }
     
     if (billableQty === 1) {
       // Singular form for billable quantity
-      return `${includedQty} included + 1 extra ($${chargeFormatted})`;
+      return `${includedQty} included + 1 extra (${chargeFormatted})`;
     }
     
     // Plural form for billable quantity
-    return `${includedQty} included + ${billableQty} extra ($${chargeFormatted})`;
+    return `${includedQty} included + ${billableQty} extra (${chargeFormatted})`;
   }
 
   /**

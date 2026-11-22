@@ -1,5 +1,16 @@
-import { Injectable } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Injectable, InjectionToken, inject } from '@angular/core';
 import * as Sentry from '@sentry/capacitor';
+import { parseApiError } from '../utils/api-error';
+
+/**
+ * The Sentry client used for reporting. Injected so specs can provide a fake
+ * (ES module namespaces cannot be spied on).
+ */
+export const SENTRY_CLIENT = new InjectionToken<typeof Sentry>('SENTRY_CLIENT', {
+  providedIn: 'root',
+  factory: () => Sentry,
+});
 
 export interface HandledExceptionReport {
   feature: string;
@@ -12,6 +23,7 @@ export interface HandledExceptionReport {
   providedIn: 'root',
 })
 export class ErrorReportingService {
+  private readonly sentry = inject(SENTRY_CLIENT);
   private originalConsoleError: typeof console.error | null = null;
   private isConsoleErrorInstalled = false;
   private isForwardingConsoleError = false;
@@ -57,7 +69,7 @@ export class ErrorReportingService {
   captureHandledException(report: HandledExceptionReport): void {
     const normalizedError = this.normalizeError(report.error);
 
-    Sentry.withScope((scope) => {
+    this.sentry.withScope((scope) => {
       scope.setLevel('error');
       scope.setTag('handled', 'true');
       scope.setTag('feature', report.feature);
@@ -66,9 +78,10 @@ export class ErrorReportingService {
         feature: report.feature,
         action: report.action,
         ...(report.extra ?? {}),
+        ...this.apiErrorContext(report.error),
       });
 
-      Sentry.captureException(normalizedError);
+      this.sentry.captureException(normalizedError);
     });
   }
 
@@ -76,7 +89,7 @@ export class ErrorReportingService {
     const errorArg = args.find((arg): arg is Error => arg instanceof Error);
     const formattedArgs = args.map((arg) => this.serializeForContext(arg));
 
-    Sentry.withScope((scope) => {
+    this.sentry.withScope((scope) => {
       scope.setLevel('error');
       scope.setTag('source', 'console.error');
       scope.setContext('console_error', {
@@ -84,11 +97,11 @@ export class ErrorReportingService {
       });
 
       if (errorArg) {
-        Sentry.captureException(errorArg);
+        this.sentry.captureException(errorArg);
         return;
       }
 
-      Sentry.captureMessage(this.formatConsoleMessage(args));
+      this.sentry.captureMessage(this.formatConsoleMessage(args));
     });
   }
 
@@ -102,7 +115,20 @@ export class ErrorReportingService {
     return message || 'console.error called with no message';
   }
 
+  /** For API failures report the stable code/status, never the English message. */
+  private apiErrorContext(error: unknown): Record<string, unknown> {
+    if (!(error instanceof HttpErrorResponse)) {
+      return {};
+    }
+    const { code, params } = parseApiError(error);
+    return { statusCode: error.status, code, params };
+  }
+
   private normalizeError(error: unknown): Error {
+    if (error instanceof HttpErrorResponse) {
+      const { code } = parseApiError(error);
+      return new Error(`HTTP ${error.status} ${code}`);
+    }
     if (error instanceof Error) {
       return error;
     }

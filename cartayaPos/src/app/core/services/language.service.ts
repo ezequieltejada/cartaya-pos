@@ -120,8 +120,9 @@ export class LanguageService {
 
       // Sync to backend asynchronously (fire-and-forget)
       try {
+        // syncWithBackend sets the sync status itself (it swallows failures and
+        // skips the call when there is no session), so it must not be forced here
         await this.syncWithBackend(targetLanguage);
-        this.languageState.setSyncStatus(true);
       } catch (error) {
         console.error('Backend sync failed:', error);
         this.languageState.setSyncStatus(false);

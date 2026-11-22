@@ -1,31 +1,35 @@
+import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { provideIonicAngular } from '@ionic/angular/standalone';
+import { provideRouter } from '@angular/router';
+import { TranslateModule } from '@ngx-translate/core';
+
 import { OrderService } from '../../core/services/order.service';
+import { OrderSummaryComponent } from '../order-summary/order-summary.component';
 import { CartPage } from './cart.page';
+
+@Component({ selector: 'app-order-summary', template: '', standalone: true })
+class OrderSummaryStubComponent {}
 
 describe('CartPage', () => {
   let component: CartPage;
   let fixture: ComponentFixture<CartPage>;
-  let router: jasmine.SpyObj<Router>;
-  let orderService: jasmine.SpyObj<OrderService>;
 
   beforeEach(async () => {
-    // Mock services
-    const routerSpy = jasmine.createSpyObj('Router', ['navigate']);
-    const orderServiceSpy = jasmine.createSpyObj('OrderService', [
-      'getCurrentOrder',
-    ]);
-
     await TestBed.configureTestingModule({
-      imports: [CartPage],
+      imports: [CartPage, TranslateModule.forRoot()],
       providers: [
-        { provide: Router, useValue: routerSpy },
-        { provide: OrderService, useValue: orderServiceSpy },
+        provideIonicAngular(),
+        provideRouter([]),
+        { provide: OrderService, useValue: jasmine.createSpyObj('OrderService', ['getCurrentOrder']) },
       ],
-    }).compileComponents();
-
-    router = TestBed.inject(Router) as jasmine.SpyObj<Router>;
-    orderService = TestBed.inject(OrderService) as jasmine.SpyObj<OrderService>;
+    })
+      // The cart contents are covered by the OrderSummaryComponent specs
+      .overrideComponent(CartPage, {
+        remove: { imports: [OrderSummaryComponent] },
+        add: { imports: [OrderSummaryStubComponent] },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(CartPage);
     component = fixture.componentInstance;
@@ -41,17 +45,15 @@ describe('CartPage', () => {
     expect(console.error).not.toHaveBeenCalled();
   });
 
-  it('should display empty state message', () => {
-    fixture.detectChanges();
-    const emptyState = fixture.nativeElement.querySelector('.empty-state');
-    expect(emptyState).toBeTruthy();
-    expect(emptyState.textContent).toContain('Cart is empty');
-  });
-
-  it('should have Ionic header with title', () => {
+  it('should have an Ionic header with the translated title', () => {
     fixture.detectChanges();
     const ionTitle = fixture.nativeElement.querySelector('ion-title');
     expect(ionTitle).toBeTruthy();
-    expect(ionTitle.textContent).toContain('Order Summary');
+    expect(ionTitle.textContent).toContain('CART.TITLE');
+  });
+
+  it('should show the order summary', () => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-order-summary')).toBeTruthy();
   });
 });

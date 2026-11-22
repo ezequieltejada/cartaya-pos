@@ -4,14 +4,14 @@ import { StorageService } from './storage.service';
 
 describe('StorageService', () => {
   let service: StorageService;
-  let storageMock: jasmine.SpyObj<Storage>;
+  let storageMock: Record<'create' | 'set' | 'get' | 'remove' | 'clear', jasmine.Spy>;
 
   beforeEach(() => {
     const storage = jasmine.createSpyObj('Storage', [
       'create',
       'set',
-      'getItem',
-      'removeItem',
+      'get',
+      'remove',
       'clear',
     ]);
 
@@ -20,7 +20,7 @@ describe('StorageService', () => {
     });
 
     service = TestBed.inject(StorageService);
-    storageMock = TestBed.inject(Storage) as jasmine.SpyObj<Storage>;
+    storageMock = TestBed.inject(Storage) as unknown as typeof storageMock;
   });
 
   it('should be created', () => {
@@ -74,7 +74,7 @@ describe('StorageService', () => {
     it('should return parsed value from storage', async () => {
       const testData = { data: 'test-value' };
       storageMock.create.and.returnValue(Promise.resolve());
-      storageMock.getItem.and.returnValue(Promise.resolve(JSON.stringify(testData)));
+      storageMock.get.and.returnValue(Promise.resolve(JSON.stringify(testData)));
 
       await service.init();
       const result = await service.get('test-key');
@@ -84,7 +84,7 @@ describe('StorageService', () => {
 
     it('should return null if key not found', async () => {
       storageMock.create.and.returnValue(Promise.resolve());
-      storageMock.getItem.and.returnValue(Promise.resolve(null));
+      storageMock.get.and.returnValue(Promise.resolve(null));
 
       await service.init();
       const result = await service.get('nonexistent-key');
@@ -94,7 +94,7 @@ describe('StorageService', () => {
 
     it('should handle malformed JSON gracefully', async () => {
       storageMock.create.and.returnValue(Promise.resolve());
-      storageMock.getItem.and.returnValue(Promise.resolve('invalid json'));
+      storageMock.get.and.returnValue(Promise.resolve('invalid json'));
 
       await service.init();
       const result = await service.get('test-key');
@@ -115,12 +115,12 @@ describe('StorageService', () => {
   describe('remove', () => {
     it('should remove item from storage', async () => {
       storageMock.create.and.returnValue(Promise.resolve());
-      storageMock.removeItem.and.returnValue(Promise.resolve());
+      storageMock.remove.and.returnValue(Promise.resolve());
 
       await service.init();
       await service.remove('test-key');
 
-      expect(storageMock.removeItem).toHaveBeenCalledWith('test-key');
+      expect(storageMock.remove).toHaveBeenCalledWith('test-key');
     });
 
     it('should throw error if not initialized', async () => {

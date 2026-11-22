@@ -6,15 +6,6 @@ import { Modifier } from '../models/modifier.model';
 import { StorageService } from './storage.service';
 
 /**
- * Cache metadata for storing modifiers with TTL
- */
-interface ModifierCache {
-  modifiers: Modifier[];
-  timestamp: number;
-  productId: string;
-}
-
-/**
  * API Response format for modifiers endpoint
  * 
  * Response structure from cartaya-api GET /products/:productId/modifiers
@@ -51,7 +42,7 @@ interface ModifierCache {
  *   "pagination": { "total": 5, "limit": 100, "offset": 0, "hasMore": false }
  * }
  */
-interface ModifiersApiResponse {
+export interface ModifiersApiResponse {
   data: {
     id: string;
     name: string;
@@ -221,10 +212,10 @@ export class ModifierService {
               return mappedModifier;
             });
         }),
-        tap(async (modifiers) => {
-          // Cache modifiers for offline support
-          await this.cacheModifiers(posId, modifiers);
+        tap((modifiers) => {
           this.isLoading.set(false);
+          // Cache modifiers for offline support (in the background: the UI must not wait for storage)
+          void this.cacheModifiers(posId, modifiers);
         }),
         catchError((error) => {
           console.error(

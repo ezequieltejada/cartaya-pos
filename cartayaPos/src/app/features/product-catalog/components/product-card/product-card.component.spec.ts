@@ -1,5 +1,6 @@
 import { DebugElement } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TranslateModule } from '@ngx-translate/core';
 import { By } from '@angular/platform-browser';
 import {
     IonCard,
@@ -9,7 +10,11 @@ import {
     IonImg,
 } from '@ionic/angular/standalone';
 import { Product } from '../../../../core/models/product.model';
-import { ProductService } from '../../../../core/services/product.service';
+import { ImageCacheService } from '../../../../core/services/image-cache.service';
+import { ModifierService } from '../../../../core/services/modifier.service';
+import { MoneyService } from '../../../../core/services/money.service';
+import { PosService } from '../../../../core/services/pos.service';
+import { TenantService } from '../../../../core/services/tenant.service';
 import { ProductCardComponent } from './product-card.component';
 
 describe('ProductCardComponent', () => {
@@ -43,8 +48,16 @@ describe('ProductCardComponent', () => {
         IonCardTitle,
         IonCardContent,
         IonImg,
+        TranslateModule.forRoot(),
       ],
-      providers: [ProductService],
+      providers: [
+        { provide: MoneyService, useValue: { format: (amount: number) => '$' + amount.toFixed(2) } },
+        // Without a tenant/PoS the card skips loading modifiers and images
+        { provide: TenantService, useValue: { getCurrentTenantId: () => null } },
+        { provide: PosService, useValue: { getSelectedPos: () => null } },
+        { provide: ModifierService, useValue: jasmine.createSpyObj('ModifierService', ['fetchProductModifiers']) },
+        { provide: ImageCacheService, useValue: jasmine.createSpyObj('ImageCacheService', ['getImageUrl']) },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ProductCardComponent);
@@ -132,16 +145,19 @@ describe('ProductCardComponent', () => {
       expect(categoryElement).toBeFalsy();
     });
 
-    it('should render ion-img with lazy loading', () => {
+    it('should render ion-img with lazy loading when the product has an image', () => {
+      component.imageUrl.set('blob:cached-image');
+      fixture.detectChanges();
+
       const img = compiled.query(By.css('ion-img'));
       expect(img).toBeTruthy();
-      expect(img.componentInstance.loading).toBe('lazy');
+      expect(img.nativeElement.getAttribute('loading')).toBe('lazy');
+      expect(img.componentInstance.src).toBe('blob:cached-image');
     });
 
-    it('should use placeholder image', () => {
-      const img = compiled.query(By.css('ion-img'));
-      expect(img).toBeTruthy();
-      expect(img.componentInstance.src).toContain('product-placeholder.png');
+    it('should show the placeholder icon when the product has no image', () => {
+      expect(compiled.query(By.css('ion-img'))).toBeFalsy();
+      expect(compiled.query(By.css('.imageContainer ion-icon'))).toBeTruthy();
     });
   });
 
@@ -170,7 +186,7 @@ describe('ProductCardComponent', () => {
 
     it('should return "Price not available" when defaultPrice is missing', () => {
       component.product = { ...mockProduct, defaultPrice: undefined };
-      expect(component.formattedPrice).toBe('Price not available');
+      expect(component.formattedPrice).toBe('PRODUCT_GRID.PRICE_NOT_AVAILABLE');
     });
 
     it('should return "Price not available" when product is null', () => {
@@ -182,7 +198,7 @@ describe('ProductCardComponent', () => {
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
       };
-      expect(component.formattedPrice).toBe('Price not available');
+      expect(component.formattedPrice).toBe('PRODUCT_GRID.PRICE_NOT_AVAILABLE');
     });
 
     it('should format EUR currency correctly', () => {
@@ -253,8 +269,16 @@ describe('ProductCardComponent', () => {
       component.product = mockProduct;
     });
 
-    it('imageUrl should return placeholder path', () => {
-      expect(component.imageUrl).toContain('product-placeholder.png');
+    it('imageUrl should be empty until a product image is loaded', () => {
+      expect(component.imageUrl()).toBeNull();
+    });
+
+    it('should fall back to the placeholder when the image fails to load', () => {
+      component.imageUrl.set('blob:broken');
+
+      component.onImageError();
+
+      expect(component.imageUrl()).toBeNull();
     });
   });
 
@@ -306,21 +330,12 @@ describe('ProductCardComponent', () => {
   });
 
   describe('Placeholder Image Handling', () => {
-    it('should display placeholder when product image is missing', () => {
-      component.product = { ...mockProduct, defaultPriceId: undefined };
+    it('should display the placeholder icon when the product image is missing', () => {
+      component.product = { ...mockProduct, pictures: [] };
       fixture.detectChanges();
 
-      const img = compiled.query(By.css('ion-img'));
-      expect(img).toBeTruthy();
-      expect(img.componentInstance.src).toContain('product-placeholder');
-    });
-
-    it('should use product-placeholder.png as fallback', () => {
-      component.product = mockProduct;
-      fixture.detectChanges();
-
-      const img = compiled.query(By.css('ion-img'));
-      expect(img.componentInstance.src).toContain('product-placeholder.png');
+      expect(compiled.query(By.css('ion-img'))).toBeFalsy();
+      expect(compiled.query(By.css('.imageContainer ion-icon'))).toBeTruthy();
     });
   });
 
@@ -345,7 +360,7 @@ describe('ProductCardComponent', () => {
         true
       );
       expect(priceElement.nativeElement.textContent).toContain(
-        'Price not available'
+        'PRODUCT_GRID.PRICE_NOT_AVAILABLE'
       );
     });
   });
@@ -353,10 +368,11 @@ describe('ProductCardComponent', () => {
   describe('Image Loading Strategy', () => {
     it('should use lazy loading for images', () => {
       component.product = mockProduct;
+      component.imageUrl.set('blob:cached-image');
       fixture.detectChanges();
 
       const img = compiled.query(By.css('ion-img'));
-      expect(img.componentInstance.loading).toBe('lazy');
+      expect(img.nativeElement.getAttribute('loading')).toBe('lazy');
     });
   });
 

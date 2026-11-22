@@ -5,7 +5,7 @@
         <ion-icon name="arrow-back"></ion-icon>
       </ion-button>
     </ion-buttons>
-    <ion-title>Order #{{ order()?.orderId || order()?.id }}</ion-title>
+    <ion-title>Order #{{ shortRef(order()?.orderId || order()?.id) }}</ion-title>
     <ion-buttons slot="end">
       <ion-button
         (click)="printOrder()"
@@ -73,10 +73,10 @@
             <ion-item class="product-item">
               <ion-label>
                 <h2>{{ item.productName }}</h2>
-                <p>Qty: {{ item.quantity }} × {{ getItemBasePrice(item) | currency }}</p>
+                <p>Qty: {{ item.quantity }} × {{ getItemBasePrice(item) | money }}</p>
               </ion-label>
               <span class="item-price" slot="end">{{
-                getItemTotal(item) | currency
+                getItemTotal(item) | money
               }}</span>
             </ion-item>
 
@@ -92,7 +92,7 @@
                     (modifier.priceDeltaCents
                       ? modifier.priceDeltaCents / 100
                       : modifier.priceDelta || 0) * (modifier.quantity || 1)
-                      | currency
+                      | money
                   }}</span>
                 </ion-item>
               }
@@ -107,11 +107,11 @@
       <ion-card-content>
         <div class="summary-row">
           <span>Subtotal</span>
-          <span>{{ order()!.totalAmount | currency }}</span>
+          <span>{{ order()!.totalAmount | money }}</span>
         </div>
         <div class="summary-row total-row">
           <strong>Total</strong>
-          <strong>{{ order()!.totalAmount | currency }}</strong>
+          <strong>{{ order()!.totalAmount | money }}</strong>
         </div>
       </ion-card-content>
     </ion-card>

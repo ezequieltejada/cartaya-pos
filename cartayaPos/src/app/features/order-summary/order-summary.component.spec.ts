@@ -1,13 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { AlertController, ToastController } from '@ionic/angular';
-import { signal } from '@angular/core';
+import { signal, WritableSignal } from '@angular/core';
 import { of, throwError } from 'rxjs';
 import { OrderItem, SelectedModifier } from '../../models/order.model';
 import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
 import { TenantService } from '../../core/services/tenant.service';
+import { ProductService } from '../../core/services/product.service';
 import { SettingsService } from '../../core/services/settings.service';
+import { TranslateModule } from '@ngx-translate/core';
 import { Printer } from '../../services/printer';
 import { OrderSummaryComponent } from './order-summary.component';
 
@@ -15,13 +18,23 @@ describe('OrderSummaryComponent', () => {
   let component: OrderSummaryComponent;
   let fixture: ComponentFixture<OrderSummaryComponent>;
   let mockOrderService: jasmine.SpyObj<OrderService>;
+  let orderItemsSig: WritableSignal<OrderItem[]>;
+  let orderTotalSig: WritableSignal<number>;
+  let itemCountSig: WritableSignal<number>;
+  let hasItemsSig: WritableSignal<boolean>;
   let mockPosService: jasmine.SpyObj<PosService>;
   let mockTenantService: jasmine.SpyObj<TenantService>;
+  let mockProductService: jasmine.SpyObj<ProductService>;
   let mockSettingsService: jasmine.SpyObj<SettingsService>;
   let mockPrinter: jasmine.SpyObj<Printer>;
   let mockRouter: jasmine.SpyObj<Router>;
   let mockToastController: jasmine.SpyObj<ToastController>;
   let mockAlertController: jasmine.SpyObj<AlertController>;
+  let mockAlert: jasmine.SpyObj<HTMLIonAlertElement>;
+
+  /** Makes the next alert resolve as if the user pressed the given button role */
+  const userPresses = (role: string) =>
+    mockAlert.onDidDismiss.and.returnValue(Promise.resolve({ role }));
 
   // Test data
   const mockOrderItems: OrderItem[] = [
@@ -78,52 +91,36 @@ describe('OrderSummaryComponent', () => {
   };
 
   beforeEach(async () => {
-    // Create mock services with proper signal mocking
-    const orderItemsSignal = jasmine.createSpy('orderItems').and.returnValue([]);
-    const orderTotalSignal = jasmine.createSpy('orderTotal').and.returnValue(0);
-    const itemCountSignal = jasmine.createSpy('itemCount').and.returnValue(0);
-    const hasItemsSignal = jasmine.createSpy('hasItems').and.returnValue(false);
-    const isSubmittingSignal = jasmine.createSpy('isSubmitting').and.returnValue(false);
+    orderItemsSig = signal<OrderItem[]>([]);
+    orderTotalSig = signal(0);
+    itemCountSig = signal(0);
+    hasItemsSig = signal(false);
 
-    mockOrderService = jasmine.createSpyObj('OrderService', [
-      'addConfiguredProduct',
-      'removeItem',
-      'updateItemModifiers',
-      'clearOrder',
-      'submitOrder',
-    ]);
+    mockOrderService = jasmine.createSpyObj(
+      'OrderService',
+      ['addConfiguredProduct', 'removeItem', 'setItemQuantity', 'updateItemModifiers', 'clearOrder', 'submitOrder'],
+      {
+        orderItems: orderItemsSig,
+        orderTotal: orderTotalSig,
+        itemCount: itemCountSig,
+        hasItems: hasItemsSig,
+        isSubmitting: signal(false),
+      }
+    );
 
-    // Override readonly properties with spies
-    Object.defineProperty(mockOrderService, 'orderItems', {
-      get: orderItemsSignal,
-      configurable: true,
-    });
-    Object.defineProperty(mockOrderService, 'orderTotal', {
-      get: orderTotalSignal,
-      configurable: true,
-    });
-    Object.defineProperty(mockOrderService, 'itemCount', {
-      get: itemCountSignal,
-      configurable: true,
-    });
-    Object.defineProperty(mockOrderService, 'hasItems', {
-      get: hasItemsSignal,
-      configurable: true,
-    });
-    Object.defineProperty(mockOrderService, 'isSubmitting', {
-      get: isSubmittingSignal,
-      configurable: true,
-    });
-
-    mockPosService = jasmine.createSpyObj('PosService', ['getSelectedPos']);
+    mockPosService = jasmine.createSpyObj('PosService', ['getSelectedPos', 'clearSelection']);
+    mockPosService.clearSelection.and.returnValue(Promise.resolve());
     mockPosService.getSelectedPos.and.returnValue({ id: 'pos-1' } as any);
 
     mockTenantService = jasmine.createSpyObj('TenantService', ['getCurrentTenantId']);
     mockTenantService.getCurrentTenantId.and.returnValue('tenant-1');
 
-    mockSettingsService = jasmine.createSpyObj('SettingsService', [], {
+    mockSettingsService = jasmine.createSpyObj('SettingsService', ['loadTenantSettings'], {
       currency: signal('USD'),
     });
+
+    mockProductService = jasmine.createSpyObj('ProductService', ['fetchProductsWithPrices']);
+    mockProductService.fetchProductsWithPrices.and.returnValue(of([]));
 
     mockPrinter = jasmine.createSpyObj('Printer', [
       'scanForPrinters',
@@ -143,16 +140,19 @@ describe('OrderSummaryComponent', () => {
     mockToastController.create.and.returnValue(Promise.resolve(mockToast));
 
     mockAlertController = jasmine.createSpyObj('AlertController', ['create']);
-    const mockAlert = jasmine.createSpyObj('Alert', ['present', 'onDidDismiss']);
+    mockAlert = jasmine.createSpyObj('Alert', ['present', 'onDidDismiss']);
+    mockAlert.present.and.returnValue(Promise.resolve());
+    mockAlert.onDidDismiss.and.returnValue(Promise.resolve({ role: 'cancel' }));
     mockAlertController.create.and.returnValue(Promise.resolve(mockAlert));
 
     await TestBed.configureTestingModule({
-      imports: [OrderSummaryComponent],
+      imports: [OrderSummaryComponent, TranslateModule.forRoot()],
       providers: [
         { provide: OrderService, useValue: mockOrderService },
         { provide: PosService, useValue: mockPosService },
         { provide: TenantService, useValue: mockTenantService },
         { provide: SettingsService, useValue: mockSettingsService },
+        { provide: ProductService, useValue: mockProductService },
         { provide: Printer, useValue: mockPrinter },
         { provide: Router, useValue: mockRouter },
         { provide: ToastController, useValue: mockToastController },
@@ -172,7 +172,7 @@ describe('OrderSummaryComponent', () => {
   describe('Reactive Data Binding', () => {
     it('should compute orderItems from OrderService', () => {
       // Setup
-      (mockOrderService.orderItems as jasmine.Spy).and.returnValue(mockOrderItems);
+      orderItemsSig.set(mockOrderItems);
 
       // Act
       const items = component.orderItems();
@@ -184,7 +184,7 @@ describe('OrderSummaryComponent', () => {
     it('should compute orderTotal from OrderService', () => {
       // Setup
       const expectedTotal = 16.5;
-      (mockOrderService.orderTotal as jasmine.Spy).and.returnValue(expectedTotal);
+      orderTotalSig.set(expectedTotal);
 
       // Act
       const total = component.orderTotal();
@@ -195,7 +195,7 @@ describe('OrderSummaryComponent', () => {
 
     it('should compute itemCount from OrderService', () => {
       // Setup
-      (mockOrderService.itemCount as jasmine.Spy).and.returnValue(2);
+      itemCountSig.set(2);
 
       // Act
       const count = component.itemCount();
@@ -206,7 +206,7 @@ describe('OrderSummaryComponent', () => {
 
     it('should compute hasItems from OrderService', () => {
       // Setup
-      (mockOrderService.hasItems as jasmine.Spy).and.returnValue(true);
+      hasItemsSig.set(true);
 
       // Act
       const hasItems = component.hasItems();
@@ -217,7 +217,7 @@ describe('OrderSummaryComponent', () => {
 
     it('should compute isSubmitting from OrderService', () => {
       // Setup
-      (mockOrderService.isSubmitting as jasmine.Spy).and.returnValue(false);
+      
 
       // Act
       const isSubmitting = component.isSubmitting();
@@ -228,122 +228,80 @@ describe('OrderSummaryComponent', () => {
   });
 
   describe('Cancel Order', () => {
-    it('should show cancel confirmation alert', async () => {
-      // Act
+    it('should show an Ionic confirmation alert', async () => {
       await component.showCancelConfirmation();
 
-      // Assert
       expect(mockAlertController.create).toHaveBeenCalled();
       const alertConfig = (mockAlertController.create as jasmine.Spy).calls.mostRecent().args[0];
-      expect(alertConfig.header).toBe('Cancel Order');
-      expect(alertConfig.message).toContain('Are you sure');
+      expect(alertConfig.header).toBe('ORDER_SUMMARY.CANCEL_CONFIRMATION');
+      expect(alertConfig.message).toBe('ORDER_SUMMARY.CANCEL_MESSAGE');
     });
 
-    it('should clear order on cancel confirmation', async () => {
-      // Setup
+    it('should keep the order when the user declines', async () => {
+      userPresses('cancel');
+
       await component.showCancelConfirmation();
-      const alertConfig = (mockAlertController.create as jasmine.Spy).calls.mostRecent().args[0];
-      const confirmButton = alertConfig.buttons.find((btn: any) => btn.text === 'Yes');
 
-      // Act
-      confirmButton.handler();
+      expect(mockOrderService.clearOrder).not.toHaveBeenCalled();
+    });
 
-      // Assert
+    it('should clear order and go to /products when the user accepts', async () => {
+      userPresses('destructive');
+
+      await component.showCancelConfirmation();
+
       expect(mockOrderService.clearOrder).toHaveBeenCalled();
-    });
-
-    it('should navigate to /products after cancel confirmation', async () => {
-      // Setup
-      await component.showCancelConfirmation();
-      const alertConfig = (mockAlertController.create as jasmine.Spy).calls.mostRecent().args[0];
-      const confirmButton = alertConfig.buttons.find((btn: any) => btn.text === 'Yes');
-
-      // Act
-      await confirmButton.handler();
-
-      // Wait for async operations
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Assert
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/products']);
     });
   });
 
   describe('Cash Order', () => {
-    it('should show cash order confirmation with summary', async () => {
-      // Setup
-      (mockOrderService.orderTotal as jasmine.Spy).and.returnValue(16.5);
-      (mockOrderService.orderItems as jasmine.Spy).and.returnValue(mockOrderItems);
+    beforeEach(() => {
+      orderTotalSig.set(16.5);
+      orderItemsSig.set(mockOrderItems);
+      userPresses('confirm');
+    });
 
-      // Act
+    /** Confirms the dialog and lets the async submit handlers finish */
+    const confirmOrder = async () => {
+      await component.showCashConfirmation();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    };
+
+    it('should show confirmation with a summary using the tenant currency', async () => {
+      userPresses('cancel');
+
       await component.showCashConfirmation();
 
-      // Assert
-      expect(mockAlertController.create).toHaveBeenCalled();
       const alertConfig = (mockAlertController.create as jasmine.Spy).calls.mostRecent().args[0];
       expect(alertConfig.message).toContain('Burger');
       expect(alertConfig.message).toContain('16.50');
+      expect(mockOrderService.submitOrder).not.toHaveBeenCalled();
     });
 
-    it('should submit order on cash confirmation', async () => {
-      // Setup
+    it('should submit order on confirmation', async () => {
       mockOrderService.submitOrder.and.returnValue(of(mockSubmitOrderResponse));
-      (mockOrderService.orderTotal as jasmine.Spy).and.returnValue(16.5);
-      (mockOrderService.orderItems as jasmine.Spy).and.returnValue(mockOrderItems);
 
-      await component.showCashConfirmation();
-      const alertConfig = (mockAlertController.create as jasmine.Spy).calls.mostRecent().args[0];
-      const confirmButton = alertConfig.buttons.find((btn: any) => btn.text === 'Confirm');
+      await confirmOrder();
 
-      // Act
-      confirmButton.handler();
-
-      // Wait for async operations
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Assert
       expect(mockOrderService.submitOrder).toHaveBeenCalledWith('pos-1', 'tenant-1');
     });
 
     it('should navigate to /products on successful order submission', async () => {
-      // Setup
       mockOrderService.submitOrder.and.returnValue(of(mockSubmitOrderResponse));
-      (mockOrderService.orderTotal as jasmine.Spy).and.returnValue(16.5);
-      (mockOrderService.orderItems as jasmine.Spy).and.returnValue(mockOrderItems);
 
-      await component.showCashConfirmation();
-      const alertConfig = (mockAlertController.create as jasmine.Spy).calls.mostRecent().args[0];
-      const confirmButton = alertConfig.buttons.find((btn: any) => btn.text === 'Confirm');
+      await confirmOrder();
 
-      // Act
-      confirmButton.handler();
-
-      // Wait for async operations
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Assert
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/products']);
     });
 
     it('should navigate to /products even if receipt printing fails', async () => {
-      // Setup
       mockOrderService.submitOrder.and.returnValue(of(mockSubmitOrderResponse));
       mockPrinter.selectedPrinter = { address: 'AA:BB:CC:DD:EE:FF', name: 'Kitchen Printer' };
       mockPrinter.printReceipt.and.returnValue(Promise.reject(new Error('Printer offline')));
-      (mockOrderService.orderTotal as jasmine.Spy).and.returnValue(16.5);
-      (mockOrderService.orderItems as jasmine.Spy).and.returnValue(mockOrderItems);
 
-      await component.showCashConfirmation();
-      const alertConfig = (mockAlertController.create as jasmine.Spy).calls.mostRecent().args[0];
-      const confirmButton = alertConfig.buttons.find((btn: any) => btn.text === 'Confirm');
+      await confirmOrder();
 
-      // Act
-      confirmButton.handler();
-
-      // Wait for async operations
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Assert - should navigate even if printing fails
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/products']);
       expect(mockToastController.create).toHaveBeenCalled();
     });
@@ -352,66 +310,90 @@ describe('OrderSummaryComponent', () => {
       mockOrderService.submitOrder.and.returnValue(of(mockSubmitOrderResponse));
       mockPrinter.selectedPrinter = { address: 'AA:BB:CC:DD:EE:FF', name: 'Kitchen Printer' };
       mockPrinter.printReceipt.and.returnValue(Promise.resolve());
-      (mockOrderService.orderTotal as jasmine.Spy).and.returnValue(16.5);
-      (mockOrderService.orderItems as jasmine.Spy).and.returnValue(mockOrderItems);
 
-      await component.showCashConfirmation();
-      const alertConfig = (mockAlertController.create as jasmine.Spy).calls.mostRecent().args[0];
-      const confirmButton = alertConfig.buttons.find((btn: any) => btn.text === 'Confirm');
-
-      confirmButton.handler();
-
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await confirmOrder();
 
       expect(mockPrinter.printReceipt).toHaveBeenCalled();
     });
 
-    it('should show error toast on submission failure', async () => {
-      // Setup
-      mockOrderService.submitOrder.and.returnValue(throwError(() => new Error('API Error')));
-      (mockOrderService.orderTotal as jasmine.Spy).and.returnValue(16.5);
-      (mockOrderService.orderItems as jasmine.Spy).and.returnValue(mockOrderItems);
-
-      await component.showCashConfirmation();
-      const alertConfig = (mockAlertController.create as jasmine.Spy).calls.mostRecent().args[0];
-      const confirmButton = alertConfig.buttons.find((btn: any) => btn.text === 'Confirm');
-
-      // Act
-      confirmButton.handler();
-
-      // Wait for async operations
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Assert
-      expect(mockToastController.create).toHaveBeenCalled();
-    });
-
     it('should handle missing PoS or Tenant ID', async () => {
-      // Setup
       mockPosService.getSelectedPos.and.returnValue(null);
-      (mockOrderService.orderTotal as jasmine.Spy).and.returnValue(16.5);
-      (mockOrderService.orderItems as jasmine.Spy).and.returnValue(mockOrderItems);
 
-      await component.showCashConfirmation();
-      const alertConfig = (mockAlertController.create as jasmine.Spy).calls.mostRecent().args[0];
-      const confirmButton = alertConfig.buttons.find((btn: any) => btn.text === 'Confirm');
+      await confirmOrder();
 
-      // Act
-      confirmButton.handler();
-
-      // Wait for async operations
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Assert
       expect(mockToastController.create).toHaveBeenCalled();
       expect(mockOrderService.submitOrder).not.toHaveBeenCalled();
+    });
+
+    describe('rejected orders', () => {
+      /** Lets the error alert be dismissed and returns the last alert config */
+      const submitFailingWith = async (status: number, body: unknown = {}) => {
+        mockOrderService.submitOrder.and.returnValue(
+          throwError(() => new HttpErrorResponse({ status, error: body }))
+        );
+        await confirmOrder();
+        const errorAlert = (mockAlertController.create as jasmine.Spy).calls
+          .all()
+          .map((c) => c.args[0])
+          .find((cfg) => cfg.header === 'ORDER_SUMMARY.ERRORS.TITLE');
+        return errorAlert;
+      };
+
+      it('should explain that the user is not assigned to the PoS and go back to PoS selection', async () => {
+        const errorAlert = await submitFailingWith(403, { code: 'POS_NOT_ASSIGNED', message: 'English' });
+
+        expect(errorAlert?.message).toBe('API_ERRORS.POS_NOT_ASSIGNED');
+        expect(mockPosService.clearSelection).toHaveBeenCalled();
+        expect(mockRouter.navigate).toHaveBeenCalledWith(['/pos-selection']);
+        expect(mockOrderService.clearOrder).not.toHaveBeenCalled();
+      });
+
+      it('should explain the PoS no longer exists and go to PoS selection', async () => {
+        const errorAlert = await submitFailingWith(404, { code: 'POS_NOT_FOUND' });
+
+        expect(errorAlert?.message).toBe('API_ERRORS.POS_NOT_FOUND');
+        expect(mockPosService.clearSelection).toHaveBeenCalled();
+        expect(mockRouter.navigate).toHaveBeenCalledWith(['/pos-selection']);
+        // The cart is kept
+        expect(mockOrderService.clearOrder).not.toHaveBeenCalled();
+      });
+
+      it('should show a permissions message without leaving the screen on MISSING_PERMISSIONS', async () => {
+        const errorAlert = await submitFailingWith(403, { code: 'MISSING_PERMISSIONS' });
+
+        expect(errorAlert?.message).toBe('API_ERRORS.MISSING_PERMISSIONS');
+        expect(mockPosService.clearSelection).not.toHaveBeenCalled();
+      });
+
+      it('should refresh prices on TOTAL_MISMATCH', async () => {
+        await submitFailingWith(422, { code: 'TOTAL_MISMATCH' });
+
+        expect(mockProductService.fetchProductsWithPrices).toHaveBeenCalledWith('tenant-1', true);
+        expect(mockSettingsService.loadTenantSettings).toHaveBeenCalledWith('tenant-1');
+      });
+
+      it('should remove the rejected cart line using the productId param', async () => {
+        orderItemsSig.set(mockOrderItems);
+        const rejected = mockOrderItems[0];
+
+        await submitFailingWith(404, { code: 'PRODUCT_NOT_FOUND', params: { productId: rejected.productId } });
+
+        expect(mockOrderService.removeItem).toHaveBeenCalledWith(rejected.id as string);
+      });
+
+      it('should show UNKNOWN_ERROR for unknown codes and never queue/navigate', async () => {
+        const errorAlert = await submitFailingWith(500, { code: 'WHATEVER', message: 'English' });
+
+        expect(errorAlert?.message).toBe('API_ERRORS.UNKNOWN_ERROR');
+        expect(mockRouter.navigate).not.toHaveBeenCalledWith(['/pos-selection']);
+      });
     });
   });
 
   describe('Edit Item', () => {
     it('should navigate to modifiers page with item context', async () => {
       // Setup
-      (mockOrderService.orderItems as jasmine.Spy).and.returnValue(mockOrderItems);
+      orderItemsSig.set(mockOrderItems);
 
       // Act
       await component.editItem('item-1');
@@ -430,7 +412,7 @@ describe('OrderSummaryComponent', () => {
 
     it('should not navigate for non-existent item', async () => {
       // Setup
-      (mockOrderService.orderItems as jasmine.Spy).and.returnValue(mockOrderItems);
+      orderItemsSig.set(mockOrderItems);
 
       // Act
       await component.editItem('item-999');
@@ -441,23 +423,36 @@ describe('OrderSummaryComponent', () => {
   });
 
   describe('Remove Item', () => {
-    it('should call OrderService.removeItem', () => {
-      // Act
-      component.removeItem('item-1');
-
-      // Assert
-      expect(mockOrderService.removeItem).toHaveBeenCalledWith('item-1');
+    beforeEach(() => {
+      orderItemsSig.set(mockOrderItems);
     });
 
-    it('should show toast notification', async () => {
-      // Act
-      component.removeItem('item-1');
+    it('should ask for confirmation and not remove when declined', async () => {
+      userPresses('cancel');
 
-      // Wait for async toast
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await component.removeItem('item-1');
 
-      // Assert
+      expect(mockAlertController.create).toHaveBeenCalled();
+      expect(mockOrderService.removeItem).not.toHaveBeenCalled();
+    });
+
+    it('should remove the item and show a toast when confirmed', async () => {
+      userPresses('destructive');
+
+      await component.removeItem('item-1');
+
+      expect(mockOrderService.removeItem).toHaveBeenCalledWith('item-1');
       expect(mockToastController.create).toHaveBeenCalled();
+    });
+  });
+
+  describe('Quantity', () => {
+    it('should increase the quantity of a line', () => {
+      orderItemsSig.set(mockOrderItems);
+
+      component.changeQuantity('item-1', 1);
+
+      expect(mockOrderService.setItemQuantity).toHaveBeenCalledWith('item-1', 2);
     });
   });
 

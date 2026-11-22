@@ -26,11 +26,34 @@
                   </span>
                 </ion-text>
               </div>
+              <div class="quantity-stepper">
+                <ion-button
+                  fill="outline"
+                  size="small"
+                  class="qty-decrement"
+                  [disabled]="item.quantity <= 1"
+                  (click)="changeQuantity(item.id, -1)"
+                  [attr.aria-label]="'ORDER_SUMMARY.DECREASE_QUANTITY' | translate"
+                >
+                  <ion-icon name="remove" slot="icon-only"></ion-icon>
+                </ion-button>
+                <span class="quantity-value" aria-live="polite">{{ item.quantity }}</span>
+                <ion-button
+                  fill="outline"
+                  size="small"
+                  class="qty-increment"
+                  [disabled]="item.quantity >= maxLineQuantity"
+                  (click)="changeQuantity(item.id, 1)"
+                  [attr.aria-label]="'ORDER_SUMMARY.INCREASE_QUANTITY' | translate"
+                >
+                  <ion-icon name="add" slot="icon-only"></ion-icon>
+                </ion-button>
+              </div>
             </ion-label>
 
             <div slot="end" class="item-actions">
               @if (item.subtotal !== undefined) {
-                <span class="item-price">{{ item.subtotal | currency: currencyCode() : 'symbol' : '1.2-2' }}</span>
+                <span class="item-price">{{ item.subtotal | money }}</span>
               } @else {
                 <span class="item-price">{{ 'COMMON.BUTTONS.OK' | translate }}</span>
               }
@@ -39,7 +62,7 @@
                 color="primary"
                 size="small"
                 (click)="editItem(item.id)"
-                title="Edit item"
+                [attr.aria-label]="'COMMON.BUTTONS.EDIT' | translate"
               >
                 <ion-icon name="pencil" slot="icon-only"></ion-icon>
               </ion-button>
@@ -48,7 +71,7 @@
                 color="danger"
                 size="small"
                 (click)="removeItem(item.id)"
-                title="Remove item"
+                [attr.aria-label]="'COMMON.BUTTONS.DELETE' | translate"
               >
                 <ion-icon name="trash" slot="icon-only"></ion-icon>
               </ion-button>
@@ -63,7 +86,7 @@
   <div class="total-section">
     <div class="total-row">
       <span class="label">{{ 'ORDER_SUMMARY.TOTAL' | translate }}:</span>
-      <span class="total-amount">{{ orderTotal() | currency: currencyCode() : 'symbol' : '1.2-2' }}</span>
+      <span class="total-amount">{{ orderTotal() | money }}</span>
     </div>
   </div>
 

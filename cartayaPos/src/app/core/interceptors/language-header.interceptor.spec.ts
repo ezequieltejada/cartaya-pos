@@ -1,5 +1,5 @@
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { LanguageState } from '../services/language-state.service';
 import { languageHeaderInterceptor } from './language-header.interceptor';
@@ -11,9 +11,9 @@ describe('languageHeaderInterceptor', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
       providers: [
         provideHttpClient(withInterceptors([languageHeaderInterceptor])),
+        provideHttpClientTesting(),
         LanguageState,
       ],
     });

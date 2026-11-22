@@ -1,8 +1,17 @@
-import { computed, inject, Injectable, NgZone, OnDestroy, signal } from '@angular/core';
-import { App } from '@capacitor/app';
+import { computed, inject, Injectable, InjectionToken, NgZone, OnDestroy, signal } from '@angular/core';
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { Device } from '@capacitor/device';
 import { CapacitorThermalPrinter } from 'capacitor-thermal-printer';
+import { CAPACITOR_APP } from '../core/tokens/capacitor-app.token';
+
+/**
+ * The thermal printer plugin is injected so specs can provide a fake: Capacitor
+ * plugin objects are proxies, which jasmine cannot spy on.
+ */
+export const THERMAL_PRINTER = new InjectionToken<typeof CapacitorThermalPrinter>('THERMAL_PRINTER', {
+  providedIn: 'root',
+  factory: () => CapacitorThermalPrinter,
+});
 
 /**
  * Minimum Android version that requires the new BLUETOOTH_SCAN / BLUETOOTH_CONNECT
@@ -89,6 +98,8 @@ export class Printer implements OnDestroy {
   });
 
   ngZone = inject(NgZone);
+  private readonly thermal = inject(THERMAL_PRINTER);
+  private readonly capApp = inject(CAPACITOR_APP);
 
   constructor() {
     console.log('PRINTER_DEBUG: Printer service constructed');
@@ -125,11 +136,11 @@ export class Printer implements OnDestroy {
 
   private async registerConnectionListeners(): Promise<void> {
     try {
-      this.connectedListenerHandle = await CapacitorThermalPrinter.addListener('connected', (device) => {
+      this.connectedListenerHandle = await this.thermal.addListener('connected', (device) => {
         this.handleNativeConnected(device);
       });
 
-      this.disconnectedListenerHandle = await CapacitorThermalPrinter.addListener('disconnected', () => {
+      this.disconnectedListenerHandle = await this.thermal.addListener('disconnected', () => {
         this.handleNativeDisconnected();
       });
 
@@ -142,7 +153,7 @@ export class Printer implements OnDestroy {
 
   private async registerAppStateListener(): Promise<void> {
     try {
-      this.appStateListenerHandle = await App.addListener('appStateChange', ({ isActive }) => {
+      this.appStateListenerHandle = await this.capApp.addListener('appStateChange', ({ isActive }) => {
         if (isActive) {
           void this.refreshConnectionStatus('app-resume');
         }
@@ -230,7 +241,7 @@ export class Printer implements OnDestroy {
     }
 
     try {
-      const connected = await CapacitorThermalPrinter.isConnected();
+      const connected = await this.thermal.isConnected();
 
       this.ngZone.run(() => {
         if (connected) {
@@ -300,7 +311,7 @@ export class Printer implements OnDestroy {
     }
 
     try {
-      const connected = await CapacitorThermalPrinter.isConnected();
+      const connected = await this.thermal.isConnected();
 
       if (!connected) {
         this.handleDetectedDisconnection('active-check');
@@ -346,7 +357,7 @@ export class Printer implements OnDestroy {
       this.userManuallyDisconnected = false;
 
       console.log(`PRINTER_DEBUG: Calling CapacitorThermalPrinter.connect({ address: ${address} })`);
-      const device = await CapacitorThermalPrinter.connect({ address });
+      const device = await this.thermal.connect({ address });
 
       if (device === null) {
         this.isConnected = false;
@@ -555,7 +566,7 @@ export class Printer implements OnDestroy {
     try {
       await this.ensureNativeLifecycleReady();
       console.log(`PRINTER_DEBUG: disconnect() called, manualDisconnect=${manualDisconnect}`);
-      await CapacitorThermalPrinter.disconnect();
+      await this.thermal.disconnect();
       this.isConnected = false;
       this.clearConnectionError();
       this.userManuallyDisconnected = manualDisconnect;
@@ -591,7 +602,7 @@ export class Printer implements OnDestroy {
 
     try {
       // Set up listener for discovered devices
-      const listenerHandle = await CapacitorThermalPrinter.addListener('discoverDevices', async (data) => {
+      const listenerHandle = await this.thermal.addListener('discoverDevices', async (data) => {
         const devices = data.devices || [];
         console.log(`PRINTER_DEBUG: discoverDevices event received – raw payload: ${JSON.stringify(data)}`);
         console.log(`PRINTER_DEBUG: ${devices.length} device(s) surfaced to JS layer`);
@@ -606,7 +617,7 @@ export class Printer implements OnDestroy {
 
         // Stop scanning once devices are found
         try {
-          await CapacitorThermalPrinter.stopScan();
+          await this.thermal.stopScan();
           console.log('PRINTER_DEBUG: stopScan() called after device discovery');
         } catch (stopErr) {
           console.error('PRINTER_DEBUG: Error stopping scan after device discovery:', stopErr);
@@ -623,7 +634,7 @@ export class Printer implements OnDestroy {
 
       // Start scanning
       console.log('PRINTER_DEBUG: Calling CapacitorThermalPrinter.startScan()');
-      await CapacitorThermalPrinter.startScan();
+      await this.thermal.startScan();
       console.log('PRINTER_DEBUG: startScan() returned (scan in progress)');
 
       // Add timeout to stop scanning if no devices found within 10 seconds
@@ -631,7 +642,7 @@ export class Printer implements OnDestroy {
         if (this.isScanning) {
           console.log('PRINTER_DEBUG: Scan timeout (10 s) reached – no devices found, stopping scan');
           try {
-            await CapacitorThermalPrinter.stopScan();
+            await this.thermal.stopScan();
           } catch (error) {
             console.error('PRINTER_DEBUG: Error stopping scan on timeout:', error);
           }
@@ -821,7 +832,7 @@ export class Printer implements OnDestroy {
 
       console.log('PRINTER_DEBUG: printSample() – connected, sending print job');
 
-      await CapacitorThermalPrinter.begin()
+      await this.thermal.begin()
         .align('center')
         .text('Hello from Ionic!\n')
         .text('PT-210 Test Print\n')
@@ -849,7 +860,7 @@ export class Printer implements OnDestroy {
 
       console.log('PRINTER_DEBUG: printReceipt() – sending receipt');
 
-      await CapacitorThermalPrinter.begin()
+      await this.thermal.begin()
         .text(receiptContent)
         .cutPaper()
         .write();

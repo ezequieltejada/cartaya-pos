@@ -1,9 +1,12 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, Injector, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { TranslateService } from '@ngx-translate/core';
 import { Observable, catchError, forkJoin, from, map, of, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Product } from '../models/product.model';
+import { translateLoadError } from '../utils/api-error';
+import { formatMoney } from '../utils/money';
 import { ImageCacheService } from './image-cache.service';
 import { StorageService } from './storage.service';
 import { TenantService } from './tenant.service';
@@ -27,6 +30,18 @@ interface PriceCache {
 }
 
 /**
+ * Normalize text for searching: trims, lowercases and strips accents
+ * so "café" matches "Cafe" and " cappuccino " matches "Cappuccino".
+ */
+export function normalizeSearchText(value: string | null | undefined): string {
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+/**
  * Product Service
  * Manages product state and API interactions
  * Follows the established pattern from PosService and TenantService
@@ -39,6 +54,9 @@ export class ProductService {
   private storageService = inject(StorageService);
   private tenantService = inject(TenantService);
   private router = inject(Router);
+  // Resolved lazily: TranslateService loads its files over HttpClient (and its
+  // interceptors), so injecting it eagerly here risks a circular dependency.
+  private injector = inject(Injector);
   private imageCacheService = inject(ImageCacheService);
 
   private readonly API_URL = `${environment.apiUrl}/api`;
@@ -72,12 +90,13 @@ export class ProductService {
     let filtered = this.products();
 
     // Text filter
-    const query = this.filterText().toLowerCase();
+    const query = normalizeSearchText(this.filterText());
     if (query) {
       filtered = filtered.filter(
         (product) =>
-          product.name.toLowerCase().includes(query) ||
-          product.sku?.toLowerCase().includes(query)
+          normalizeSearchText(product.name).includes(query) ||
+          normalizeSearchText(product.description).includes(query) ||
+          normalizeSearchText(product.sku).includes(query)
       );
     }
 
@@ -99,18 +118,8 @@ export class ProductService {
    * @param error - HTTP error object
    * @returns User-friendly error message
    */
-  private getErrorMessage(error: any): string {
-    if (error.status === 0) {
-      return 'No internet connection. Please check your network.';
-    } else if (error.status === 401) {
-      return 'Session expired. Please log in again.';
-    } else if (error.status === 403) {
-      return 'You do not have permission to view products.';
-    } else if (error.status >= 500) {
-      return 'Server error. Please try again later.';
-    } else {
-      return 'Failed to load products. Please try again.';
-    }
+  private getErrorMessage(error: unknown): string {
+    return translateLoadError(this.injector.get(TranslateService), error);
   }
 
   /**
@@ -249,13 +258,14 @@ export class ProductService {
             }
           )
           .pipe(
-            tap(async (response) => {
-              this.products.set(response.data);
-              await this.setCache(activeTenantId, response.data);
+            map((response): Product[] => (Array.isArray(response?.data) ? response.data : [])),
+            tap((data) => {
+              this.products.set(data);
               this.isLoading.set(false);
               this.error.set(null);
+              // Cache in the background: the UI must not wait for storage
+              void this.setCache(activeTenantId, data);
             }),
-            map((response): Product[] => response.data),
             catchError((error) => {
               console.error('Failed to fetch products:', error);
               this.isLoading.set(false);
@@ -623,11 +633,6 @@ export class ProductService {
    * @returns Formatted price string with currency symbol
    */
   formatPrice(amount: number, currency: string): string {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
+    return formatMoney(amount, currency);
   }
 }

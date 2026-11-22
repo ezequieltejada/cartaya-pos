@@ -4,6 +4,7 @@ import type { DBSchema, IDBPDatabase } from 'idb';
 import { openDB } from 'idb';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { parseApiError } from '../utils/api-error';
 import { NetworkService } from './network.service';
 
 /**
@@ -59,6 +60,9 @@ export interface QueuedOrder {
   createdAt: string;
   lastAttemptAt: string | null;
   error: string | null;
+  /** API error code (or SERVER_UNREACHABLE) of the last failed sync; translated at display time */
+  errorCode?: string | null;
+  errorParams?: Record<string, unknown> | null;
   metadata?: {
     orderNumber?: string;
     total?: number;
@@ -311,14 +315,14 @@ export class OrderQueueService {
     } catch (error) {
       // Retry failed
       const newRetryCount = order.retryCount + 1;
-      let errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      // Extract HTTP status from error if available
-      let httpStatus = 0;
-      if (error instanceof HttpErrorResponse) {
-        httpStatus = error.status;
-        errorMessage = `HTTP ${error.status}: ${error.statusText || errorMessage}`;
-      }
+      // Store the machine-readable code and params, never English text:
+      // the queue page translates them for the current language.
+      const parsed = parseApiError(error);
+      const errorCode = error instanceof HttpErrorResponse && error.status === 0
+        ? 'SERVER_UNREACHABLE'
+        : parsed.code;
+      const errorFields = { error: null, errorCode, errorParams: parsed.params };
+      const httpStatus = error instanceof HttpErrorResponse ? error.status : 0;
       
       console.error(`Order sync failed for ${queueId}:`, error);
 
@@ -329,7 +333,9 @@ export class OrderQueueService {
           status: 'out-of-sync',
           retryCount: newRetryCount,
           lastAttemptAt: new Date().toISOString(),
-          error: 'Authentication required - please log in again',
+          error: null,
+          errorCode: 'SESSION_EXPIRED',
+          errorParams: null,
         });
         return false;
       }
@@ -340,7 +346,7 @@ export class OrderQueueService {
           status: 'out-of-sync',
           retryCount: newRetryCount,
           lastAttemptAt: new Date().toISOString(),
-          error: errorMessage,
+          ...errorFields,
         });
         console.warn(
           `Order out of sync after ${newRetryCount} attempts: ${queueId}`
@@ -351,7 +357,7 @@ export class OrderQueueService {
           status: 'pending',
           retryCount: newRetryCount,
           lastAttemptAt: new Date().toISOString(),
-          error: errorMessage,
+          ...errorFields,
         });
 
         // Schedule next retry with exponential backoff
@@ -404,6 +410,8 @@ export class OrderQueueService {
         status: 'pending',
         retryCount: 0,
         error: null,
+        errorCode: null,
+        errorParams: null,
       });
     }
 

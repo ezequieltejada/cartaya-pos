@@ -27,6 +27,9 @@ import { TenantService } from '../../core/services/tenant.service';
 import { Order, OrderItem, SelectedModifier } from '../../models/order.model';
 import { OrderHistoryService } from '../../services/order-history.service';
 import { Printer } from '../../services/printer';
+import { MoneyService } from '../../core/services/money.service';
+import { shortOrderRef } from '../../core/utils/order-ref';
+import { MoneyPipe } from '../../shared/pipes/money.pipe';
 
 @Component({
   selector: 'app-order-detail',
@@ -48,6 +51,7 @@ import { Printer } from '../../services/printer';
     IonCard,
     IonCardContent,
     IonSpinner,
+    MoneyPipe,
   ],
 })
 export class OrderDetailPage implements OnInit {
@@ -60,6 +64,9 @@ export class OrderDetailPage implements OnInit {
   private printerService = inject(Printer);
   private loadingCtrl = inject(LoadingController);
   private toastCtrl = inject(ToastController);
+  private moneyService = inject(MoneyService);
+
+  readonly shortRef = shortOrderRef;
 
   // Reactive state
   order = signal<Order | null>(null);
@@ -315,7 +322,7 @@ export class OrderDetailPage implements OnInit {
 
     // Header
     lines.push('================================');
-    lines.push(`Order #: ${order.orderId || order.id}`);
+    lines.push(`Order #: ${shortOrderRef(order.orderId || order.id)}`);
     lines.push(`Date: ${order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'}`);
     lines.push(`Status: ${(order.status || 'Received').toUpperCase()}`);
     lines.push('================================');
@@ -334,7 +341,7 @@ export class OrderDetailPage implements OnInit {
       const itemTotal = this.getItemTotal(item);
 
       lines.push(`${productName}`);
-      lines.push(`  Qty: ${item.quantity} x ${basePrice.toFixed(2)}`);
+      lines.push(`  Qty: ${item.quantity} x ${this.moneyService.format(basePrice)}`);
 
       // Add modifiers if present
       // Note: API response includes modifiers with name and priceDeltaCents
@@ -344,20 +351,19 @@ export class OrderDetailPage implements OnInit {
           const modPrice = modifier.priceDeltaCents
             ? modifier.priceDeltaCents / 100
             : modifier.priceDelta || 0;
-          lines.push(`  + ${modifier.name}: ${modPrice > 0 ? '+' : ''}${modPrice.toFixed(2)}`);
+          lines.push(`  + ${modifier.name}: ${this.moneyService.format(modPrice, { signed: true })}`);
         }
       }
 
-      lines.push(`  Subtotal: ${itemTotal.toFixed(2)}`);
+      lines.push(`  Subtotal: ${this.moneyService.format(itemTotal)}`);
       lines.push('');
     }
 
     // Summary section
     lines.push('================================');
-    lines.push(`Subtotal:            ${order.totalAmount.toFixed(2)}`);
-    lines.push(`Total:               ${order.totalAmount.toFixed(2)}`);
-    lines.push(`Currency:            ${order.currency}`);
-    lines.push('================================');
+    lines.push(`Subtotal:            ${this.moneyService.format(order.totalAmount)}`);
+    lines.push(`Total:               ${this.moneyService.format(order.totalAmount)}`);
+        lines.push('================================');
     lines.push('');
     lines.push('Thank you for your purchase!');
     lines.push('');

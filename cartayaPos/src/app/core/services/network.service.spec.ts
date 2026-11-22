@@ -1,6 +1,6 @@
-import { TestBed, fakeAsync, flush, tick } from '@angular/core/testing';
+import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { Platform } from '@ionic/angular';
-import { NetworkService } from './network.service';
+import { NetworkService, NetworkStatus } from './network.service';
 
 describe('NetworkService', () => {
   let service: NetworkService;
@@ -83,78 +83,68 @@ describe('NetworkService', () => {
   });
 
   describe('Observable', () => {
+    let onLine: jasmine.Spy;
+
     beforeEach(() => {
       platformSpy.is.and.returnValue(false);
+      // The stream starts from navigator.onLine, so pin it for deterministic tests
+      onLine = spyOnProperty(navigator, 'onLine', 'get');
     });
 
-    it('should emit network status changes on online event', fakeAsync(() => {
-      let emittedCount = 0;
+    it('should emit the initial state first', () => {
+      onLine.and.returnValue(true);
+      const statuses: NetworkStatus[] = [];
 
-      const subscription = service.onNetworkChange().subscribe((status) => {
-        emittedCount++;
-        expect(status.connected).toBeDefined();
-        expect(status.connectionType).toBeDefined();
-        expect(status.timestamp).toBeDefined();
+      const subscription = service.onNetworkChange().subscribe((status) => statuses.push(status));
 
-        // First emission is the initial state
-        if (emittedCount === 1) {
-          // After initial, trigger online event
-          window.dispatchEvent(new Event('online'));
-        } else if (emittedCount === 2) {
-          // Second emission should be online
-          expect(status.connected).toBe(true);
-          expect(status.connectionType).toBe('wifi');
-          subscription.unsubscribe();
-        }
-      });
-
-      tick(100);
-      flush();
-    }));
-
-    it('should emit network status changes on offline event', fakeAsync(() => {
-      let emittedCount = 0;
-      const statuses: any[] = [];
-
-      const subscription = service.onNetworkChange().subscribe((status) => {
-        emittedCount++;
-        statuses.push(status);
-
-        if (emittedCount === 1) {
-          // After initial, trigger offline event
-          window.dispatchEvent(new Event('offline'));
-        } else if (emittedCount === 2) {
-          // Second emission should be offline
-          expect(status.connected).toBe(false);
-          expect(status.connectionType).toBe('none');
-          subscription.unsubscribe();
-        }
-      });
-
-      tick(100);
-      flush();
-    }));
-
-    it('should have distinctUntilChanged behavior (no duplicate emissions)', fakeAsync(() => {
-      let emittedCount = 0;
-
-      const subscription = service.onNetworkChange().subscribe(() => {
-        emittedCount++;
-      });
-
-      // Trigger multiple online events (should only emit once)
-      window.dispatchEvent(new Event('online'));
-      window.dispatchEvent(new Event('online'));
-      window.dispatchEvent(new Event('online'));
-
-      tick(100);
-
-      // Initial state + one emission = 2 total
-      expect(emittedCount).toBe(2);
-
+      expect(statuses.length).toBe(1);
+      expect(statuses[0].connected).toBeTrue();
+      expect(statuses[0].connectionType).toBe('wifi');
+      expect(statuses[0].timestamp).toBeDefined();
       subscription.unsubscribe();
-      flush();
-    }));
+    });
+
+    it('should emit network status changes on online event', () => {
+      onLine.and.returnValue(false);
+      const statuses: NetworkStatus[] = [];
+      const subscription = service.onNetworkChange().subscribe((status) => statuses.push(status));
+
+      window.dispatchEvent(new Event('online'));
+
+      expect(statuses.length).toBe(2);
+      expect(statuses[0].connected).toBeFalse();
+      expect(statuses[1].connected).toBeTrue();
+      expect(statuses[1].connectionType).toBe('wifi');
+      subscription.unsubscribe();
+    });
+
+    it('should emit network status changes on offline event', () => {
+      onLine.and.returnValue(true);
+      const statuses: NetworkStatus[] = [];
+      const subscription = service.onNetworkChange().subscribe((status) => statuses.push(status));
+
+      window.dispatchEvent(new Event('offline'));
+
+      expect(statuses.length).toBe(2);
+      expect(statuses[1].connected).toBeFalse();
+      expect(statuses[1].connectionType).toBe('none');
+      subscription.unsubscribe();
+    });
+
+    it('should have distinctUntilChanged behavior (no duplicate emissions)', () => {
+      onLine.and.returnValue(true);
+      let emittedCount = 0;
+      const subscription = service.onNetworkChange().subscribe(() => emittedCount++);
+
+      // Repeated offline events only change the state once
+      window.dispatchEvent(new Event('offline'));
+      window.dispatchEvent(new Event('offline'));
+      window.dispatchEvent(new Event('offline'));
+
+      // Initial state + one change = 2 total
+      expect(emittedCount).toBe(2);
+      subscription.unsubscribe();
+    });
   });
 
   describe('Network Quality', () => {
@@ -222,8 +212,6 @@ describe('NetworkService', () => {
     });
 
     it('isOnline signal should be reactive', fakeAsync(() => {
-      const initialState = service.isOnline();
-
       window.dispatchEvent(new Event('online'));
       tick();
       const onlineState = service.isOnline();

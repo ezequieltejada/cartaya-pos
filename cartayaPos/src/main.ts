@@ -12,6 +12,7 @@ import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
 import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
 import { CustomMissingTranslationHandler } from './app/core/handlers/missing-translation.handler';
+import { apiErrorInterceptor } from './app/core/interceptors/api-error.interceptor';
 import { authInterceptor } from './app/core/interceptors/auth.interceptor';
 import { capacitorHttpInterceptor } from './app/core/interceptors/capacitor-http.interceptor';
 import { languageHeaderInterceptor } from './app/core/interceptors/language-header.interceptor';
@@ -38,6 +39,7 @@ bootstrapApplication(AppComponent, {
         languageHeaderInterceptor,
         offlineInterceptor,
         authInterceptor,
+        apiErrorInterceptor,
         capacitorHttpInterceptor,
       ])
     ),

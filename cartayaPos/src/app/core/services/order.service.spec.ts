@@ -158,7 +158,7 @@ describe('OrderService', () => {
 
       setTimeout(() => {
         const item = service.orderItems()[0];
-        expect(item.subtotal).toBe(17.99);
+        expect(item.subtotal).toBeCloseTo(17.99, 2);
         done();
       }, 10);
     });
@@ -179,7 +179,7 @@ describe('OrderService', () => {
       storageService.set.and.returnValue(Promise.resolve());
 
       service.addConfiguredProduct(mockProduct, []);
-      service.addConfiguredProduct(mockProduct, []);
+      service.addConfiguredProduct(mockProduct, [{ modifierId: 'other', name: 'Other', priceDelta: 0.5, quantity: 1 }]);
 
       setTimeout(() => {
         const items = service.orderItems();
@@ -282,7 +282,7 @@ describe('OrderService', () => {
       }, 10);
     });
 
-    it('should allow adding same product multiple times', (done) => {
+    it('should merge adding the same product multiple times into one line', (done) => {
       storageService.set.and.returnValue(Promise.resolve());
 
       service.addConfiguredProduct(mockProduct, []);
@@ -290,7 +290,8 @@ describe('OrderService', () => {
       service.addConfiguredProduct(mockProduct, []);
 
       setTimeout(() => {
-        expect(service.itemCount()).toBe(3);
+        expect(service.itemCount()).toBe(1);
+        expect(service.orderItems()[0].quantity).toBe(3);
         done();
       }, 10);
     });
@@ -307,7 +308,7 @@ describe('OrderService', () => {
 
     it('should remove an item from the order by ID', (done) => {
       expect(service.itemCount()).toBe(1);
-      const itemId = service.orderItems()[0].id;
+      const itemId = service.orderItems()[0].id!;
 
       service.removeItem(itemId);
 
@@ -332,7 +333,7 @@ describe('OrderService', () => {
     });
 
     it('should persist to storage after removing item', (done) => {
-      const itemId = service.orderItems()[0].id;
+      const itemId = service.orderItems()[0].id!;
       storageService.set.and.returnValue(Promise.resolve());
 
       service.removeItem(itemId);
@@ -344,7 +345,7 @@ describe('OrderService', () => {
     });
 
     it('should remove order from storage when last item is removed', (done) => {
-      const itemId = service.orderItems()[0].id;
+      const itemId = service.orderItems()[0].id!;
       storageService.remove.and.returnValue(Promise.resolve());
 
       service.removeItem(itemId);
@@ -360,7 +361,7 @@ describe('OrderService', () => {
 
       setTimeout(() => {
         const initialTotal = service.orderTotal();
-        const itemId = service.orderItems()[0].id;
+        const itemId = service.orderItems()[0].id!;
 
         service.removeItem(itemId);
 
@@ -373,7 +374,7 @@ describe('OrderService', () => {
 
     it('should update itemCount when item is removed', (done) => {
       const initialCount = service.itemCount();
-      const itemId = service.orderItems()[0].id;
+      const itemId = service.orderItems()[0].id!;
 
       service.removeItem(itemId);
 
@@ -394,7 +395,7 @@ describe('OrderService', () => {
     });
 
     it('should update modifiers for an existing item', (done) => {
-      const itemId = service.orderItems()[0].id;
+      const itemId = service.orderItems()[0].id!;
       const newModifiers: SelectedModifier[] = [
         {
           modifierId: 'mod-3',
@@ -414,7 +415,7 @@ describe('OrderService', () => {
     });
 
     it('should recalculate subtotal when modifiers are updated', (done) => {
-      const itemId = service.orderItems()[0].id;
+      const itemId = service.orderItems()[0].id!;
       const newModifiers: SelectedModifier[] = [
         {
           modifierId: 'mod-3',
@@ -439,12 +440,12 @@ describe('OrderService', () => {
 
       setTimeout(() => {
         const initialTotal = service.orderTotal();
-        const itemId = service.orderItems()[0].id;
+        const itemId = service.orderItems()[0].id!;
         const newModifiers: SelectedModifier[] = [
           {
             modifierId: 'mod-expensive',
             name: 'Premium Add-on',
-            priceDelta: 5.0,
+            priceDelta: 6.0,
             quantity: 1,
           },
         ];
@@ -459,7 +460,7 @@ describe('OrderService', () => {
     });
 
     it('should persist to storage after updating modifiers', (done) => {
-      const itemId = service.orderItems()[0].id;
+      const itemId = service.orderItems()[0].id!;
       storageService.set.and.returnValue(Promise.resolve());
 
       service.updateItemModifiers(itemId, []);
@@ -477,7 +478,7 @@ describe('OrderService', () => {
     });
 
     it('should allow updating to empty modifiers array', (done) => {
-      const itemId = service.orderItems()[0].id;
+      const itemId = service.orderItems()[0].id!;
 
       service.updateItemModifiers(itemId, []);
 
@@ -490,7 +491,7 @@ describe('OrderService', () => {
     });
 
     it('should allow updating to multiple new modifiers', (done) => {
-      const itemId = service.orderItems()[0].id;
+      const itemId = service.orderItems()[0].id!;
       const newModifiers: SelectedModifier[] = [
         {
           modifierId: 'mod-1',
@@ -621,8 +622,10 @@ describe('OrderService', () => {
       storageService.remove.and.returnValue(Promise.resolve());
 
       service.submitOrder(posId, tenantId).subscribe(() => {
-        expect(service.isSubmitting()).toBe(false);
-        done();
+        setTimeout(() => {
+          expect(service.isSubmitting()).toBe(false);
+          done();
+        });
       });
 
       const req = httpMock.expectOne((r) =>
@@ -699,8 +702,10 @@ describe('OrderService', () => {
       storageService.remove.and.returnValue(Promise.resolve());
 
       service.submitOrder(posId, tenantId).subscribe(() => {
-        expect(service.isSubmitting()).toBe(false);
-        done();
+        setTimeout(() => {
+          expect(service.isSubmitting()).toBe(false);
+          done();
+        });
       });
 
       const req = httpMock.expectOne((r) =>
@@ -715,8 +720,10 @@ describe('OrderService', () => {
           fail('should have errored');
         },
         () => {
-          expect(service.isSubmitting()).toBe(false);
-          done();
+          setTimeout(() => {
+            expect(service.isSubmitting()).toBe(false);
+            done();
+          });
         }
       );
 
@@ -772,8 +779,10 @@ describe('OrderService', () => {
           fail('should have errored');
         },
         () => {
-          expect(service.isSubmitting()).toBe(false);
-          done();
+          setTimeout(() => {
+            expect(service.isSubmitting()).toBe(false);
+            done();
+          });
         }
       );
 
@@ -842,7 +851,7 @@ describe('OrderService', () => {
 
         setTimeout(() => {
           // 12.99 + (1.00 * 1) + (2.00 * 2) = 17.99
-          expect(service.orderTotal()).toBe(17.99);
+          expect(service.orderTotal()).toBeCloseTo(17.99, 2);
           done();
         }, 10);
       });
@@ -864,7 +873,7 @@ describe('OrderService', () => {
 
         setTimeout(() => {
           const initialTotal = service.orderTotal();
-          const itemId = service.orderItems()[0].id;
+          const itemId = service.orderItems()[0].id!;
 
           service.removeItem(itemId);
 
@@ -881,7 +890,7 @@ describe('OrderService', () => {
 
         setTimeout(() => {
           const initialTotal = service.orderTotal();
-          const itemId = service.orderItems()[0].id;
+          const itemId = service.orderItems()[0].id!;
 
           service.updateItemModifiers(itemId, mockModifiers);
 
@@ -903,7 +912,7 @@ describe('OrderService', () => {
 
         setTimeout(() => {
           expect(service.itemCount()).toBe(1);
-          service.addConfiguredProduct(mockProduct, []);
+          service.addConfiguredProduct(mockProduct, [{ modifierId: 'other', name: 'Other', priceDelta: 0.5, quantity: 1 }]);
 
           setTimeout(() => {
             expect(service.itemCount()).toBe(2);
@@ -914,11 +923,11 @@ describe('OrderService', () => {
 
       it('should decrement when item is removed', (done) => {
         service.addConfiguredProduct(mockProduct, []);
-        service.addConfiguredProduct(mockProduct, []);
+        service.addConfiguredProduct(mockProduct, [{ modifierId: 'other', name: 'Other', priceDelta: 0.5, quantity: 1 }]);
 
         setTimeout(() => {
           expect(service.itemCount()).toBe(2);
-          const itemId = service.orderItems()[0].id;
+          const itemId = service.orderItems()[0].id!;
 
           service.removeItem(itemId);
 
@@ -976,7 +985,7 @@ describe('OrderService', () => {
         service.addConfiguredProduct(mockProduct, []);
 
         setTimeout(() => {
-          const itemId = service.orderItems()[0].id;
+          const itemId = service.orderItems()[0].id!;
           service.removeItem(itemId);
 
           setTimeout(() => {
@@ -1335,7 +1344,7 @@ describe('OrderService', () => {
           // charge1 = $1.00 × 2 = $2.00
           // charge2 = $1.00 × 2 = $2.00
           // subtotal = $12.99 + $2.00 + $2.00 = $16.99
-          expect(item.subtotal).toBe(16.99);
+          expect(item.subtotal).toBeCloseTo(16.99, 2);
           done();
         }, 10);
       });
@@ -1603,16 +1612,16 @@ describe('OrderService', () => {
           expect(service.itemCount()).toBe(2);
           expect(service.orderTotal()).toBeGreaterThan(totalBefore);
 
-          // Update modifiers on first item
-          const firstItemId = service.orderItems()[0].id;
+          // Update modifiers on first item: it now matches the second line,
+          // so the two lines are merged into one with quantity 2
+          const firstItemId = service.orderItems()[0].id!;
           service.updateItemModifiers(firstItemId, []);
 
           setTimeout(() => {
-            expect(service.orderTotal()).toBeLessThan(totalBefore);
-
-            // Remove second item
-            const secondItemId = service.orderItems()[1].id;
-            service.removeItem(secondItemId);
+            expect(service.itemCount()).toBe(1);
+            expect(service.orderItems()[0].quantity).toBe(2);
+            expect(service.orderTotal()).toBeCloseTo(12.99 * 2, 2);
+            expect(totalBefore).toBeCloseTo(17.99, 2);
 
             setTimeout(() => {
               expect(service.itemCount()).toBe(1);
@@ -1642,7 +1651,9 @@ describe('OrderService', () => {
       service.addConfiguredProduct(mockProduct, []);
 
       setTimeout(() => {
-        expect(service.itemCount()).toBe(3);
+        // The two identical plain lines are merged (quantity 2)
+        expect(service.itemCount()).toBe(2);
+        expect(service.orderItems()[0].quantity).toBe(2);
         const expectedTotal = 12.99 + 17.99 + 12.99;
         expect(service.orderTotal()).toBeCloseTo(expectedTotal, 2);
         done();
@@ -1663,13 +1674,74 @@ describe('OrderService', () => {
       setTimeout(() => {
         const items = service.orderItems();
         expect(items[0].subtotal).toBe(13.99); // 12.99 + 1.00
-        expect(items[1].subtotal).toBe(22.99); // 12.99 + (5.00 * 2)
+        expect(items[1].subtotal).toBeCloseTo(22.99, 2); // 12.99 + (5.00 * 2)
         expect(items[2].subtotal).toBe(12.99); // 12.99 + 0
 
         const total = service.orderTotal();
         expect(total).toBeCloseTo(49.97, 2);
         done();
       }, 20);
+    });
+  });
+
+  // ===== Cart line merging & quantity =====
+
+  describe('Merging identical lines and quantity', () => {
+    const mods: SelectedModifier[] = [{ modifierId: 'm1', name: 'Extra', priceDelta: 1.0, quantity: 1 }];
+
+    it('should merge the same product with the same modifiers into one line', () => {
+      service.addConfiguredProduct(mockProduct, mods);
+      service.addConfiguredProduct(mockProduct, [...mods]);
+
+      expect(service.itemCount()).toBe(1);
+      expect(service.orderItems()[0].quantity).toBe(2);
+      expect(service.orderTotal()).toBeCloseTo((12.99 + 1) * 2, 2);
+    });
+
+    it('should not merge lines with different modifiers', () => {
+      service.addConfiguredProduct(mockProduct, mods);
+      service.addConfiguredProduct(mockProduct, []);
+
+      expect(service.itemCount()).toBe(2);
+    });
+
+    it('should not merge lines with different modifier quantities', () => {
+      service.addConfiguredProduct(mockProduct, mods);
+      service.addConfiguredProduct(mockProduct, [{ ...mods[0], quantity: 2 }]);
+
+      expect(service.itemCount()).toBe(2);
+    });
+
+    it('should set the quantity of a line and recalculate its subtotal', () => {
+      service.addConfiguredProduct(mockProduct, []);
+      const id = service.orderItems()[0].id!;
+
+      service.setItemQuantity(id, 3);
+
+      expect(service.orderItems()[0].quantity).toBe(3);
+      expect(service.orderTotal()).toBeCloseTo(12.99 * 3, 2);
+    });
+
+    it('should clamp the quantity between 1 and the maximum', () => {
+      service.addConfiguredProduct(mockProduct, []);
+      const id = service.orderItems()[0].id!;
+
+      service.setItemQuantity(id, 0);
+      expect(service.orderItems()[0].quantity).toBe(1);
+
+      service.setItemQuantity(id, 1000);
+      expect(service.orderItems()[0].quantity).toBe(99);
+    });
+
+    it('should send the line quantity when submitting the order', () => {
+      service.addConfiguredProduct(mockProduct, []);
+      service.addConfiguredProduct(mockProduct, []);
+
+      service.submitOrder(posId, tenantId).subscribe();
+
+      const req = httpMock.expectOne((r) => r.url.includes(`/tenants/${tenantId}/pos/${posId}/orders`));
+      expect(req.request.body.items[0].quantity).toBe(2);
+      req.flush({ orderId: 'o1', status: 'received', createdAt: '', items: [], totalAmount: 25.98, currency: 'EUR' });
     });
   });
 
