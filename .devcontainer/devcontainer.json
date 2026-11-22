@@ -6,10 +6,24 @@
 	"image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
 	"features": {
 		"ghcr.io/devcontainers-extra/features/ionic-cli:2": {},
-		"ghcr.io/devcontainers/features/java:1": {
+		"ghcr.io/devcontainers/features/java:1.8.3": {
 			"version": "21"
+		},
+		"ghcr.io/tailscale/codespace/tailscale": {
+			"version": "latest"
 		}
 	},
+
+	// Tailscale needs these to create its tun interface inside the container.
+	"runArgs": [
+		"--cap-add=net_admin",
+		"--cap-add=net_raw",
+		"--device=/dev/net/tun"
+	],
+
+	// Joins the tailnet and serves the dev server (port 8100) over HTTPS, then
+	// points agent-browser at the host's Chromium (CDP) and registers its MCP server.
+	"postStartCommand": "bash .devcontainer/start-tailscale.sh; bash .devcontainer/setup-agent-browser.sh",
 
 	"shutdownAction": "stopContainer",
 
