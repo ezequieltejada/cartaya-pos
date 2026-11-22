@@ -49,7 +49,7 @@
           class="order-item"
         >
           <div class="order-header" slot="start">
-            <h2 class="order-number">{{ 'ORDER_HISTORY.ORDER_PREFIX' | translate }}{{ order.orderId || order.id }}</h2>
+            <h2 class="order-number">{{ 'ORDER_HISTORY.ORDER_PREFIX' | translate }}{{ shortRef(order.orderId || order.id) }}</h2>
             <p class="order-date">
               {{ order.createdAt | date: 'short' }}
             </p>
@@ -57,7 +57,7 @@
 
           <div class="order-footer" slot="end">
             <span class="order-total">
-              {{ order.totalAmount | currency }}
+              {{ order.totalAmount | money }}
             </span>
             @if (order.status) {
               <ion-label class="status-badge" [attr.color]="getStatusBadgeColor(order.status)">

@@ -25,7 +25,14 @@
     "LANGUAGE": "Idioma",
     "ENGLISH": "English",
     "SPANISH": "Español",
-    "CATALAN": "Català"
+    "CATALAN": "Català",
+    "NETWORK": {
+      "OFFLINE_TITLE": "Sin conexión",
+      "OFFLINE_MESSAGE": "Los pedidos se pondrán en cola y se sincronizarán al recuperar la conexión",
+      "CLOSE_BANNER": "Cerrar aviso",
+      "ORDER_QUEUED": "Pedido en cola; se sincronizará al recuperar la conexión",
+      "DISMISS": "Descartar"
+    }
   },
   "AUTH": {
     "LOGIN": {
@@ -33,6 +40,7 @@
       "CARD_TITLE": "Iniciar Sesión",
       "EMAIL_LABEL": "Correo Electrónico",
       "PASSWORD_LABEL": "Contraseña",
+      "SHOW_PASSWORD": "Mostrar contraseña",
       "LOGIN_BUTTON": "Iniciar Sesión",
       "FORGOT_PASSWORD": "¿Olvidó su contraseña?",
       "LOGGING_IN": "Iniciando sesión...",
@@ -48,7 +56,8 @@
       "LOGIN_FAILED": "Error al iniciar sesión. Por favor, intente de nuevo.",
       "INVALID_CREDENTIALS": "Correo o contraseña inválidos.",
       "SESSION_EXPIRED": "Su sesión ha expirado. Por favor, inicie sesión de nuevo.",
-      "NO_INTERNET": "Sin conexión a Internet."
+      "NO_INTERNET": "Sin conexión a Internet.",
+      "SERVER_UNREACHABLE": "No se puede conectar con el servidor. Revisa tu conexión e inténtalo de nuevo."
     }
   },
   "POS_SELECTION": {
@@ -72,7 +81,8 @@
     "PRODUCT_ADDED": "añadido al pedido",
     "LOADING": "Cargando...",
     "CATEGORY_FILTER": "Categoría",
-    "ALL_CATEGORIES": "Todas las Categorías"
+    "ALL_CATEGORIES": "Todas las Categorías",
+    "PRICE_NOT_AVAILABLE": "Precio no disponible"
   },
   "MODIFIERS": {
     "TITLE": "Opciones del Producto",
@@ -112,7 +122,17 @@
     "PRINTER_DISCONNECTED": "La impresora fue desconectada manualmente. El pedido se guardará sin imprimir.",
     "PRINT_FAILED": "Pedido guardado pero la impresión falló",
     "ITEM_REMOVED": "Artículo eliminado",
-    "SELECT_POS_TENANT": "Por favor, seleccione PdV e Inquilino"
+    "SELECT_POS_TENANT": "Por favor, seleccione PdV e Inquilino",
+    "ITEMS_LABEL": "Artículos",
+    "REMOVE_ITEM_TITLE": "Eliminar artículo",
+    "REMOVE_ITEM_MESSAGE": "¿Eliminar «{{name}}» del pedido?",
+    "INCREASE_QUANTITY": "Aumentar cantidad",
+    "DECREASE_QUANTITY": "Disminuir cantidad",
+    "ERRORS": {
+      "TITLE": "Pedido no enviado",
+      "NOT_ASSIGNED": "No estás asignado a este punto de venta, por lo que el pedido no se envió. Pide al propietario que te asigne o elige otro punto de venta.",
+      "POS_NOT_FOUND": "Este punto de venta ya no existe. Elige otro; tu carrito se ha conservado."
+    }
   },
   "SETTINGS": {
     "TITLE": "Configuración",
@@ -177,5 +197,61 @@
     "LOGOUT": "Cerrar Sesión"
   },
   "HOME": "Inicio",
-  "WELCOME": "Bienvenido a Cartaya POS"
+  "WELCOME": "Bienvenido a Cartaya POS",
+  "API_ERRORS": {
+    "INVALID_CREDENTIALS": "Correo o contraseña incorrectos.",
+    "SESSION_EXPIRED": "Tu sesión ha caducado. Inicia sesión de nuevo.",
+    "EMAIL_ALREADY_REGISTERED": "Este correo ya está registrado.",
+    "MISSING_PERMISSIONS": "No tienes permiso para realizar esta acción.",
+    "POS_NOT_ASSIGNED": "No estás asignado a este punto de venta.",
+    "TENANT_NOT_FOUND": "Negocio no encontrado.",
+    "POS_NOT_FOUND": "Punto de venta no encontrado. Puede haber sido eliminado.",
+    "PRODUCT_NOT_FOUND": "Producto no encontrado.",
+    "ORDER_NOT_FOUND": "Pedido no encontrado.",
+    "CATEGORY_NOT_FOUND": "Categoría no encontrada.",
+    "MODIFIER_NOT_FOUND": "Modificador no encontrado.",
+    "PRICE_NOT_FOUND": "Precio no encontrado.",
+    "PICTURE_NOT_FOUND": "Imagen no encontrada.",
+    "INVITE_NOT_FOUND": "Invitación no encontrada.",
+    "USER_NOT_FOUND": "Usuario no encontrado.",
+    "STOCK_NOT_FOUND": "Registro de stock no encontrado.",
+    "FILE_NOT_FOUND": "Archivo no encontrado.",
+    "ROUTE_NOT_FOUND": "El recurso solicitado no existe.",
+    "RESOURCE_NOT_FOUND": "Recurso no encontrado.",
+    "VALIDATION_ERROR": "Algunos campos no son válidos. Revísalos.",
+    "INVALID_JSON": "No se pudo leer la solicitud.",
+    "INVALID_REQUEST": "La solicitud no es válida.",
+    "INVALID_FILE_TYPE": "Este tipo de archivo no es compatible.",
+    "INVALID_SLUG_FORMAT": "El formato del identificador no es válido.",
+    "INVALID_PRICE_RANGE": "El rango de precios no es válido.",
+    "INVALID_OPERATION": "Esta operación no está permitida.",
+    "CURRENCY_MISMATCH": "La moneda no coincide con la esperada ({{expected}}).",
+    "TOTAL_MISMATCH": "Los precios han cambiado y el total del pedido ya no coincide. Revisa tu pedido.",
+    "PRODUCT_INACTIVE": "Este producto ya no está disponible.",
+    "MODIFIER_INACTIVE": "Este modificador ya no está disponible.",
+    "MODIFIER_NOT_ATTACHED": "Este modificador no se puede usar con este producto.",
+    "CONFLICT": "Esto entra en conflicto con datos existentes.",
+    "DUPLICATE_NAME": "Ese nombre ya está en uso.",
+    "DUPLICATE_SLUG": "Ese identificador ya está en uso.",
+    "DUPLICATE_SKU": "Ese SKU ya está en uso.",
+    "ALREADY_MEMBER": "Este usuario ya es miembro.",
+    "ALREADY_OWNER": "Este usuario ya es propietario.",
+    "ALREADY_ASSIGNED": "Ya está asignado.",
+    "INVITE_PENDING": "Ya hay una invitación pendiente.",
+    "INVITE_NOT_PENDING": "Esta invitación ya no está pendiente.",
+    "LAST_OWNER": "No se puede eliminar al último propietario.",
+    "CATEGORY_IN_USE": "Esta categoría está en uso en {{count}} producto(s).",
+    "POS_HAS_ORDERS": "Este punto de venta tiene {{count}} pedido(s) y no se puede eliminar.",
+    "PAYLOAD_TOO_LARGE": "El archivo es demasiado grande (máx. {{maxMb}} MB).",
+    "INTERNAL_ERROR": "Error del servidor. Inténtalo más tarde.",
+    "UNKNOWN_ERROR": "Algo salió mal. Inténtalo de nuevo."
+  },
+  "API_FIELD_ERRORS": {
+    "REQUIRED": "Este campo es obligatorio.",
+    "INVALID": "Este valor no es válido.",
+    "TOO_SHORT": "Este valor es demasiado corto.",
+    "OUT_OF_RANGE": "Este valor está fuera de rango.",
+    "NEGATIVE": "Este valor no puede ser negativo.",
+    "NOT_FOUND": "No encontrado."
+  }
 }

@@ -1,15 +1,20 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TranslateModule } from '@ngx-translate/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ToastController } from '@ionic/angular/standalone';
-import { of, throwError } from 'rxjs';
+import { EMPTY, of, throwError } from 'rxjs';
 import { Modifier } from '../../core/models/modifier.model';
 import { SelectedModifier } from '../../core/models/order.model';
 import { Product } from '../../core/models/product.model';
 import { ModifierService } from '../../core/services/modifier.service';
 import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
+import { ProductService } from '../../core/services/product.service';
+import { SettingsService } from '../../core/services/settings.service';
 import { TenantService } from '../../core/services/tenant.service';
-import { ModifiersPage } from './modifiers.page';
+import { DEFAULT_MAX_MODIFIER_QUANTITY, ModifiersPage } from './modifiers.page';
 
 describe('ModifiersPage', () => {
   let component: ModifiersPage;
@@ -82,6 +87,7 @@ describe('ModifiersPage', () => {
     ]);
     const orderServiceSpy = jasmine.createSpyObj('OrderService', [
       'addConfiguredProduct',
+      'updateItemModifiers',
     ]);
     const tenantServiceSpy = jasmine.createSpyObj('TenantService', [
       'getSelectedTenant',
@@ -89,13 +95,18 @@ describe('ModifiersPage', () => {
     const posServiceSpy = jasmine.createSpyObj('PosService', [
       'getSelectedPos',
     ]);
-    const routerSpy = jasmine.createSpyObj('Router', [
-      'navigate',
-      'getCurrentNavigation',
-    ]);
+    const routerSpy = jasmine.createSpyObj(
+      'Router',
+      ['navigate', 'getCurrentNavigation', 'createUrlTree', 'serializeUrl'],
+      { events: EMPTY, url: '/' }
+    );
     const toastControllerSpy = jasmine.createSpyObj('ToastController', [
       'create',
     ]);
+
+    toastControllerSpy.create.and.returnValue(
+      Promise.resolve({ present: () => Promise.resolve() })
+    );
 
     activatedRoute = {
       snapshot: {
@@ -106,7 +117,7 @@ describe('ModifiersPage', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [ModifiersPage],
+      imports: [ModifiersPage, TranslateModule.forRoot()],
       providers: [
         { provide: ModifierService, useValue: modifierServiceSpy },
         { provide: OrderService, useValue: orderServiceSpy },
@@ -115,6 +126,9 @@ describe('ModifiersPage', () => {
         { provide: Router, useValue: routerSpy },
         { provide: ToastController, useValue: toastControllerSpy },
         { provide: ActivatedRoute, useValue: activatedRoute },
+        { provide: ProductService, useValue: jasmine.createSpyObj('ProductService', ['filteredProducts', 'fetchProducts']) },
+        provideHttpClient(),
+        provideHttpClientTesting(),
       ],
     }).compileComponents();
 
@@ -245,26 +259,53 @@ describe('ModifiersPage', () => {
     });
 
     it('should format positive price delta with plus sign', () => {
-      const formatted = component.formatPriceDelta(1.5, 'USD');
+      const formatted = component.formatPriceDelta(1.5);
       expect(formatted).toContain('+');
       expect(formatted).toContain('1.50');
     });
 
     it('should format negative price delta with minus sign', () => {
-      const formatted = component.formatPriceDelta(-0.25, 'USD');
+      const formatted = component.formatPriceDelta(-0.25);
       expect(formatted).toContain('-');
       expect(formatted).toContain('0.25');
     });
 
     it('should format zero correctly', () => {
-      const formatted = component.formatPriceDelta(0, 'USD');
+      const formatted = component.formatPriceDelta(0);
       expect(formatted).toContain('0');
     });
 
-    it('should handle invalid currency gracefully', () => {
-      const formatted = component.formatPriceDelta(1.5, 'INVALID');
-      // Should use fallback formatting
-      expect(formatted).toContain('1.50');
+    it('should use the tenant currency decimals (JPY has none)', () => {
+      TestBed.inject(SettingsService).tenantSettings.set({ currency: 'JPY', timezone: 'UTC' });
+      const formatted = component.formatPriceDelta(500);
+      expect(formatted).toContain('500');
+      expect(formatted).not.toContain('.00');
+      expect(formatted).not.toContain('$');
+    });
+  });
+
+  describe('Quantity limit', () => {
+    const modifier = { id: 'mod-1', name: 'Shot', priceDelta: 0.5, currency: 'EUR', active: true } as Modifier;
+
+    beforeEach(() => {
+      fixture.detectChanges();
+      component.modifiersList.set([modifier]);
+    });
+
+    it('should default the maximum to DEFAULT_MAX_MODIFIER_QUANTITY', () => {
+      expect(component.getMaxQuantity(modifier)).toBe(DEFAULT_MAX_MODIFIER_QUANTITY);
+    });
+
+    it('should use the modifier maxQuantity when provided', () => {
+      expect(component.getMaxQuantity({ ...modifier, maxQuantity: 3 })).toBe(3);
+    });
+
+    it('should not increment past the maximum', () => {
+      for (let i = 0; i < DEFAULT_MAX_MODIFIER_QUANTITY + 5; i++) {
+        component.incrementModifier('mod-1');
+      }
+      expect(component.selectedModifiers().get('mod-1')).toBe(DEFAULT_MAX_MODIFIER_QUANTITY);
+      expect(component.isIncrementDisabled(modifier)).toBeTrue();
     });
   });
 
@@ -293,12 +334,14 @@ describe('ModifiersPage', () => {
           name: 'Extra Cheese',
           priceDelta: 1.0,
           quantity: 1,
+          includedQuantity: 0,
         });
         expect(modifiers[1]).toEqual({
           modifierId: 'mod-2',
           name: 'Add Bacon',
           priceDelta: 1.5,
           quantity: 2,
+          includedQuantity: 0,
         });
         done();
       }, 100);
@@ -345,12 +388,13 @@ describe('ModifiersPage', () => {
       }, 100);
     });
 
-    it('should handle missing product gracefully', () => {
-      spyOn(console, 'error');
+    it('should do nothing when the product is not set', async () => {
       component.product.set(null);
-      component.confirmSelection();
 
-      expect(console.error).toHaveBeenCalledWith('Product not set');
+      await component.confirmSelection();
+
+      expect(orderService.addConfiguredProduct).not.toHaveBeenCalled();
+      expect(orderService.updateItemModifiers).not.toHaveBeenCalled();
     });
   });
 
@@ -541,7 +585,7 @@ describe('ModifiersPage', () => {
         const result = component.getQuantityBreakdown(modifier);
         expect(result).toContain('2 included');
         expect(result).toContain('1 extra');
-        expect(result).toContain('$1.00');
+        expect(result).toContain('€1.00');
       });
 
       it('should show breakdown when selected > included (plural extra)', () => {
@@ -556,7 +600,7 @@ describe('ModifiersPage', () => {
         const result = component.getQuantityBreakdown(modifier);
         expect(result).toContain('2 included');
         expect(result).toContain('2 extra');
-        expect(result).toContain('$2.00');
+        expect(result).toContain('€2.00');
       });
 
       it('should handle zero includedQuantity in breakdown', () => {
@@ -571,7 +615,7 @@ describe('ModifiersPage', () => {
         const result = component.getQuantityBreakdown(modifier);
         // Should show total × price format for no included quantity
         expect(result).toContain('3');
-        expect(result).toContain('$1.00');
+        expect(result).toContain('€1.00');
       });
 
       it('should handle undefined includedQuantity as zero', () => {
@@ -585,7 +629,7 @@ describe('ModifiersPage', () => {
         component.selectedModifiers.set(new Map([['mod-1', 2]]));
         const result = component.getQuantityBreakdown(modifier);
         expect(result).toContain('2');
-        expect(result).toContain('$1.00');
+        expect(result).toContain('€1.00');
       });
 
       it('should calculate charges correctly with fractional prices', () => {
@@ -601,7 +645,7 @@ describe('ModifiersPage', () => {
         // 1 included + 2 extra @ $0.50 each = $1.00
         expect(result).toContain('1 included');
         expect(result).toContain('2 extra');
-        expect(result).toContain('$1.00');
+        expect(result).toContain('€1.00');
       });
 
       it('should handle negative price (discount) breakdown', () => {
@@ -615,7 +659,7 @@ describe('ModifiersPage', () => {
         component.selectedModifiers.set(new Map([['mod-discount', 1]]));
         const result = component.getQuantityBreakdown(modifier);
         expect(result).toContain('1');
-        expect(result).toContain('-$2.00');
+        expect(result).toContain('-€2.00');
       });
 
       it('should show multiple included + extra correctly', () => {
@@ -631,7 +675,7 @@ describe('ModifiersPage', () => {
         // 3 included + 2 extra @ $1.50 each = $3.00
         expect(result).toContain('3 included');
         expect(result).toContain('2 extra');
-        expect(result).toContain('$3.00');
+        expect(result).toContain('€3.00');
       });
     });
   });
@@ -714,7 +758,7 @@ describe('ModifiersPage', () => {
       // Should show: 3 included + 2 extra = $1.00
       expect(breakdown).toContain('3 included');
       expect(breakdown).toContain('2 extra');
-      expect(breakdown).toContain('$1.00');
+      expect(breakdown).toContain('€1.00');
 
       done();
     });
@@ -745,7 +789,7 @@ describe('ModifiersPage', () => {
       // Should now show: 2 included + 2 extra = $2.00
       expect(breakdown).toContain('2 included');
       expect(breakdown).toContain('2 extra');
-      expect(breakdown).toContain('$2.00');
+      expect(breakdown).toContain('€2.00');
 
        done();
      });

@@ -1,5 +1,7 @@
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { TranslateModule } from '@ngx-translate/core';
+import { firstValueFrom } from 'rxjs';
 import { Router } from '@angular/router';
 import { Product } from '../models/product.model';
 import { ProductService } from './product.service';
@@ -76,7 +78,7 @@ describe('ProductService', () => {
     tenantServiceSpy.getCurrentTenantId.and.returnValue(tenantId);
 
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
+      imports: [HttpClientTestingModule, TranslateModule.forRoot()],
       providers: [
         ProductService,
         { provide: StorageService, useValue: storageServiceSpy },
@@ -138,11 +140,14 @@ describe('ProductService', () => {
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      expect(req.request.method).toBe('GET');
-      req.flush(mockApiResponse);
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        expect(req.request.method).toBe('GET');
+        req.flush(mockApiResponse);
+      });
     });
 
     it('should set isLoading during fetch', (done) => {
@@ -157,10 +162,13 @@ describe('ProductService', () => {
 
       expect(service.isLoading()).toBe(true);
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush(mockApiResponse);
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush(mockApiResponse);
+      });
     });
 
     it('should use currently selected tenant when no tenantId provided', (done) => {
@@ -171,10 +179,13 @@ describe('ProductService', () => {
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush(mockApiResponse);
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush(mockApiResponse);
+      });
     });
 
     it('should return empty array when no tenant ID available', (done) => {
@@ -196,10 +207,13 @@ describe('ProductService', () => {
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush(mockApiResponse);
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush(mockApiResponse);
+      });
     });
 
     it('should cache products after successful fetch', (done) => {
@@ -215,10 +229,13 @@ describe('ProductService', () => {
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush(mockApiResponse);
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush(mockApiResponse);
+      });
     });
 
     it('should return cached products if valid', (done) => {
@@ -257,11 +274,14 @@ describe('ProductService', () => {
         done();
       });
 
-      // Verify HTTP request was made despite expired cache
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush(mockApiResponse);
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        // Verify HTTP request was made despite expired cache
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush(mockApiResponse);
+      });
     });
 
     it('should remove expired cache from storage', (done) => {
@@ -281,10 +301,13 @@ describe('ProductService', () => {
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush(mockApiResponse);
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush(mockApiResponse);
+      });
     });
   });
 
@@ -313,6 +336,36 @@ describe('ProductService', () => {
 
       service.setFilterText('FRIES-001');
       expect(service.filteredProducts()).toContain(mockProducts[1]);
+    });
+
+    it('should ignore leading and trailing spaces', () => {
+      service.setFilterText('  cheeseburger  ');
+      expect(service.filteredProducts()).toEqual([mockProducts[0]]);
+    });
+
+    it('should match the description', () => {
+      service.setFilterText('crispy');
+      expect(service.filteredProducts()).toEqual([mockProducts[1]]);
+    });
+
+    it('should ignore accents in both query and product text', () => {
+      service.products.set([
+        { ...mockProducts[0], id: 'cap', name: 'Cappuccino', description: 'Café con leche' },
+      ]);
+
+      service.setFilterText('café');
+      expect(service.filteredProducts().length).toBe(1);
+
+      service.setFilterText('cafe');
+      expect(service.filteredProducts().length).toBe(1);
+
+      service.setFilterText('CAFÉ ');
+      expect(service.filteredProducts().length).toBe(1);
+    });
+
+    it('should return all products when filter is only spaces', () => {
+      service.setFilterText('   ');
+      expect(service.filteredProducts().length).toBe(mockProducts.length);
     });
 
     it('should return all products when filter is empty', () => {
@@ -372,10 +425,13 @@ describe('ProductService', () => {
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush(mockApiResponse);
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush(mockApiResponse);
+      });
     });
 
     it('should return cached products within TTL', (done) => {
@@ -412,10 +468,13 @@ describe('ProductService', () => {
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush(mockApiResponse);
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush(mockApiResponse);
+      });
     });
 
     it('should call clearCache for specific tenant', async () => {
@@ -430,10 +489,13 @@ describe('ProductService', () => {
 
     it('should clear all product caches when no tenantId provided', async () => {
       storageService.remove.and.returnValue(Promise.resolve());
-
-      await service.clearCache();
-
-      expect(storageService.remove).toHaveBeenCalled();
+      localStorage.setItem(`products_${tenantId}`, '{}');
+      try {
+        await service.clearCache();
+        expect(storageService.remove).toHaveBeenCalledWith(`products_${tenantId}`);
+      } finally {
+        localStorage.removeItem(`products_${tenantId}`);
+      }
     });
 
     it('should handle malformed cache gracefully', (done) => {
@@ -445,10 +507,13 @@ describe('ProductService', () => {
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush(mockApiResponse);
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush(mockApiResponse);
+      });
     });
   });
 
@@ -464,10 +529,13 @@ describe('ProductService', () => {
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.error(new ErrorEvent('Network error'));
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.error(new ErrorEvent('Network error'));
+      });
     });
 
     it('should not crash on 404 error', (done) => {
@@ -478,10 +546,13 @@ describe('ProductService', () => {
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush('Not Found', { status: 404, statusText: 'Not Found' });
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush('Not Found', { status: 404, statusText: 'Not Found' });
+      });
     });
 
     it('should not crash on 500 error', (done) => {
@@ -492,10 +563,13 @@ describe('ProductService', () => {
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush('Server error', { status: 500, statusText: 'Internal Server Error' });
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush({ code: 'INTERNAL_ERROR', message: 'English' }, { status: 500, statusText: 'Internal Server Error' });
+      });
     });
 
     it('should set isLoading to false on error', (done) => {
@@ -509,10 +583,13 @@ describe('ProductService', () => {
 
       expect(service.isLoading()).toBe(true);
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.error(new ErrorEvent('Network error'));
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.error(new ErrorEvent('Network error'));
+      });
     });
 
     it('should handle malformed API response gracefully', (done) => {
@@ -524,11 +601,14 @@ describe('ProductService', () => {
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      // Send malformed response (missing 'data' property)
-      req.flush({ malformed: [] });
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        // Send malformed response (missing 'data' property)
+        req.flush({ malformed: [] });
+      });
     });
 
     it('should not crash on null response data', (done) => {
@@ -540,10 +620,13 @@ describe('ProductService', () => {
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush({ data: null });
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush({ data: null });
+      });
     });
 
     it('should log errors to console', (done) => {
@@ -555,98 +638,115 @@ describe('ProductService', () => {
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.error(new ErrorEvent('Network error'));
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.error(new ErrorEvent('Network error'));
+      });
     });
 
     it('should set error signal with user-friendly message on network error', (done) => {
       storageService.get.and.returnValue(Promise.resolve(null));
 
       service.fetchProducts(tenantId).subscribe(() => {
-        expect(service.error()).toBe(
-          'No internet connection. Please check your network.'
-        );
+        expect(service.error()).toBe('AUTH.ERRORS.SERVER_UNREACHABLE');
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.error(new ErrorEvent('Network error'), { status: 0 });
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.error(new ErrorEvent('Network error'), { status: 0 });
+      });
     });
 
     it('should set error signal with 401 message on unauthorized error', (done) => {
       storageService.get.and.returnValue(Promise.resolve(null));
 
       service.fetchProducts(tenantId).subscribe(() => {
-        expect(service.error()).toBe('Session expired. Please log in again.');
+        expect(service.error()).toBe('API_ERRORS.SESSION_EXPIRED');
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush({ code: 'SESSION_EXPIRED', message: 'English' }, { status: 401, statusText: 'Unauthorized' });
+      });
     });
 
     it('should set error signal with 403 message on forbidden error', (done) => {
       storageService.get.and.returnValue(Promise.resolve(null));
 
       service.fetchProducts(tenantId).subscribe(() => {
-        expect(service.error()).toBe(
-          'You do not have permission to view products.'
-        );
+        expect(service.error()).toBe('API_ERRORS.MISSING_PERMISSIONS');
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush('Forbidden', { status: 403, statusText: 'Forbidden' });
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush({ code: 'MISSING_PERMISSIONS', message: 'English' }, { status: 403, statusText: 'Forbidden' });
+      });
     });
 
     it('should set error signal with 500 message on server error', (done) => {
       storageService.get.and.returnValue(Promise.resolve(null));
 
       service.fetchProducts(tenantId).subscribe(() => {
-        expect(service.error()).toBe('Server error. Please try again later.');
+        expect(service.error()).toBe('API_ERRORS.INTERNAL_ERROR');
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush('Server error', { status: 500, statusText: 'Internal Server Error' });
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush({ code: 'INTERNAL_ERROR', message: 'English' }, { status: 500, statusText: 'Internal Server Error' });
+      });
     });
 
     it('should set generic error message for other errors', (done) => {
       storageService.get.and.returnValue(Promise.resolve(null));
 
       service.fetchProducts(tenantId).subscribe(() => {
-        expect(service.error()).toBe('Failed to load products. Please try again.');
+        expect(service.error()).toBe('API_ERRORS.UNKNOWN_ERROR');
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush('Bad request', { status: 400, statusText: 'Bad Request' });
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush('Bad request', { status: 400, statusText: 'Bad Request' });
+      });
     });
 
     it('should redirect to login on 401 error', (done) => {
       storageService.get.and.returnValue(Promise.resolve(null));
 
       service.fetchProducts(tenantId).subscribe(() => {
-        expect(router.navigate).toHaveBeenCalledWith(['/auth/login']);
+        expect(router.navigate).toHaveBeenCalledWith(['/auth/login'], { replaceUrl: true });
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+      });
     });
 
     it('should return cached products on error if available', (done) => {
@@ -663,10 +763,13 @@ describe('ProductService', () => {
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.error(new ErrorEvent('Network error'), { status: 0 });
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.error(new ErrorEvent('Network error'), { status: 0 });
+      });
     });
 
     it('should force refresh when forceRefresh parameter is true', (done) => {
@@ -683,11 +786,14 @@ describe('ProductService', () => {
         done();
       });
 
-      // Should make API call even with valid cache when forceRefresh is true
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush(mockApiResponse);
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        // Should make API call even with valid cache when forceRefresh is true
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush(mockApiResponse);
+      });
     });
 
     it('should clear error signal on successful fetch', (done) => {
@@ -700,10 +806,13 @@ describe('ProductService', () => {
         done();
       });
 
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush(mockApiResponse);
+      // The service reads the cache (a promise) before calling the API
+      setTimeout(() => {
+        const req = httpMock.expectOne((r) =>
+          r.url.includes(`/tenants/${tenantId}/products`)
+        );
+        req.flush(mockApiResponse);
+      });
     });
 
     it('should clear error signal when using valid cache', (done) => {
@@ -764,61 +873,59 @@ describe('ProductService', () => {
   // ===== Integration Tests =====
 
   describe('Integration', () => {
-    it('should complete full fetch and filter workflow', (done) => {
+    /** The service reads the cache (a promise) before calling the API, so let it settle. */
+    const flushAsync = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+    const productsRequest = (id: string) =>
+      httpMock.expectOne((r) => r.url.includes(`/tenants/${id}/products`));
+
+    it('should complete full fetch and filter workflow', async () => {
       storageService.get.and.returnValue(Promise.resolve(null));
       storageService.set.and.returnValue(Promise.resolve());
 
-      service.fetchProducts(tenantId).subscribe(() => {
-        // After fetch, products should be loaded
-        expect(service.products().length).toBe(mockProducts.length);
+      const result = firstValueFrom(service.fetchProducts(tenantId));
+      await flushAsync();
+      productsRequest(tenantId).flush(mockApiResponse);
+      await result;
 
-        // Filter products
-        service.setFilterText('burger');
-        expect(service.filteredProducts().length).toBe(1);
-        expect(service.filteredProducts()[0].name).toBe('Cheeseburger');
+      // After fetch, products should be loaded
+      expect(service.products().length).toBe(mockProducts.length);
 
-        // Clear filter
-        service.setFilterText('');
-        expect(service.filteredProducts().length).toBe(mockProducts.length);
+      // Filter products
+      service.setFilterText('burger');
+      expect(service.filteredProducts().length).toBe(1);
+      expect(service.filteredProducts()[0].name).toBe('Cheeseburger');
 
-        done();
-      });
-
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
-      );
-      req.flush(mockApiResponse);
+      // Clear filter
+      service.setFilterText('');
+      expect(service.filteredProducts().length).toBe(mockProducts.length);
     });
 
-    it('should handle cache and filter operations together', (done) => {
+    it('should handle cache and filter operations together', async () => {
       storageService.get.and.returnValue(Promise.resolve(null));
       storageService.set.and.returnValue(Promise.resolve());
 
       // First fetch
-      service.fetchProducts(tenantId).subscribe(() => {
-        service.setFilterText('sandwich');
-        expect(service.filteredProducts().length).toBe(1);
+      const first = firstValueFrom(service.fetchProducts(tenantId));
+      await flushAsync();
+      productsRequest(tenantId).flush(mockApiResponse);
+      await first;
 
-        // Second fetch should use cache
-        service.fetchProducts(tenantId).subscribe(() => {
-          expect(service.products().length).toBe(mockProducts.length);
-          expect(service.filteredProducts().length).toBe(1); // Filter still active
-          done();
-        });
+      service.setFilterText('sandwich');
+      expect(service.filteredProducts().length).toBe(1);
 
-        // No new HTTP request should be made
-        httpMock.expectNone((r) =>
-          r.url.includes(`/tenants/${tenantId}/products`)
-        );
-      });
-
-      const req = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenantId}/products`)
+      // Second fetch should use the cache the first one wrote
+      storageService.get.and.returnValue(
+        Promise.resolve({ products: mockProducts, timestamp: Date.now(), tenantId })
       );
-      req.flush(mockApiResponse);
+      await firstValueFrom(service.fetchProducts(tenantId));
+
+      // No new HTTP request should be made
+      httpMock.expectNone((r) => r.url.includes(`/tenants/${tenantId}/products`));
+      expect(service.products().length).toBe(mockProducts.length);
+      expect(service.filteredProducts().length).toBe(1); // Filter still active
     });
 
-    it('should handle multiple tenant product fetches', (done) => {
+    it('should handle multiple tenant product fetches', async () => {
       const tenant1 = 'tenant-1';
       const tenant2 = 'tenant-2';
       const tenant1Products = [mockProducts[0], mockProducts[1]];
@@ -828,27 +935,21 @@ describe('ProductService', () => {
       storageService.set.and.returnValue(Promise.resolve());
 
       // Fetch for tenant 1
-      service.fetchProducts(tenant1).subscribe(() => {
-        expect(service.products()).toEqual(tenant1Products);
+      const first = firstValueFrom(service.fetchProducts(tenant1));
+      await flushAsync();
+      productsRequest(tenant1).flush({ data: tenant1Products });
+      await first;
+      expect(service.products()).toEqual(tenant1Products);
 
-        // Fetch for tenant 2
-        service.fetchProducts(tenant2).subscribe(() => {
-          expect(service.products()).toEqual(tenant2Products);
-          done();
-        });
-
-        const req2 = httpMock.expectOne((r) =>
-          r.url.includes(`/tenants/${tenant2}/products`)
-        );
-        req2.flush({ data: tenant2Products });
-      });
-
-      const req1 = httpMock.expectOne((r) =>
-        r.url.includes(`/tenants/${tenant1}/products`)
-      );
-      req1.flush({ data: tenant1Products });
+      // Fetch for tenant 2
+      const second = firstValueFrom(service.fetchProducts(tenant2));
+      await flushAsync();
+      productsRequest(tenant2).flush({ data: tenant2Products });
+      await second;
+      expect(service.products()).toEqual(tenant2Products);
     });
   });
+
   // ===== Category Filtering Tests =====
 
   describe('Category Filtering', () => {

@@ -4,6 +4,7 @@ import { Observable, catchError, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { TenantSettings } from '../models/tenant-settings.model';
 import { UserSettings } from '../models/user.model';
+import { parseApiError } from '../utils/api-error';
 
 /**
  * Settings Service
@@ -43,15 +44,53 @@ export class SettingsService {
         tap((settings) => {
           this.tenantSettings.set(settings);
           this.isLoading.set(false);
+          this.cacheSettings(tenantId, settings);
         }),
         catchError((error) => {
           this.isLoading.set(false);
-          const errorMessage = error?.error?.message || 'Failed to fetch tenant settings';
-          this.error.set(errorMessage);
+          // Store the stable API error code; screens translate it via API_ERRORS.*
+          this.error.set(parseApiError(error).code);
           console.error('Failed to fetch tenant settings:', error);
           throw error;
         })
       );
+  }
+
+  /**
+   * Load tenant settings: show the cached copy immediately (so the right
+   * currency is used even when offline), then refresh from the backend.
+   */
+  loadTenantSettings(tenantId: string): void {
+    const cached = this.readCachedSettings(tenantId);
+    if (cached) {
+      this.tenantSettings.set(cached);
+    }
+    this.fetchTenantSettings(tenantId).subscribe({
+      error: () => {
+        // Keep cached/fallback values; error is already logged and stored
+      },
+    });
+  }
+
+  private cacheKey(tenantId: string): string {
+    return `tenantSettings:${tenantId}`;
+  }
+
+  private cacheSettings(tenantId: string, settings: TenantSettings): void {
+    try {
+      localStorage.setItem(this.cacheKey(tenantId), JSON.stringify(settings));
+    } catch {
+      // Storage unavailable - non-fatal
+    }
+  }
+
+  private readCachedSettings(tenantId: string): TenantSettings | null {
+    try {
+      const raw = localStorage.getItem(this.cacheKey(tenantId));
+      return raw ? (JSON.parse(raw) as TenantSettings) : null;
+    } catch {
+      return null;
+    }
   }
 
   /**

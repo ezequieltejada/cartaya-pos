@@ -1,7 +1,6 @@
-import { CommonModule, CurrencyPipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { Dialog } from '@capacitor/dialog';
 import { AlertController, ToastController } from '@ionic/angular';
 import {
     IonButton,
@@ -14,13 +13,17 @@ import {
 } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
-import { checkmark, chevronDown, chevronUp, close, pencil, trash } from 'ionicons/icons';
+import { add, checkmark, chevronDown, chevronUp, close, pencil, remove, trash } from 'ionicons/icons';
 import { SelectedModifier } from '../../models/order.model';
-import { OrderService } from '../../core/services/order.service';
+import { MoneyService } from '../../core/services/money.service';
+import { MAX_LINE_QUANTITY, OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
-import { TenantService } from '../../core/services/tenant.service';
+import { ProductService } from '../../core/services/product.service';
 import { SettingsService } from '../../core/services/settings.service';
+import { TenantService } from '../../core/services/tenant.service';
+import { parseApiError, translateLoadError } from '../../core/utils/api-error';
 import { Printer } from '../../services/printer';
+import { MoneyPipe } from '../../shared/pipes/money.pipe';
 
 /**
  * OrderSummaryComponent
@@ -34,7 +37,7 @@ import { Printer } from '../../services/printer';
   standalone: true,
   imports: [
     CommonModule,
-    CurrencyPipe,
+    MoneyPipe,
     TranslateModule,
     IonList,
     IonItem,
@@ -49,7 +52,9 @@ export class OrderSummaryComponent {
   private orderService = inject(OrderService);
   private posService = inject(PosService);
   private tenantService = inject(TenantService);
+  private productService = inject(ProductService);
   private settingsService = inject(SettingsService);
+  private moneyService = inject(MoneyService);
   private printer = inject(Printer);
   private router = inject(Router);
   private toastController = inject(ToastController);
@@ -59,11 +64,7 @@ export class OrderSummaryComponent {
   // Expose Math.abs for template use
   Math = Math;
 
-  // Currency code from settings service
-  readonly currencyCode = computed(() => this.settingsService.currency());
-
-  // Expose CurrencyPipe for template use
-  readonly currencyPipe = new CurrencyPipe('en-US');
+  readonly maxLineQuantity = MAX_LINE_QUANTITY;
 
   // Reactive data from OrderService (computed signals)
   readonly orderItems = computed(() => {
@@ -90,55 +91,56 @@ export class OrderSummaryComponent {
   private isShowingCashConfirmation = false;
 
   constructor() {
-    addIcons({ pencil, trash, close, checkmark, chevronUp, chevronDown });
+    addIcons({ pencil, trash, close, checkmark, chevronUp, chevronDown, add, remove });
   }
 
   /**
-   * Shows cancel order confirmation modal
-   * Uses native Dialog plugin on iOS/Android, falls back to Ionic AlertController on web
+   * Shows an Ionic confirmation alert and resolves to true when the user accepts.
+   * (Ionic alerts instead of native dialogs so they can be styled, translated
+   * and driven by automated tests.)
+   */
+  private async confirm(options: {
+    header: string;
+    message: string;
+    confirmText: string;
+    cancelText: string;
+    destructive?: boolean;
+  }): Promise<boolean> {
+    const alert = await this.alertController.create({
+      header: options.header,
+      message: options.message,
+      cssClass: 'order-confirm-alert',
+      buttons: [
+        { text: options.cancelText, role: 'cancel' },
+        {
+          text: options.confirmText,
+          role: options.destructive ? 'destructive' : 'confirm',
+        },
+      ],
+    });
+    await alert.present();
+    const { role } = await alert.onDidDismiss();
+    return role === 'confirm' || role === 'destructive';
+  }
+
+  /**
+   * Shows cancel order confirmation
    */
   async showCancelConfirmation(): Promise<void> {
     if (this.isShowingCancelConfirmation) return;
     this.isShowingCancelConfirmation = true;
 
-    const title = this.translate.instant('ORDER_SUMMARY.CANCEL_CONFIRMATION');
-    const message = this.translate.instant('ORDER_SUMMARY.CANCEL_MESSAGE');
-    const okButtonTitle = this.translate.instant('COMMON.BUTTONS.YES');
-    const cancelButtonTitle = this.translate.instant('COMMON.BUTTONS.NO');
-
     try {
-      const { value } = await Dialog.confirm({
-        title,
-        message,
-        okButtonTitle,
-        cancelButtonTitle,
+      const accepted = await this.confirm({
+        header: this.translate.instant('ORDER_SUMMARY.CANCEL_CONFIRMATION'),
+        message: this.translate.instant('ORDER_SUMMARY.CANCEL_MESSAGE'),
+        confirmText: this.translate.instant('COMMON.BUTTONS.YES'),
+        cancelText: this.translate.instant('COMMON.BUTTONS.NO'),
+        destructive: true,
       });
-
-      if (value) {
+      if (accepted) {
         await this.cancelOrder();
       }
-    } catch (error) {
-      // Fallback to Ionic AlertController if Dialog is not available
-      console.warn('Dialog plugin not available, using Ionic AlertController:', error);
-      const alert = await this.alertController.create({
-        header: title,
-        message,
-        buttons: [
-          {
-            text: cancelButtonTitle,
-            role: 'cancel',
-          },
-          {
-            text: okButtonTitle,
-            role: 'destructive',
-            handler: async () => {
-              await this.cancelOrder();
-            },
-          },
-        ],
-      });
-
-      await alert.present();
     } finally {
       this.isShowingCancelConfirmation = false;
     }
@@ -156,60 +158,31 @@ export class OrderSummaryComponent {
   }
 
   /**
-   * Shows cash order confirmation modal with order summary
-   * Uses native Dialog plugin on iOS/Android, falls back to Ionic AlertController on web
+   * Shows order confirmation with an order summary
    */
   async showCashConfirmation(): Promise<void> {
     if (this.isShowingCashConfirmation) return;
     this.isShowingCashConfirmation = true;
-    const currencyCode = this.currencyCode();
-    const total = this.orderTotal().toFixed(2);
-    const formattedTotal = this.currencyPipe.transform(total, currencyCode, 'symbol', '1.2-2');
-    
+
     const itemsText = this.orderItems()
       .map((item) => {
-        const itemFormatted = this.currencyPipe.transform((item.subtotal ?? 0).toFixed(2), currencyCode, 'symbol', '1.2-2');
-        return `${item.productName} - ${itemFormatted}`;
+        const qty = item.quantity > 1 ? `${item.quantity} × ` : '';
+        return `${qty}${item.productName} - ${this.moneyService.format(item.subtotal ?? 0)}`;
       })
       .join('\n');
 
-    const title = this.translate.instant('ORDER_SUMMARY.COMPLETE_ORDER');
-    const message = `Items:\n${itemsText}\n\n${this.translate.instant('ORDER_SUMMARY.TOTAL')}: ${formattedTotal}`;
-    const confirmButtonTitle = this.translate.instant('COMMON.BUTTONS.CONFIRM');
-    const cancelButtonTitle = this.translate.instant('COMMON.BUTTONS.CANCEL');
+    const message = `${this.translate.instant('ORDER_SUMMARY.ITEMS_LABEL')}:\n${itemsText}\n\n${this.translate.instant('ORDER_SUMMARY.TOTAL')}: ${this.moneyService.format(this.orderTotal())}`;
 
     try {
-      const { value } = await Dialog.confirm({
-        title,
+      const accepted = await this.confirm({
+        header: this.translate.instant('ORDER_SUMMARY.COMPLETE_ORDER'),
         message,
-        okButtonTitle: confirmButtonTitle,
-        cancelButtonTitle,
+        confirmText: this.translate.instant('COMMON.BUTTONS.CONFIRM'),
+        cancelText: this.translate.instant('COMMON.BUTTONS.CANCEL'),
       });
-
-      if (value) {
+      if (accepted) {
         await this.cashOrder();
       }
-    } catch (error) {
-      // Fallback to Ionic AlertController if Dialog is not available
-      console.warn('Dialog plugin not available, using Ionic AlertController:', error);
-      const alert = await this.alertController.create({
-        header: title,
-        message,
-        buttons: [
-          {
-            text: cancelButtonTitle,
-            role: 'cancel',
-          },
-          {
-            text: confirmButtonTitle,
-            handler: async () => {
-              await this.cashOrder();
-            },
-          },
-        ],
-      });
-
-      await alert.present();
     } finally {
       this.isShowingCashConfirmation = false;
     }
@@ -269,8 +242,7 @@ export class OrderSummaryComponent {
         }
       },
       error: (error) => {
-        console.error('Order submission failed:', error);
-        this.showToast('ORDER_SUMMARY.ORDER_FAILED', 'top');
+        void this.handleSubmitError(error);
       },
     });
   }
@@ -295,8 +267,7 @@ export class OrderSummaryComponent {
         }
       },
       error: (error) => {
-        console.error('Order submission failed:', error);
-        this.showToast('ORDER_SUMMARY.ORDER_FAILED', 'top');
+        void this.handleSubmitError(error);
       },
     });
   }
@@ -315,7 +286,6 @@ export class OrderSummaryComponent {
    * Formats order response for receipt printing
    */
   private formatReceipt(response: any): string {
-    const currencyCode = this.currencyCode();
     let receipt = '';
 
     if (response.items && response.items.length > 0) {
@@ -326,12 +296,12 @@ export class OrderSummaryComponent {
             receipt += ` - ${mod.name}\n`;
           });
         }
-        const formattedAmount = this.currencyPipe.transform(item.lineTotal.toFixed(2), currencyCode, 'symbol', '1.2-2');
+        const formattedAmount = this.moneyService.format(item.lineTotal);
         receipt += `Subtotal ------------ ${formattedAmount}\n\n`;
       });
     }
 
-    const formattedTotal = this.currencyPipe.transform(response.totalAmount.toFixed(2), currencyCode, 'symbol', '1.2-2');
+    const formattedTotal = this.moneyService.format(response.totalAmount);
     receipt += `------  Total: ${formattedTotal} ------\n`;
     receipt += `Date: ${new Date().toLocaleString()}\n`;
 
@@ -356,12 +326,100 @@ export class OrderSummaryComponent {
   }
 
   /**
-   * Removes an item from the order
+   * Removes an item from the order after asking for confirmation
    */
   async removeItem(itemId: string): Promise<void> {
+    const item = this.orderItems().find((i) => i.id === itemId);
+    if (!item) return;
+
+    const accepted = await this.confirm({
+      header: this.translate.instant('ORDER_SUMMARY.REMOVE_ITEM_TITLE'),
+      message: this.translate.instant('ORDER_SUMMARY.REMOVE_ITEM_MESSAGE', { name: item.productName }),
+      confirmText: this.translate.instant('COMMON.BUTTONS.DELETE'),
+      cancelText: this.translate.instant('COMMON.BUTTONS.CANCEL'),
+      destructive: true,
+    });
+    if (!accepted) return;
+
     this.orderService.removeItem(itemId);
     this.showToast('ORDER_SUMMARY.ITEM_REMOVED', 'bottom');
-    // Menu will be closed automatically by the effect watching hasItems
+  }
+
+  /**
+   * Changes the quantity of a cart line by the given step (never below 1;
+   * removing a line is done with the trash button).
+   */
+  changeQuantity(itemId: string, step: number): void {
+    const item = this.orderItems().find((i) => i.id === itemId);
+    if (!item) return;
+    this.orderService.setItemQuantity(itemId, item.quantity + step);
+  }
+
+  /**
+   * Explains why an order was rejected by the backend, keyed on the API error
+   * `code` (translated under API_ERRORS.*), and applies the matching recovery.
+   * Rejected orders (4xx) are not network failures and are never queued; the
+   * cart is kept so the user can fix it and retry.
+   */
+  private async handleSubmitError(error: unknown): Promise<void> {
+    console.error('Order submission failed:', error);
+    const { code, params } = parseApiError(error);
+    const message = translateLoadError(this.translate, error);
+
+    const alert = await this.alertController.create({
+      header: this.translate.instant('ORDER_SUMMARY.ERRORS.TITLE'),
+      message,
+      buttons: [{ text: this.translate.instant('COMMON.BUTTONS.OK'), role: 'cancel' }],
+    });
+    await alert.present();
+    await alert.onDidDismiss();
+
+    switch (code) {
+      case 'POS_NOT_ASSIGNED':
+      case 'POS_NOT_FOUND':
+        // The PoS is unusable for this user: forget it and let them pick
+        // another one. The cart is kept (it lives in OrderService / storage).
+        await this.posService.clearSelection();
+        await this.router.navigate(['/pos-selection']);
+        break;
+      case 'CURRENCY_MISMATCH':
+      case 'TOTAL_MISMATCH':
+      case 'PRICE_NOT_FOUND':
+        this.refreshPrices();
+        break;
+      case 'PRODUCT_NOT_FOUND':
+      case 'PRODUCT_INACTIVE':
+        this.removeLinesWhere((item) => item.productId === params['productId']);
+        break;
+      case 'MODIFIER_NOT_FOUND':
+      case 'MODIFIER_INACTIVE':
+      case 'MODIFIER_NOT_ATTACHED':
+        this.removeLinesWhere((item) =>
+          (item.modifiers ?? []).some((m) => m.modifierId === params['modifierId'])
+        );
+        break;
+      default:
+        break;
+    }
+  }
+
+  /** Reloads catalog prices and tenant currency after a price/currency rejection. */
+  private refreshPrices(): void {
+    const tenantId = this.tenantService.getCurrentTenantId();
+    if (!tenantId) return;
+    this.settingsService.loadTenantSettings(tenantId);
+    this.productService.fetchProductsWithPrices(tenantId, true).subscribe({
+      error: (err) => console.error('Failed to refresh prices:', err),
+    });
+  }
+
+  /** Removes the cart lines rejected by the backend (ids come from error params). */
+  private removeLinesWhere(
+    predicate: (item: { productId: string; modifiers?: SelectedModifier[] }) => boolean
+  ): void {
+    this.orderItems()
+      .filter((item) => predicate(item) && item.id)
+      .forEach((item) => this.orderService.removeItem(item.id as string));
   }
 
   /**
@@ -425,10 +483,7 @@ export class OrderSummaryComponent {
       }
       
       // Otherwise, show the actual charge with sign and tenant currency
-      const currencyCode = this.currencyCode();
-      const sign = charge >= 0 ? '+' : '';
-      const formatted = this.currencyPipe.transform(Math.abs(charge), currencyCode, 'symbol', '1.2-2');
-      return `(${sign}${formatted})`;
+      return `(${this.moneyService.format(charge, { signed: true })})`;
     }
 
     /**

@@ -57,6 +57,7 @@ describe('PosService', () => {
     httpMock = TestBed.inject(HttpTestingController);
     storageService = TestBed.inject(StorageService) as jasmine.SpyObj<StorageService>;
     authService = TestBed.inject(AuthService) as jasmine.SpyObj<AuthService>;
+    authService.getCurrentUser.and.returnValue({ id: 'user-1' } as any);
   });
 
   afterEach(() => {
@@ -121,7 +122,10 @@ describe('PosService', () => {
       await service.selectPos(mockPosList[0]);
 
       expect(service.selectedPos()).toEqual(mockPosList[0]);
-      expect(storageService.set).toHaveBeenCalledWith('selectedPos', mockPosList[0]);
+      expect(storageService.set).toHaveBeenCalledWith(
+        'selectedPos:user-1',
+        mockPosList[0]
+      );
     });
 
     it('should update selectedPos when different PoS is selected', async () => {
@@ -134,6 +138,16 @@ describe('PosService', () => {
       expect(service.selectedPos()).toEqual(mockPosList[1]);
       expect(storageService.set).toHaveBeenCalledTimes(2);
     });
+
+    it('should not persist when there is no logged-in user', async () => {
+      authService.getCurrentUser.and.returnValue(null);
+      storageService.set.and.returnValue(Promise.resolve());
+
+      await service.selectPos(mockPosList[0]);
+
+      expect(service.selectedPos()).toEqual(mockPosList[0]);
+      expect(storageService.set).not.toHaveBeenCalled();
+    });
   });
 
   describe('clearSelection', () => {
@@ -144,7 +158,27 @@ describe('PosService', () => {
       await service.clearSelection();
 
       expect(service.selectedPos()).toBeNull();
-      expect(storageService.remove).toHaveBeenCalledWith('selectedPos');
+      expect(storageService.remove).toHaveBeenCalledWith('selectedPos:user-1');
+    });
+  });
+
+  describe('restoreSelectedPos', () => {
+    it('should restore the saved PoS from the user-scoped key', async () => {
+      storageService.get.and.resolveTo(mockPosList[1]);
+
+      await service.restoreSelectedPos();
+
+      expect(storageService.get).toHaveBeenCalledWith('selectedPos:user-1');
+      expect(service.selectedPos()).toEqual(mockPosList[1]);
+    });
+
+    it('should not restore when there is no logged-in user', async () => {
+      authService.getCurrentUser.and.returnValue(null);
+
+      await service.restoreSelectedPos();
+
+      expect(storageService.get).not.toHaveBeenCalled();
+      expect(service.selectedPos()).toBeNull();
     });
   });
 

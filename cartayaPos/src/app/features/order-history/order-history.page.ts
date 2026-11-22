@@ -17,6 +17,8 @@ import { PosService } from '../../core/services/pos.service';
 import { TenantService } from '../../core/services/tenant.service';
 import { Order } from '../../models/order.model';
 import { OrderHistoryService } from '../../services/order-history.service';
+import { shortOrderRef } from '../../core/utils/order-ref';
+import { MoneyPipe } from '../../shared/pipes/money.pipe';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 @Component({
@@ -35,6 +37,7 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
     IonRefresher,
     IonRefresherContent,
     PageHeaderComponent,
+    MoneyPipe,
   ],
   templateUrl: './order-history.page.html',
   styleUrls: ['./order-history.page.scss'],
@@ -45,6 +48,8 @@ export class OrderHistoryPage implements OnInit {
   private tenantService = inject(TenantService);
   private router = inject(Router);
   private translate = inject(TranslateService);
+
+  readonly shortRef = shortOrderRef;
 
   // Reactive state using signals
   orders = signal<Order[]>([]);

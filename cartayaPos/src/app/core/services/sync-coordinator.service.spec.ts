@@ -50,6 +50,19 @@ describe('SyncCoordinatorService', () => {
     service.destroy();
   });
 
+  /** A processQueue() result the test resolves by hand, so "syncing" can be observed. */
+  function deferProcessQueue(): { resolve: () => void } {
+    let resolve!: () => void;
+    queueService.pendingCount.and.returnValue(5);
+    queueService.outOfSyncCount.and.returnValue(0);
+    queueService.processQueue.and.returnValue(
+      new Promise<RetryResult>((r) => {
+        resolve = () => r({ total: 5, successful: 5, failed: 0, errors: [] });
+      })
+    );
+    return { resolve };
+  }
+
   it('should be created', () => {
     expect(service).toBeTruthy();
   });
@@ -139,6 +152,7 @@ describe('SyncCoordinatorService', () => {
     });
 
     it('should update sync state during sync', fakeAsync(() => {
+      const sync = deferProcessQueue();
       expect(service.isSyncing()).toBe(false);
 
       service.syncQueue();
@@ -146,7 +160,8 @@ describe('SyncCoordinatorService', () => {
 
       expect(service.isSyncing()).toBe(true);
 
-      tick(100); // Allow promise to resolve
+      sync.resolve();
+      tick();
 
       expect(service.isSyncing()).toBe(false);
     }));
@@ -165,6 +180,7 @@ describe('SyncCoordinatorService', () => {
     });
 
     it('should not sync if already syncing', fakeAsync(() => {
+      deferProcessQueue();
       service.syncQueue();
       tick();
 
@@ -294,16 +310,7 @@ describe('SyncCoordinatorService', () => {
     });
 
     it('should return true during sync', fakeAsync(() => {
-      queueService.pendingCount.and.returnValue(5);
-      queueService.outOfSyncCount.and.returnValue(0);
-      queueService.processQueue.and.returnValue(
-        Promise.resolve({
-          total: 5,
-          successful: 5,
-          failed: 0,
-          errors: [],
-        })
-      );
+      deferProcessQueue();
 
       service.syncQueue();
       tick();

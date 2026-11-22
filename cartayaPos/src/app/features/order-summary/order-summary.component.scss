@@ -528,3 +528,25 @@
     border-top: 2px solid var(--ion-border-color);
   }
 }
+
+// ===== Quantity stepper =====
+.quantity-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+
+  ion-button {
+    margin: 0;
+    --padding-start: 6px;
+    --padding-end: 6px;
+    min-width: 36px;
+    min-height: 32px;
+  }
+
+  .quantity-value {
+    min-width: 24px;
+    text-align: center;
+    font-weight: 600;
+  }
+}

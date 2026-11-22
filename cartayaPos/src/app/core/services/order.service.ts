@@ -20,6 +20,21 @@ interface StoredOrderState {
   timestamp: number;
 }
 
+/** Maximum quantity of a single cart line. */
+export const MAX_LINE_QUANTITY = 99;
+
+/**
+ * Key identifying a cart line configuration (product + modifiers).
+ * Lines with the same key are merged into one line with a higher quantity.
+ */
+function lineKey(productId: string, modifiers: SelectedModifier[]): string {
+  const mods = modifiers
+    .map((m) => `${m.modifierId}:${m.quantity}`)
+    .sort()
+    .join('|');
+  return `${productId}#${mods}`;
+}
+
 /**
  * Generates a UUID v4 using crypto.getRandomValues
  * Fallback for environments without uuid library
@@ -125,11 +140,20 @@ export class OrderService {
       return;
     }
 
-    // Calculate subtotal
     const basePrice = product.defaultPrice.amount;
+
+    // Merge with an identical line (same product + same modifiers)
+    const key = lineKey(product.id, modifiers);
+    const existing = this.orderItems().find(
+      (item) => lineKey(item.productId, item.modifiers) === key
+    );
+    if (existing?.id) {
+      this.setItemQuantity(existing.id, existing.quantity + 1);
+      return;
+    }
+
     const subtotal = this.calculateSubtotal(basePrice, modifiers);
 
-    // Create new order item - quantity is 1 for each line item in MVP
     const orderItem: OrderItem = {
       id: generateUUID(),
       productId: product.id,
@@ -144,6 +168,25 @@ export class OrderService {
     this.orderItems.set([...this.orderItems(), orderItem]);
 
     // Persist to storage
+    this.saveOrderToStorage();
+  }
+
+  /**
+   * Sets the quantity of a cart line (clamped to 1..MAX_LINE_QUANTITY)
+   * and recalculates its line subtotal.
+   */
+  setItemQuantity(itemId: string, quantity: number): void {
+    const clamped = Math.min(MAX_LINE_QUANTITY, Math.max(1, Math.floor(quantity)));
+    const updated = this.orderItems().map((item) =>
+      item.id === itemId
+        ? {
+            ...item,
+            quantity: clamped,
+            subtotal: this.calculateSubtotal(item.basePrice ?? 0, item.modifiers) * clamped,
+          }
+        : item
+    );
+    this.orderItems.set(updated);
     this.saveOrderToStorage();
   }
 
@@ -178,18 +221,31 @@ export class OrderService {
     }
 
     const item = items[itemIndex];
-    const updatedSubtotal = this.calculateSubtotal(item.basePrice ?? 0, modifiers);
+    const unitSubtotal = this.calculateSubtotal(item.basePrice ?? 0, modifiers);
 
-    // Create new array with updated item
-    const updatedItems = [
-      ...items.slice(0, itemIndex),
-      {
-        ...item,
-        modifiers,
-        subtotal: updatedSubtotal,
-      },
-      ...items.slice(itemIndex + 1),
-    ];
+    // If the edited line now matches another line, merge them
+    const key = lineKey(item.productId, modifiers);
+    const duplicate = items.find(
+      (other, index) => index !== itemIndex && lineKey(other.productId, other.modifiers) === key
+    );
+
+    let updatedItems: OrderItem[];
+    if (duplicate) {
+      const mergedQuantity = Math.min(MAX_LINE_QUANTITY, duplicate.quantity + item.quantity);
+      updatedItems = items
+        .filter((other) => other.id !== item.id)
+        .map((other) =>
+          other.id === duplicate.id
+            ? { ...other, quantity: mergedQuantity, subtotal: unitSubtotal * mergedQuantity }
+            : other
+        );
+    } else {
+      updatedItems = items.map((other) =>
+        other.id === item.id
+          ? { ...other, modifiers, subtotal: unitSubtotal * other.quantity }
+          : other
+      );
+    }
 
     this.orderItems.set(updatedItems);
     this.saveOrderToStorage();
@@ -219,7 +275,7 @@ export class OrderService {
     const payload = {
       items: this.orderItems().map((item) => ({
         productId: item.productId,
-        quantity: 1, // For MVP, each item is quantity 1
+        quantity: item.quantity,
         modifiers: item.modifiers.map((m) => ({
           modifierId: m.modifierId,
           quantity: m.quantity,

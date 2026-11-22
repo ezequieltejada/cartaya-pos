@@ -1,9 +1,11 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, Injector, computed, inject, signal } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
 import { Observable, catchError, from, map, of, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Category } from '../models/category.model';
 import { Product } from '../models/product.model';
+import { translateLoadError } from '../utils/api-error';
 import { StorageService } from './storage.service';
 import { TenantService } from './tenant.service';
 
@@ -26,6 +28,9 @@ interface CategoryCache {
 })
 export class CategoryService {
   private httpClient = inject(HttpClient);
+  // Resolved lazily: TranslateService loads its files over HttpClient (and its
+  // interceptors), so injecting it eagerly here risks a circular dependency.
+  private injector = inject(Injector);
   private storageService = inject(StorageService);
   private tenantService = inject(TenantService);
 
@@ -47,18 +52,8 @@ export class CategoryService {
    * @param error - HTTP error object
    * @returns User-friendly error message
    */
-  private getErrorMessage(error: any): string {
-    if (error.status === 0) {
-      return 'No internet connection. Please check your network.';
-    } else if (error.status === 401) {
-      return 'Session expired. Please log in again.';
-    } else if (error.status === 403) {
-      return 'You do not have permission to view categories.';
-    } else if (error.status >= 500) {
-      return 'Server error. Please try again later.';
-    } else {
-      return 'Failed to load categories. Please try again.';
-    }
+  private getErrorMessage(error: unknown): string {
+    return translateLoadError(this.injector.get(TranslateService), error);
   }
 
   /**
@@ -178,13 +173,14 @@ export class CategoryService {
             `${this.API_URL}/tenants/${activeTenantId}/categories`
           )
           .pipe(
-            tap(async (response) => {
-              this.categories.set(response.data);
-              await this.setCache(activeTenantId, response.data);
+            map((response): Category[] => (Array.isArray(response?.data) ? response.data : [])),
+            tap((data) => {
+              this.categories.set(data);
               this.isLoading.set(false);
               this.error.set(null);
+              // Cache in the background: the UI must not wait for storage
+              void this.setCache(activeTenantId, data);
             }),
-            map((response): Category[] => response.data),
             catchError((error) => {
               console.error('Failed to fetch categories:', error);
               this.isLoading.set(false);

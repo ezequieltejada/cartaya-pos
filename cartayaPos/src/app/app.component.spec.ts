@@ -1,14 +1,17 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
-import { App } from '@capacitor/app';
 import { MenuController, Platform } from '@ionic/angular/standalone';
+import { signal } from '@angular/core';
+import type { App } from '@capacitor/app';
 import { TranslateService } from '@ngx-translate/core';
 import { of, Subscription } from 'rxjs';
 import { AppComponent } from './app.component';
+import { CAPACITOR_APP } from './core/tokens/capacitor-app.token';
 import { AuthService } from './core/services/auth.service';
 import { LanguageService } from './core/services/language.service';
 import { OrderQueueService } from './core/services/order-queue.service';
 import { PosService } from './core/services/pos.service';
+import { SettingsService } from './core/services/settings.service';
 import { StorageService } from './core/services/storage.service';
 import { SyncCoordinatorService } from './core/services/sync-coordinator.service';
 import { TenantService } from './core/services/tenant.service';
@@ -23,6 +26,7 @@ describe('AppComponent', () => {
   let menuController: jasmine.SpyObj<MenuController>;
   let authService: jasmine.SpyObj<AuthService>;
   let syncCoordinator: jasmine.SpyObj<SyncCoordinatorService>;
+  let capApp: jasmine.SpyObj<typeof App>;
 
   beforeEach(() => {
     router = {
@@ -47,15 +51,16 @@ describe('AppComponent', () => {
     menuController.isOpen.and.resolveTo(false);
     menuController.close.and.resolveTo(true);
 
-    authService = jasmine.createSpyObj('AuthService', [
-      'loadTokensFromStorage',
-      'checkSession',
-      'logout',
-    ]);
+    authService = jasmine.createSpyObj(
+      'AuthService',
+      ['loadTokensFromStorage', 'checkSession', 'logout'],
+      { sessionChecked: signal(false) }
+    );
     authService.loadTokensFromStorage.and.resolveTo();
     authService.checkSession.and.returnValue(of(null));
     authService.logout.and.returnValue(of(void 0));
 
+    capApp = jasmine.createSpyObj('App', ['exitApp']);
     syncCoordinator = jasmine.createSpyObj('SyncCoordinatorService', [
       'initialize',
       'destroy',
@@ -79,13 +84,19 @@ describe('AppComponent', () => {
           provide: TenantService,
           useValue: jasmine.createSpyObj('TenantService', [
             'restoreSelectedTenant',
+            'getCurrentTenantId',
           ]),
+        },
+        {
+          provide: SettingsService,
+          useValue: jasmine.createSpyObj('SettingsService', ['loadTenantSettings']),
         },
         {
           provide: PosService,
           useValue: jasmine.createSpyObj('PosService', ['restoreSelectedPos']),
         },
         { provide: SyncCoordinatorService, useValue: syncCoordinator },
+        { provide: CAPACITOR_APP, useValue: capApp },
         {
           provide: Printer,
           useValue: jasmine.createSpyObj('Printer', ['loadPersistedPrinter']),
@@ -122,6 +133,7 @@ describe('AppComponent', () => {
       TenantService
     ) as jasmine.SpyObj<TenantService>;
     tenantService.restoreSelectedTenant.and.resolveTo();
+    tenantService.getCurrentTenantId.and.returnValue('tenant-1');
 
     const posService = TestBed.inject(PosService) as jasmine.SpyObj<PosService>;
     posService.restoreSelectedPos.and.resolveTo();
@@ -133,7 +145,8 @@ describe('AppComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('navigates to products with replaceUrl when the session is valid', async () => {
+  it('navigates from the login page to products with replaceUrl when the session is valid', async () => {
+    router.url = '/auth/login';
     authService.checkSession.and.returnValue(of({ id: 'user-1' } as any));
 
     await component.ngOnInit();
@@ -141,6 +154,26 @@ describe('AppComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/products'], {
       replaceUrl: true,
     });
+    expect(authService.sessionChecked()).toBeTrue();
+  });
+
+  it('keeps a deep link (e.g. /cart) when the session is valid', async () => {
+    router.url = '/cart';
+    authService.checkSession.and.returnValue(of({ id: 'user-1' } as any));
+
+    await component.ngOnInit();
+
+    expect(router.navigate).not.toHaveBeenCalled();
+    expect(authService.sessionChecked()).toBeTrue();
+  });
+
+  it('loads the tenant settings once the session is valid', async () => {
+    authService.checkSession.and.returnValue(of({ id: 'user-1' } as any));
+
+    await component.ngOnInit();
+
+    const settings = TestBed.inject(SettingsService) as jasmine.SpyObj<SettingsService>;
+    expect(settings.loadTenantSettings).toHaveBeenCalledWith('tenant-1');
   });
 
   it('navigates to login with replaceUrl when there is no session', async () => {
@@ -151,10 +184,11 @@ describe('AppComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/auth/login'], {
       replaceUrl: true,
     });
+    expect(authService.sessionChecked()).toBeTrue();
   });
 
   it('exits the app when Android back is pressed on the product catalog root', async () => {
-    const exitAppSpy = spyOn(App, 'exitApp').and.resolveTo();
+    const exitAppSpy = capApp.exitApp.and.resolveTo();
     const processNextHandler = jasmine.createSpy('processNextHandler');
     router.url = '/products';
 
@@ -165,7 +199,7 @@ describe('AppComponent', () => {
   });
 
   it('delegates the back button when the current route is not the product catalog root', async () => {
-    const exitAppSpy = spyOn(App, 'exitApp').and.resolveTo();
+    const exitAppSpy = capApp.exitApp.and.resolveTo();
     const processNextHandler = jasmine.createSpy('processNextHandler');
     router.url = '/cart';
 

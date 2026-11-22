@@ -1,5 +1,8 @@
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { firstValueFrom } from 'rxjs';
+import { TranslateModule } from '@ngx-translate/core';
+import { environment } from '../../../environments/environment';
 import { Category } from '../models/category.model';
 import { CategoryService } from './category.service';
 import { StorageService } from './storage.service';
@@ -51,7 +54,7 @@ describe('CategoryService', () => {
     tenantServiceSpy.getCurrentTenantId.and.returnValue(tenantId);
 
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
+      imports: [HttpClientTestingModule, TranslateModule.forRoot()],
       providers: [
         CategoryService,
         { provide: StorageService, useValue: storageServiceSpy },
@@ -70,91 +73,86 @@ describe('CategoryService', () => {
 
     storageService.get.and.returnValue(Promise.resolve(null));
     storageService.set.and.returnValue(Promise.resolve());
+    storageService.remove.and.returnValue(Promise.resolve());
   });
 
   afterEach(() => {
     httpMock.verify();
   });
 
+  const categoriesUrl = `${environment.apiUrl}/api/tenants/${tenantId}/categories`;
+
+  /** The service reads the cache (a promise) before calling the API, so let it settle. */
+  const flushAsync = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
   describe('fetchCategories', () => {
-    it('should fetch categories from API and cache them', (done) => {
-      service.fetchCategories(tenantId).subscribe({
-        next: (categories) => {
-          expect(categories).toEqual(mockCategories);
-          expect(service.categories()).toEqual(mockCategories);
-          expect(storageService.set).toHaveBeenCalled();
-          done();
-        },
-      });
+    it('should fetch categories from API and cache them', async () => {
+      const result = firstValueFrom(service.fetchCategories(tenantId));
+      await flushAsync();
 
-      const req = httpMock.expectOne(
-        `http://localhost:3000/api/tenants/${tenantId}/categories`
-      );
+      const req = httpMock.expectOne(categoriesUrl);
       expect(req.request.method).toBe('GET');
       req.flush(mockApiResponse);
+
+      expect(await result).toEqual(mockCategories);
+      await flushAsync();
+      expect(service.categories()).toEqual(mockCategories);
+      expect(storageService.set).toHaveBeenCalled();
     });
 
-    it('should return cached categories if available and not expired', (done) => {
-      const cacheTimestamp = Date.now();
+    it('should return cached categories if available and not expired', async () => {
       storageService.get.and.returnValue(
-        Promise.resolve({
-          categories: mockCategories,
-          timestamp: cacheTimestamp,
-          tenantId,
-        })
+        Promise.resolve({ categories: mockCategories, timestamp: Date.now(), tenantId })
       );
 
-      service.fetchCategories(tenantId).subscribe({
-        next: (categories) => {
-          expect(categories).toEqual(mockCategories);
-          expect(storageService.get).toHaveBeenCalled();
-          httpMock.expectNone(
-            `http://localhost:3000/api/tenants/${tenantId}/categories`
-          );
-          done();
-        },
-      });
+      const categories = await firstValueFrom(service.fetchCategories(tenantId));
+
+      expect(categories).toEqual(mockCategories);
+      expect(storageService.get).toHaveBeenCalled();
+      httpMock.expectNone(categoriesUrl);
     });
 
-    it('should force refresh when forceRefresh is true', (done) => {
+    it('should force refresh when forceRefresh is true', async () => {
       storageService.get.and.returnValue(
-        Promise.resolve({
-          categories: mockCategories,
-          timestamp: Date.now(),
-          tenantId,
-        })
+        Promise.resolve({ categories: mockCategories, timestamp: Date.now(), tenantId })
       );
 
-      service.fetchCategories(tenantId, true).subscribe({
-        next: (categories) => {
-          expect(categories).toEqual(mockCategories);
-          done();
-        },
-      });
+      const result = firstValueFrom(service.fetchCategories(tenantId, true));
+      await flushAsync();
 
-      const req = httpMock.expectOne(
-        `http://localhost:3000/api/tenants/${tenantId}/categories`
-      );
+      const req = httpMock.expectOne(categoriesUrl);
       expect(req.request.method).toBe('GET');
       req.flush(mockApiResponse);
+
+      expect(await result).toEqual(mockCategories);
     });
 
-    it('should handle API errors gracefully', (done) => {
-      service.fetchCategories(tenantId).subscribe({
-        next: (categories) => {
-          expect(categories).toEqual([]);
-          expect(service.error()).toContain('Failed to load');
-          done();
-        },
-      });
+    it('should translate API errors by code and return an empty list', async () => {
+      spyOn(console, 'error');
+      const result = firstValueFrom(service.fetchCategories(tenantId));
+      await flushAsync();
 
-      const req = httpMock.expectOne(
-        `http://localhost:3000/api/tenants/${tenantId}/categories`
-      );
-      req.error(new ErrorEvent('Network error'));
+      httpMock
+        .expectOne(categoriesUrl)
+        .flush({ code: 'MISSING_PERMISSIONS', message: 'English' }, { status: 403, statusText: 'Forbidden' });
+
+      expect(await result).toEqual([]);
+      expect(service.error()).toBe('API_ERRORS.MISSING_PERMISSIONS');
     });
 
-    it('should return cached categories on error if available', (done) => {
+    it('should show the unreachable-server message when there is no response', async () => {
+      spyOn(console, 'error');
+      const result = firstValueFrom(service.fetchCategories(tenantId));
+      await flushAsync();
+
+      httpMock.expectOne(categoriesUrl).error(new ProgressEvent('error'));
+
+      expect(await result).toEqual([]);
+      expect(service.error()).toBe('AUTH.ERRORS.SERVER_UNREACHABLE');
+    });
+
+    it('should return an empty list on error when the cache is expired', async () => {
+      spyOn(console, 'error');
       storageService.get.and.returnValue(
         Promise.resolve({
           categories: mockCategories,
@@ -163,29 +161,21 @@ describe('CategoryService', () => {
         })
       );
 
-      service.fetchCategories(tenantId).subscribe({
-        next: (categories) => {
-          // Since cache is expired, it will try API call
-          expect(categories).toBeDefined();
-          done();
-        },
-      });
+      const result = firstValueFrom(service.fetchCategories(tenantId));
+      await flushAsync();
 
-      const req = httpMock.expectOne(
-        `http://localhost:3000/api/tenants/${tenantId}/categories`
-      );
-      req.error(new ErrorEvent('Network error'));
+      httpMock.expectOne(categoriesUrl).error(new ProgressEvent('error'));
+
+      // The expired cache entry was dropped, so there is nothing to fall back to
+      expect(await result).toEqual([]);
+      expect(storageService.remove).toHaveBeenCalledWith(`categories_${tenantId}`);
     });
 
-    it('should return empty array if no tenant ID', (done) => {
+    it('should return empty array if no tenant ID', async () => {
+      spyOn(console, 'error');
       tenantService.getCurrentTenantId.and.returnValue(null);
 
-      service.fetchCategories().subscribe({
-        next: (categories) => {
-          expect(categories).toEqual([]);
-          done();
-        },
-      });
+      expect(await firstValueFrom(service.fetchCategories())).toEqual([]);
     });
   });
 
@@ -240,27 +230,27 @@ describe('CategoryService', () => {
     });
 
     it('should clear all category caches if no tenantId provided', async () => {
-      spyOn(localStorage, 'key').and.returnValue(`categories_${tenantId}`);
-      spyOn(localStorage, 'length' as unknown as string).and.returnValue(1);
-
-      await service.clearCache();
-      expect(storageService.remove).toHaveBeenCalled();
+      localStorage.setItem(`categories_${tenantId}`, '{}');
+      try {
+        await service.clearCache();
+        expect(storageService.remove).toHaveBeenCalledWith(`categories_${tenantId}`);
+      } finally {
+        localStorage.removeItem(`categories_${tenantId}`);
+      }
     });
   });
 
   describe('loading state', () => {
-    it('should set isLoading to true when fetching', (done) => {
-      service.fetchCategories(tenantId).subscribe({
-        next: () => {
-          expect(service.isLoading()).toBe(false);
-          done();
-        },
-      });
+    it('should be loading while fetching and idle afterwards', async () => {
+      const result = firstValueFrom(service.fetchCategories(tenantId));
+      expect(service.isLoading()).toBe(true);
+      await flushAsync();
 
-      const req = httpMock.expectOne(
-        `http://localhost:3000/api/tenants/${tenantId}/categories`
-      );
-      req.flush(mockApiResponse);
+      httpMock.expectOne(categoriesUrl).flush(mockApiResponse);
+      await result;
+      await flushAsync();
+
+      expect(service.isLoading()).toBe(false);
     });
   });
 });

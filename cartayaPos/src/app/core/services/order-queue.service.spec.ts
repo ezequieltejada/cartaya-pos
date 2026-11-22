@@ -1,23 +1,82 @@
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
 import { NetworkService } from './network.service';
 import { OrderPayload, OrderQueueService } from './order-queue.service';
 
+const ORDER_URL = `${environment.apiUrl}/api/tenants/tenant-456/pos/pos-123/orders`;
+
+/** Lets pending IndexedDB / promise work finish. */
+const settle = (ms = 20) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+function createMockOrderPayload(): OrderPayload {
+  return {
+    items: [{ productId: 'prod-123', quantity: 2, modifiers: [{ modifierId: 'mod-456', quantity: 1 }] }],
+    totalAmount: 100,
+    currency: 'USD',
+  };
+}
+
 describe('OrderQueueService', () => {
   let service: OrderQueueService;
   let httpMock: HttpTestingController;
   let networkService: jasmine.SpyObj<NetworkService>;
+  let scheduleRetrySpy: jasmine.Spy;
 
-  beforeEach(() => {
-    const networkServiceSpy = jasmine.createSpyObj('NetworkService', [
-      'getIsOnline',
-    ]);
+  /** Waits for the IndexedDB connection the constructor opens asynchronously. */
+  async function waitForDb(): Promise<void> {
+    const internals = service as unknown as { db: unknown };
+    for (let i = 0; i < 100 && !internals.db; i++) {
+      await settle(10);
+    }
+    expect(internals.db).withContext('IndexedDB should open').toBeTruthy();
+    // The constructor also loads the persisted queue once the DB is open
+    await settle(50);
+  }
+
+  /** Puts a queue entry into a given state without going through ten failed syncs. */
+  async function seed(queueId: string, updates: Record<string, unknown>): Promise<void> {
+    await (service as unknown as { updateOrder: (id: string, u: Record<string, unknown>) => Promise<void> })
+      .updateOrder(queueId, updates);
+  }
+
+  /**
+   * Runs a retry that needs one HTTP round trip: the service reads the queue
+   * entry first, so give it a moment to issue the request before answering.
+   */
+  async function answerOrderRequest(
+    action: Promise<unknown>,
+    respond: (req: TestRequest) => void
+  ): Promise<void> {
+    respond(await nextOrderRequest());
+    await action;
+  }
+
+  /** Waits (up to 2s) for the next order POST to reach the HTTP backend. */
+  async function nextOrderRequest(): Promise<TestRequest> {
+    for (let i = 0; i < 200; i++) {
+      const [req] = httpMock.match(ORDER_URL);
+      if (req) {
+        return req;
+      }
+      await settle(10);
+    }
+    throw new Error('No order request was sent');
+  }
+
+  const originalTimeout = jasmine.DEFAULT_TIMEOUT_INTERVAL;
+
+  beforeEach(async () => {
+    // Real IndexedDB writes can be slow on some browsers/CI machines
+    jasmine.DEFAULT_TIMEOUT_INTERVAL = 20000;
+    const networkServiceSpy = jasmine.createSpyObj('NetworkService', ['getIsOnline']);
     networkServiceSpy.getIsOnline.and.returnValue(true);
 
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
         OrderQueueService,
         { provide: NetworkService, useValue: networkServiceSpy },
       ],
@@ -26,14 +85,21 @@ describe('OrderQueueService', () => {
     service = TestBed.inject(OrderQueueService);
     httpMock = TestBed.inject(HttpTestingController);
     networkService = TestBed.inject(NetworkService) as jasmine.SpyObj<NetworkService>;
+
+    // Backoff timers would fire real requests after the test finished
+    scheduleRetrySpy = spyOn(service as unknown as { scheduleRetry: () => void }, 'scheduleRetry');
+    spyOn(console, 'log');
+    spyOn(console, 'error');
+    spyOn(console, 'warn');
+
+    await waitForDb();
+    await service.clearQueue();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    jasmine.DEFAULT_TIMEOUT_INTERVAL = originalTimeout;
     httpMock.verify();
-    // Clean up queue after each test
-    service.clearQueue().catch(() => {
-      // Ignore errors during cleanup
-    });
+    await service.clearQueue().catch(() => undefined);
   });
 
   it('should be created', () => {
@@ -41,594 +107,336 @@ describe('OrderQueueService', () => {
   });
 
   describe('Initialization', () => {
-    it('should initialize IndexedDB on construction', (done) => {
-      setTimeout(() => {
-        expect(service.queuedOrders()).toBeDefined();
-        done();
-      }, 100);
-    });
-
-    it('should have empty queue initially', (done) => {
-      setTimeout(() => {
-        expect(service.queuedOrders().length).toBe(0);
-        expect(service.totalQueueSize()).toBe(0);
-        done();
-      }, 100);
-    });
-
-    it('should initialize pendingCount computed signal to 0', (done) => {
-      setTimeout(() => {
-        expect(service.pendingCount()).toBe(0);
-        done();
-      }, 100);
-    });
-
-    it('should initialize outOfSyncCount computed signal to 0', (done) => {
-      setTimeout(() => {
-        expect(service.outOfSyncCount()).toBe(0);
-        done();
-      }, 100);
+    it('should start with an empty queue and zeroed counters', () => {
+      expect(service.queuedOrders().length).toBe(0);
+      expect(service.totalQueueSize()).toBe(0);
+      expect(service.pendingCount()).toBe(0);
+      expect(service.outOfSyncCount()).toBe(0);
     });
   });
 
   describe('enqueue()', () => {
-    it('should add order to queue', (done) => {
-      const payload = createMockOrderPayload();
+    it('should add the order to the queue', async () => {
+      const queueId = await service.enqueue(createMockOrderPayload(), 'pos-123', 'tenant-456');
 
-      service.enqueue(payload, 'pos-123', 'tenant-456').then((queueId) => {
-        setTimeout(() => {
-          expect(service.queuedOrders().length).toBe(1);
-          expect(service.totalQueueSize()).toBe(1);
-          expect(queueId).toBeTruthy();
-          done();
-        }, 50);
-      });
+      expect(queueId).toBeTruthy();
+      expect(service.queuedOrders().length).toBe(1);
+      expect(service.totalQueueSize()).toBe(1);
     });
 
-    it('should create queue entry with correct structure', (done) => {
-      const payload = createMockOrderPayload();
+    it('should create the queue entry with the correct structure', async () => {
       const metadata = { orderNumber: 'ORD-001', total: 100 };
+      const queueId = await service.enqueue(createMockOrderPayload(), 'pos-123', 'tenant-456', metadata);
 
-      service.enqueue(payload, 'pos-123', 'tenant-456', metadata).then((queueId) => {
-        setTimeout(() => {
-          const entry = service.getQueueEntry(queueId);
-          expect(entry).toBeTruthy();
-          expect(entry?.orderId).toBeNull();
-          expect(entry?.posId).toBe('pos-123');
-          expect(entry?.tenantId).toBe('tenant-456');
-          expect(entry?.status).toBe('pending');
-          expect(entry?.retryCount).toBe(0);
-          expect(entry?.maxRetries).toBe(10);
-          expect(entry?.metadata?.orderNumber).toBe('ORD-001');
-          done();
-        }, 50);
-      });
+      const entry = service.getQueueEntry(queueId);
+      expect(entry?.orderId).toBeNull();
+      expect(entry?.posId).toBe('pos-123');
+      expect(entry?.tenantId).toBe('tenant-456');
+      expect(entry?.status).toBe('pending');
+      expect(entry?.retryCount).toBe(0);
+      expect(entry?.maxRetries).toBe(10);
+      expect(entry?.metadata?.orderNumber).toBe('ORD-001');
     });
 
-    it('should increment pending count', (done) => {
-      const initialCount = service.pendingCount();
-      const payload = createMockOrderPayload();
+    it('should increment the pending count', async () => {
+      await service.enqueue(createMockOrderPayload(), 'pos-123', 'tenant-456');
 
-      service.enqueue(payload, 'pos-123', 'tenant-456').then(() => {
-        setTimeout(() => {
-          expect(service.pendingCount()).toBe(initialCount + 1);
-          done();
-        }, 50);
-      });
+      expect(service.pendingCount()).toBe(1);
     });
 
-    it('should generate unique queue IDs', (done) => {
+    it('should generate unique queue IDs', async () => {
       const payload = createMockOrderPayload();
+      const ids = await Promise.all([
+        service.enqueue(payload, 'pos-123', 'tenant-456'),
+        service.enqueue(payload, 'pos-123', 'tenant-456'),
+        service.enqueue(payload, 'pos-123', 'tenant-456'),
+      ]);
 
-      Promise.all([
-        service.enqueue(payload, 'pos-123', 'tenant-456'),
-        service.enqueue(payload, 'pos-123', 'tenant-456'),
-        service.enqueue(payload, 'pos-123', 'tenant-456'),
-      ]).then(([id1, id2, id3]) => {
-        expect(id1).not.toBe(id2);
-        expect(id2).not.toBe(id3);
-        expect(id1).not.toBe(id3);
-        done();
-      });
+      expect(new Set(ids).size).toBe(3);
     });
   });
 
   describe('getQueueEntry()', () => {
-    it('should return entry by ID', (done) => {
-      const payload = createMockOrderPayload();
+    it('should return the entry by ID', async () => {
+      const queueId = await service.enqueue(createMockOrderPayload(), 'pos-123', 'tenant-456');
 
-      service.enqueue(payload, 'pos-123', 'tenant-456').then((queueId) => {
-        setTimeout(() => {
-          const entry = service.getQueueEntry(queueId);
-          expect(entry).toBeTruthy();
-          expect(entry?.id).toBe(queueId);
-          done();
-        }, 50);
-      });
+      expect(service.getQueueEntry(queueId)?.id).toBe(queueId);
     });
 
-    it('should return undefined for non-existent ID', (done) => {
-      setTimeout(() => {
-        const entry = service.getQueueEntry('non-existent-id');
-        expect(entry).toBeUndefined();
-        done();
-      }, 50);
+    it('should return undefined for a non-existent ID', () => {
+      expect(service.getQueueEntry('non-existent-id')).toBeUndefined();
     });
   });
 
   describe('remove()', () => {
-    it('should remove order from queue', (done) => {
-      const payload = createMockOrderPayload();
+    it('should remove the order from the queue and decrement the pending count', async () => {
+      const queueId = await service.enqueue(createMockOrderPayload(), 'pos-123', 'tenant-456');
+      expect(service.pendingCount()).toBe(1);
 
-      service.enqueue(payload, 'pos-123', 'tenant-456').then((queueId) => {
-        setTimeout(() => {
-          expect(service.queuedOrders().length).toBe(1);
+      await service.remove(queueId);
 
-          service.remove(queueId).then(() => {
-            setTimeout(() => {
-              expect(service.queuedOrders().length).toBe(0);
-              expect(service.getQueueEntry(queueId)).toBeUndefined();
-              done();
-            }, 50);
-          });
-        }, 50);
-      });
-    });
-
-    it('should decrement pending count', (done) => {
-      const payload = createMockOrderPayload();
-
-      service.enqueue(payload, 'pos-123', 'tenant-456').then((queueId) => {
-        setTimeout(() => {
-          const countBefore = service.pendingCount();
-
-          service.remove(queueId).then(() => {
-            setTimeout(() => {
-              expect(service.pendingCount()).toBe(countBefore - 1);
-              done();
-            }, 50);
-          });
-        }, 50);
-      });
+      expect(service.queuedOrders().length).toBe(0);
+      expect(service.getQueueEntry(queueId)).toBeUndefined();
+      expect(service.pendingCount()).toBe(0);
     });
   });
 
   describe('clearQueue()', () => {
-    it('should remove all orders', (done) => {
+    it('should remove all orders and reset every computed signal', async () => {
       const payload = createMockOrderPayload();
-
-      Promise.all([
+      await Promise.all([
         service.enqueue(payload, 'pos-123', 'tenant-456'),
         service.enqueue(payload, 'pos-123', 'tenant-456'),
         service.enqueue(payload, 'pos-123', 'tenant-456'),
-      ]).then(() => {
-        setTimeout(() => {
-          expect(service.queuedOrders().length).toBe(3);
+      ]);
+      expect(service.queuedOrders().length).toBe(3);
 
-          service.clearQueue().then(() => {
-            setTimeout(() => {
-              expect(service.queuedOrders().length).toBe(0);
-              expect(service.totalQueueSize()).toBe(0);
-              done();
-            }, 50);
-          });
-        }, 50);
-      });
-    });
+      await service.clearQueue();
 
-    it('should reset all computed signals', (done) => {
-      const payload = createMockOrderPayload();
-
-      service.enqueue(payload, 'pos-123', 'tenant-456').then(() => {
-        setTimeout(() => {
-          service.clearQueue().then(() => {
-            setTimeout(() => {
-              expect(service.pendingCount()).toBe(0);
-              expect(service.outOfSyncCount()).toBe(0);
-              expect(service.totalQueueSize()).toBe(0);
-              done();
-            }, 50);
-          });
-        }, 50);
-      });
+      expect(service.queuedOrders().length).toBe(0);
+      expect(service.pendingCount()).toBe(0);
+      expect(service.outOfSyncCount()).toBe(0);
+      expect(service.totalQueueSize()).toBe(0);
     });
   });
 
   describe('retryOne()', () => {
-    it('should remove order from queue on successful sync', (done) => {
-      const payload = createMockOrderPayload();
+    it('should remove the order from the queue on successful sync', async () => {
+      const queueId = await service.enqueue(createMockOrderPayload(), 'pos-123', 'tenant-456');
 
-      service.enqueue(payload, 'pos-123', 'tenant-456').then((queueId) => {
-        setTimeout(() => {
-          service.retryOne(queueId).then((success) => {
-            expect(success).toBe(true);
-
-            const req = httpMock.expectOne(
-              `${environment.apiUrl}/api/tenants/tenant-456/pos/pos-123/orders`
-            );
-            expect(req.request.method).toBe('POST');
-            req.flush({ orderId: 'order-123' });
-
-            setTimeout(() => {
-              expect(service.getQueueEntry(queueId)).toBeUndefined();
-              expect(service.queuedOrders().length).toBe(0);
-              done();
-            }, 50);
-          });
-        }, 50);
+      const retry = service.retryOne(queueId);
+      await answerOrderRequest(retry, (req) => {
+        expect(req.request.method).toBe('POST');
+        req.flush({ orderId: 'order-123' });
       });
+
+      expect(await retry).toBeTrue();
+      expect(service.getQueueEntry(queueId)).toBeUndefined();
+      expect(service.queuedOrders().length).toBe(0);
     });
 
-    it('should increment retry count on failure', (done) => {
-      const payload = createMockOrderPayload();
+    it('should increment the retry count and keep the order pending on failure', async () => {
+      const queueId = await service.enqueue(createMockOrderPayload(), 'pos-123', 'tenant-456');
 
-      service.enqueue(payload, 'pos-123', 'tenant-456').then((queueId) => {
-        setTimeout(() => {
-          const retryPromise = service.retryOne(queueId);
+      const retry = service.retryOne(queueId);
+      await answerOrderRequest(retry, (req) => req.error(new ProgressEvent('error')));
 
-          const req = httpMock.expectOne(
-            `${environment.apiUrl}/api/tenants/tenant-456/pos/pos-123/orders`
-          );
-          req.error(new ErrorEvent('Network error'));
-
-          retryPromise.then((success) => {
-            expect(success).toBe(false);
-
-            setTimeout(() => {
-              const entry = service.getQueueEntry(queueId);
-              expect(entry?.retryCount).toBe(1);
-              expect(entry?.status).toBe('pending');
-              done();
-            }, 50);
-          });
-        }, 50);
-      });
+      expect(await retry).toBeFalse();
+      const entry = service.getQueueEntry(queueId);
+      expect(entry?.retryCount).toBe(1);
+      expect(entry?.status).toBe('pending');
+      expect(scheduleRetrySpy).toHaveBeenCalledWith(queueId, 1);
     });
 
-    it('should mark order as out-of-sync after max retries', (done) => {
-      const payload = createMockOrderPayload();
+    it('should update lastAttemptAt', async () => {
+      const queueId = await service.enqueue(createMockOrderPayload(), 'pos-123', 'tenant-456');
+      const before = Date.now();
 
-      service.enqueue(payload, 'pos-123', 'tenant-456').then((queueId) => {
-        setTimeout(async () => {
-          // Fail 10 times
-          for (let i = 0; i < 10; i++) {
-            // eslint-disable-next-line no-await-in-loop
-            await service.retryOne(queueId);
-            const req = httpMock.expectOne(
-              `${environment.apiUrl}/api/tenants/tenant-456/pos/pos-123/orders`
-            );
-            req.error(new ErrorEvent('Network error'));
+      const retry = service.retryOne(queueId);
+      await answerOrderRequest(retry, (req) => req.error(new ProgressEvent('error')));
 
-            // Wait for async operations
-            // eslint-disable-next-line no-await-in-loop
-            await new Promise((resolve) => setTimeout(resolve, 50));
-          }
-
-          const entry = service.getQueueEntry(queueId);
-          expect(entry?.retryCount).toBe(10);
-          expect(entry?.status).toBe('out-of-sync');
-          expect(service.outOfSyncCount()).toBe(1);
-          done();
-        }, 50);
-      });
+      const entry = service.getQueueEntry(queueId);
+      expect(new Date(entry?.lastAttemptAt ?? '').getTime()).toBeGreaterThanOrEqual(before);
     });
 
-    it('should update lastAttemptAt on retry', (done) => {
-      const payload = createMockOrderPayload();
+    it('should store the error code and params instead of English text', async () => {
+      const queueId = await service.enqueue(createMockOrderPayload(), 'pos-123', 'tenant-456');
 
-      service.enqueue(payload, 'pos-123', 'tenant-456').then((queueId) => {
-        setTimeout(() => {
-          const before = new Date().toISOString();
-          const retryPromise = service.retryOne(queueId);
+      const retry = service.retryOne(queueId);
+      await answerOrderRequest(retry, (req) =>
+        req.flush(
+          { code: 'CURRENCY_MISMATCH', message: 'English text', params: { expected: 'EUR' } },
+          { status: 422, statusText: 'Unprocessable Entity' }
+        )
+      );
 
-          const req = httpMock.expectOne(
-            `${environment.apiUrl}/api/tenants/tenant-456/pos/pos-123/orders`
-          );
-          req.error(new ErrorEvent('Network error'));
-
-          retryPromise.then(() => {
-            setTimeout(() => {
-              const entry = service.getQueueEntry(queueId);
-              expect(entry?.lastAttemptAt).toBeTruthy();
-              expect(new Date(entry?.lastAttemptAt || '').getTime()).toBeGreaterThanOrEqual(
-                new Date(before).getTime()
-              );
-              done();
-            }, 50);
-          });
-        }, 50);
-      });
+      const entry = service.getQueueEntry(queueId);
+      expect(entry?.errorCode).toBe('CURRENCY_MISMATCH');
+      expect(entry?.errorParams).toEqual({ expected: 'EUR' });
+      expect(entry?.error).toBeNull();
     });
 
-    it('should update error message on retry failure', (done) => {
-      const payload = createMockOrderPayload();
+    it('should store SERVER_UNREACHABLE when there is no response', async () => {
+      const queueId = await service.enqueue(createMockOrderPayload(), 'pos-123', 'tenant-456');
 
-      service.enqueue(payload, 'pos-123', 'tenant-456').then((queueId) => {
-        setTimeout(() => {
-          const retryPromise = service.retryOne(queueId);
+      const retry = service.retryOne(queueId);
+      await answerOrderRequest(retry, (req) => req.error(new ProgressEvent('error')));
 
-          const req = httpMock.expectOne(
-            `${environment.apiUrl}/api/tenants/tenant-456/pos/pos-123/orders`
-          );
-          const errorMessage = 'Server error';
-          req.error(new ErrorEvent(errorMessage));
-
-          retryPromise.then(() => {
-            setTimeout(() => {
-              const entry = service.getQueueEntry(queueId);
-              expect(entry?.error).toBeTruthy();
-              done();
-            }, 50);
-          });
-        }, 50);
-      });
+      expect(service.getQueueEntry(queueId)?.errorCode).toBe('SERVER_UNREACHABLE');
     });
 
-    it('should throw if queue entry not found', (done) => {
-      service.retryOne('non-existent-id').catch((error) => {
-        expect(error).toBeTruthy();
-        expect(error.message).toContain('not found');
-        done();
-      });
+    it('should mark the order out-of-sync on 401 without scheduling a retry', async () => {
+      const queueId = await service.enqueue(createMockOrderPayload(), 'pos-123', 'tenant-456');
+
+      const retry = service.retryOne(queueId);
+      await answerOrderRequest(retry, (req) =>
+        req.flush({ code: 'SESSION_EXPIRED' }, { status: 401, statusText: 'Unauthorized' })
+      );
+
+      const entry = service.getQueueEntry(queueId);
+      expect(entry?.status).toBe('out-of-sync');
+      expect(entry?.errorCode).toBe('SESSION_EXPIRED');
+      expect(scheduleRetrySpy).not.toHaveBeenCalled();
+    });
+
+    it('should mark the order out-of-sync after the maximum number of retries', async () => {
+      const queueId = await service.enqueue(createMockOrderPayload(), 'pos-123', 'tenant-456');
+
+      await seed(queueId, { retryCount: 9 });
+
+      const retry = service.retryOne(queueId);
+      await answerOrderRequest(retry, (req) => req.error(new ProgressEvent('error')));
+
+      const entry = service.getQueueEntry(queueId);
+      expect(entry?.retryCount).toBe(10);
+      expect(entry?.status).toBe('out-of-sync');
+      expect(service.outOfSyncCount()).toBe(1);
+    });
+
+    it('should reject when the queue entry does not exist', async () => {
+      await expectAsync(service.retryOne('non-existent-id')).toBeRejectedWithError(/not found/);
     });
   });
 
   describe('scheduleRetry()', () => {
-    it('should schedule retry with exponential backoff', (done) => {
-      const payload = createMockOrderPayload();
+    it('should retry with exponential backoff without blocking', () => {
+      scheduleRetrySpy.and.callThrough();
+      jasmine.clock().install();
+      try {
+        const retryOne = spyOn(service, 'retryOne').and.returnValue(Promise.resolve(true));
 
-      service.enqueue(payload, 'pos-123', 'tenant-456').then((queueId) => {
-        setTimeout(() => {
-          const startTime = Date.now();
+        (service as unknown as { scheduleRetry: (id: string, n: number) => void }).scheduleRetry('q-1', 3);
 
-          // First failure - should schedule with 1s delay
-          service.retryOne(queueId).then(() => {
-            const req = httpMock.expectOne(
-              `${environment.apiUrl}/api/tenants/tenant-456/pos/pos-123/orders`
-            );
-            req.error(new ErrorEvent('Network error'));
+        jasmine.clock().tick(3999); // 1000 * 2^(3-1) = 4000ms
+        expect(retryOne).not.toHaveBeenCalled();
+        jasmine.clock().tick(1);
+        expect(retryOne).toHaveBeenCalledWith('q-1');
+      } finally {
+        jasmine.clock().uninstall();
+      }
+    });
 
-            // Verify exponential backoff for different retry counts
-            // With retryCount=1: 1000 * 2^(1-1) = 1000ms
-            expect(Date.now() - startTime).toBeLessThan(100); // Shouldn't block
+    it('should cap the delay at 16 seconds', () => {
+      scheduleRetrySpy.and.callThrough();
+      jasmine.clock().install();
+      try {
+        const retryOne = spyOn(service, 'retryOne').and.returnValue(Promise.resolve(true));
 
-            done();
-          });
-        }, 50);
-      });
+        (service as unknown as { scheduleRetry: (id: string, n: number) => void }).scheduleRetry('q-1', 9);
+
+        jasmine.clock().tick(16000);
+        expect(retryOne).toHaveBeenCalledWith('q-1');
+      } finally {
+        jasmine.clock().uninstall();
+      }
     });
   });
 
-  describe('retryAll()', () => {
-    it('should retry all queued orders', (done) => {
-      const payload = createMockOrderPayload();
+  describe('processQueue() / retryAll()', () => {
+    /** Answers the sequential order requests one by one. */
+    async function answerAll(
+      action: Promise<unknown>,
+      responses: Array<(req: TestRequest) => void>
+    ): Promise<void> {
+      for (const respond of responses) {
+        respond(await nextOrderRequest());
+      }
+      await action;
+    }
 
-      Promise.all([
-        service.enqueue(payload, 'pos-123', 'tenant-456'),
-        service.enqueue(payload, 'pos-123', 'tenant-456'),
-      ]).then((ids) => {
-        setTimeout(() => {
-          service.retryAll().then((result) => {
-            expect(result.total).toBe(2);
-
-            const req1 = httpMock.expectOne(
-              `${environment.apiUrl}/api/tenants/tenant-456/pos/pos-123/orders`
-            );
-            req1.flush({ orderId: 'order-1' });
-
-            const req2 = httpMock.expectOne(
-              `${environment.apiUrl}/api/tenants/tenant-456/pos/pos-123/orders`
-            );
-            req2.flush({ orderId: 'order-2' });
-
-            setTimeout(() => {
-              expect(result.successful).toBe(2);
-              expect(result.failed).toBe(0);
-              expect(service.queuedOrders().length).toBe(0);
-              done();
-            }, 50);
-          });
-        }, 50);
-      });
-    });
-
-    it('should reset out-of-sync orders before retry', (done) => {
-      const payload = createMockOrderPayload();
-
-      service.enqueue(payload, 'pos-123', 'tenant-456').then((queueId) => {
-        setTimeout(async () => {
-          // Mark as out-of-sync
-          for (let i = 0; i < 10; i++) {
-            // eslint-disable-next-line no-await-in-loop
-            await service.retryOne(queueId);
-            const req = httpMock.expectOne(
-              `${environment.apiUrl}/api/tenants/tenant-456/pos/pos-123/orders`
-            );
-            req.error(new ErrorEvent('Network error'));
-            // eslint-disable-next-line no-await-in-loop
-            await new Promise((resolve) => setTimeout(resolve, 50));
-          }
-
-          let entry = service.getQueueEntry(queueId);
-          expect(entry?.status).toBe('out-of-sync');
-
-          // Retry all
-          await new Promise((resolve) => setTimeout(resolve, 50));
-          service.retryAll().then(() => {
-            const req = httpMock.expectOne(
-              `${environment.apiUrl}/api/tenants/tenant-456/pos/pos-123/orders`
-            );
-            req.flush({ orderId: 'order-123' });
-
-            setTimeout(() => {
-              entry = service.getQueueEntry(queueId);
-              expect(entry).toBeUndefined(); // Removed after successful sync
-              done();
-            }, 50);
-          });
-        }, 50);
-      });
-    });
-  });
-
-  describe('processQueue()', () => {
-    it('should return empty result when offline', (done) => {
+    it('should return an empty result when offline', async () => {
       networkService.getIsOnline.and.returnValue(false);
 
-      service.processQueue().then((result) => {
-        expect(result.total).toBe(0);
-        expect(result.successful).toBe(0);
-        expect(result.failed).toBe(0);
-        done();
-      });
+      const result = await service.processQueue();
+
+      expect(result).toEqual(jasmine.objectContaining({ total: 0, successful: 0, failed: 0 }));
     });
 
-    it('should process all pending orders', (done) => {
-      networkService.getIsOnline.and.returnValue(true);
-
+    it('should process all pending orders', async () => {
       const payload = createMockOrderPayload();
+      await service.enqueue(payload, 'pos-123', 'tenant-456');
+      await service.enqueue(payload, 'pos-123', 'tenant-456');
 
-      Promise.all([
-        service.enqueue(payload, 'pos-123', 'tenant-456'),
-        service.enqueue(payload, 'pos-123', 'tenant-456'),
-      ]).then(() => {
-        setTimeout(() => {
-          service.processQueue().then((result) => {
-            expect(result.total).toBe(2);
+      const processing = service.processQueue();
+      await answerAll(processing, [
+        (req) => req.flush({ orderId: 'order-1' }),
+        (req) => req.flush({ orderId: 'order-2' }),
+      ]);
 
-            const req1 = httpMock.expectOne(
-              `${environment.apiUrl}/api/tenants/tenant-456/pos/pos-123/orders`
-            );
-            req1.flush({ orderId: 'order-1' });
-
-            const req2 = httpMock.expectOne(
-              `${environment.apiUrl}/api/tenants/tenant-456/pos/pos-123/orders`
-            );
-            req2.flush({ orderId: 'order-2' });
-
-            setTimeout(() => {
-              expect(result.successful).toBe(2);
-              expect(result.failed).toBe(0);
-              done();
-            }, 50);
-          });
-        }, 50);
-      });
+      const result = await processing;
+      expect(result.total).toBe(2);
+      expect(result.successful).toBe(2);
+      expect(result.failed).toBe(0);
+      expect(service.queuedOrders().length).toBe(0);
     });
 
-    it('should track failures in result', (done) => {
-      networkService.getIsOnline.and.returnValue(true);
-
+    it('should track failures in the result', async () => {
       const payload = createMockOrderPayload();
+      await service.enqueue(payload, 'pos-123', 'tenant-456');
+      await service.enqueue(payload, 'pos-123', 'tenant-456');
 
-      Promise.all([
-        service.enqueue(payload, 'pos-123', 'tenant-456'),
-        service.enqueue(payload, 'pos-123', 'tenant-456'),
-      ]).then(() => {
-        setTimeout(() => {
-          service.processQueue().then((result) => {
-            expect(result.total).toBe(2);
+      const processing = service.processQueue();
+      await answerAll(processing, [
+        (req) => req.error(new ProgressEvent('error')),
+        (req) => req.flush({ orderId: 'order-2' }),
+      ]);
 
-            const req1 = httpMock.expectOne(
-              `${environment.apiUrl}/api/tenants/tenant-456/pos/pos-123/orders`
-            );
-            req1.error(new ErrorEvent('Network error'));
+      const result = await processing;
+      expect(result.total).toBe(2);
+      expect(result.successful).toBe(1);
+      expect(result.failed).toBe(1);
+      expect(result.errors.length).toBe(0); // Scheduled retries don't add to errors
+    });
 
-            const req2 = httpMock.expectOne(
-              `${environment.apiUrl}/api/tenants/tenant-456/pos/pos-123/orders`
-            );
-            req2.flush({ orderId: 'order-2' });
+    it('should retry all queued orders', async () => {
+      const payload = createMockOrderPayload();
+      await service.enqueue(payload, 'pos-123', 'tenant-456');
+      await service.enqueue(payload, 'pos-123', 'tenant-456');
 
-            setTimeout(() => {
-              expect(result.successful).toBe(1);
-              expect(result.failed).toBe(1);
-              expect(result.errors.length).toBe(0); // Scheduled retries don't add to errors
-              done();
-            }, 50);
-          });
-        }, 50);
-      });
+      const retrying = service.retryAll();
+      await answerAll(retrying, [
+        (req) => req.flush({ orderId: 'order-1' }),
+        (req) => req.flush({ orderId: 'order-2' }),
+      ]);
+
+      const result = await retrying;
+      expect(result.total).toBe(2);
+      expect(result.successful).toBe(2);
+      expect(service.queuedOrders().length).toBe(0);
+    });
+
+    it('should reset out-of-sync orders (and their error) before retrying', async () => {
+      const queueId = await service.enqueue(createMockOrderPayload(), 'pos-123', 'tenant-456');
+      await seed(queueId, { status: 'out-of-sync', retryCount: 10, errorCode: 'SERVER_UNREACHABLE' });
+      expect(service.getQueueEntry(queueId)?.status).toBe('out-of-sync');
+      expect(service.getQueueEntry(queueId)?.errorCode).toBe('SERVER_UNREACHABLE');
+
+      const retrying = service.retryAll();
+      await answerAll(retrying, [(req) => req.flush({ orderId: 'order-123' })]);
+
+      await retrying;
+      expect(service.getQueueEntry(queueId)).toBeUndefined(); // Removed after successful sync
     });
   });
 
   describe('Computed Signals', () => {
-    it('should update pendingCount when orders added', (done) => {
+    it('should update totalQueueSize accurately', async () => {
       const payload = createMockOrderPayload();
+      await service.enqueue(payload, 'pos-123', 'tenant-456');
+      expect(service.totalQueueSize()).toBe(1);
 
-      setTimeout(() => {
-        const initial = service.pendingCount();
-
-        service.enqueue(payload, 'pos-123', 'tenant-456').then(() => {
-          setTimeout(() => {
-            expect(service.pendingCount()).toBe(initial + 1);
-            done();
-          }, 50);
-        });
-      }, 50);
+      await service.enqueue(payload, 'pos-123', 'tenant-456');
+      expect(service.totalQueueSize()).toBe(2);
     });
 
-    it('should update outOfSyncCount when orders marked out-of-sync', (done) => {
-      const payload = createMockOrderPayload();
+    it('should update outOfSyncCount when orders are marked out-of-sync', async () => {
+      const queueId = await service.enqueue(createMockOrderPayload(), 'pos-123', 'tenant-456');
+      expect(service.outOfSyncCount()).toBe(0);
 
-      service.enqueue(payload, 'pos-123', 'tenant-456').then((queueId) => {
-        setTimeout(async () => {
-          const initialOutOfSync = service.outOfSyncCount();
+      await seed(queueId, { status: 'out-of-sync', retryCount: 10 });
 
-          // Fail 10 times to mark as out-of-sync
-          for (let i = 0; i < 10; i++) {
-            // eslint-disable-next-line no-await-in-loop
-            await service.retryOne(queueId);
-            const req = httpMock.expectOne(
-              `${environment.apiUrl}/api/tenants/tenant-456/pos/pos-123/orders`
-            );
-            req.error(new ErrorEvent('Network error'));
-            // eslint-disable-next-line no-await-in-loop
-            await new Promise((resolve) => setTimeout(resolve, 50));
-          }
-
-          expect(service.outOfSyncCount()).toBe(initialOutOfSync + 1);
-          done();
-        }, 50);
-      });
-    });
-
-    it('should update totalQueueSize accurately', (done) => {
-      const payload = createMockOrderPayload();
-
-      service.enqueue(payload, 'pos-123', 'tenant-456').then(() => {
-        setTimeout(() => {
-          expect(service.totalQueueSize()).toBe(1);
-
-          service.enqueue(payload, 'pos-123', 'tenant-456').then(() => {
-            setTimeout(() => {
-              expect(service.totalQueueSize()).toBe(2);
-              done();
-            }, 50);
-          });
-        }, 50);
-      });
+      expect(service.outOfSyncCount()).toBe(1);
+      expect(service.pendingCount()).toBe(0);
     });
   });
 });
-
-/**
- * Helper to create mock order payload
- */
-function createMockOrderPayload(): OrderPayload {
-  return {
-    items: [
-      {
-        productId: 'prod-123',
-        quantity: 2,
-        modifiers: [
-          {
-            modifierId: 'mod-456',
-            quantity: 1,
-          },
-        ],
-      },
-    ],
-    totalAmount: 100,
-    currency: 'USD',
-  };
-}

@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, EventEmitter, inject, Injector, Input, OnInit, Output } from '@angular/core';
+import { Component, DestroyRef, effect, EventEmitter, inject, Injector, Input, OnInit, Output } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { IonButton, IonIcon, IonLoading, IonSelect, IonSelectOption } from '@ionic/angular/standalone';
+import { IonIcon, IonLoading, IonSelect, IonSelectOption } from '@ionic/angular/standalone';
 import { TranslateModule } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
 import { checkmarkCircle, languageOutline } from 'ionicons/icons';
@@ -14,7 +15,7 @@ import { LanguageService } from '../../../core/services/language.service';
  * 
  * Features:
  * - Displays language options in a select dropdown (reactive form)
- * - Save button to apply language change
+ * - Language is applied as soon as an option is selected
  * - Shows currently selected language
  * - Emits languageChanged event when user saves a language
  * - Shows loading spinner during language change
@@ -36,7 +37,7 @@ import { LanguageService } from '../../../core/services/language.service';
 @Component({
   selector: 'app-language-switcher',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, TranslateModule, IonSelect, IonIcon, IonSelectOption, IonLoading, IonButton],
+  imports: [CommonModule, ReactiveFormsModule, TranslateModule, IonSelect, IonIcon, IonSelectOption, IonLoading],
   templateUrl: './language-switcher.component.html',
   styleUrls: ['./language-switcher.component.scss']
 })
@@ -45,6 +46,7 @@ export class LanguageSwitcherComponent implements OnInit {
   private languageState = inject(LanguageState);
   private formBuilder = inject(FormBuilder);
   private injector = inject(Injector);
+  private destroyRef = inject(DestroyRef);
 
   /**
    * Display mode for styling purposes
@@ -89,6 +91,14 @@ export class LanguageSwitcherComponent implements OnInit {
 
   ngOnInit(): void {
     this.initializeForm();
+
+    // Apply the language as soon as the user picks one (no extra button)
+    this.languageForm
+      .get('selectedLanguage')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        void this.onSaveLanguage();
+      });
   }
 
   /**

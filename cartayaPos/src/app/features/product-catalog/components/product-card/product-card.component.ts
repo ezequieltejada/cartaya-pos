@@ -8,14 +8,15 @@ import {
   IonIcon,
   IonImg
 } from '@ionic/angular/standalone';
+import { TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
 import { imageOutline } from 'ionicons/icons';
 import { Modifier } from '../../../../core/models/modifier.model';
 import { Product } from '../../../../core/models/product.model';
 import { ImageCacheService } from '../../../../core/services/image-cache.service';
 import { ModifierService } from '../../../../core/services/modifier.service';
+import { MoneyService } from '../../../../core/services/money.service';
 import { PosService } from '../../../../core/services/pos.service';
-import { ProductService } from '../../../../core/services/product.service';
 import { TenantService } from '../../../../core/services/tenant.service';
 
 /**
@@ -47,7 +48,8 @@ import { TenantService } from '../../../../core/services/tenant.service';
   styleUrls: ['./product-card.component.scss'],
 })
 export class ProductCardComponent implements OnChanges {
-  private productService = inject(ProductService);
+  private moneyService = inject(MoneyService);
+  private translate = inject(TranslateService);
   private modifierService = inject(ModifierService);
   private tenantService = inject(TenantService);
   private posService = inject(PosService);
@@ -163,17 +165,14 @@ export class ProductCardComponent implements OnChanges {
    */
   get formattedPrice(): string {
     if (!this.product.defaultPrice) {
-      return 'Price not available';
+      return this.translate.instant('PRODUCT_GRID.PRICE_NOT_AVAILABLE');
     }
 
     // Grid displays the base price only. Default modifiers are already included
     // in the base price, so we return the base price without adding modifier costs.
     const basePrice = this.product.defaultPrice.amount;
 
-    return this.productService.formatPrice(
-      basePrice,
-      this.product.defaultPrice.currency
-    );
+    return this.moneyService.format(basePrice);
   }
 
   /**

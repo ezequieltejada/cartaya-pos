@@ -1,7 +1,8 @@
 import { TestBed } from '@angular/core/testing';
-import * as Sentry from '@sentry/capacitor';
+import { HttpErrorResponse } from '@angular/common/http';
+import type * as SentryNs from '@sentry/capacitor';
 
-import { ErrorReportingService } from './error-reporting.service';
+import { ErrorReportingService, SENTRY_CLIENT } from './error-reporting.service';
 
 function mockWithScope(
   first: unknown,
@@ -28,9 +29,21 @@ function mockWithScope(
 
 describe('ErrorReportingService', () => {
   let service: ErrorReportingService;
+  let Sentry: {
+    captureMessage: jasmine.Spy;
+    captureException: jasmine.Spy;
+    withScope: jasmine.Spy;
+  };
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    Sentry = {
+      captureMessage: jasmine.createSpy('captureMessage'),
+      captureException: jasmine.createSpy('captureException'),
+      withScope: jasmine.createSpy('withScope').and.callFake(mockWithScope),
+    };
+    TestBed.configureTestingModule({
+      providers: [{ provide: SENTRY_CLIENT, useValue: Sentry as unknown as typeof SentryNs }],
+    });
     service = TestBed.inject(ErrorReportingService);
   });
 
@@ -40,8 +53,8 @@ describe('ErrorReportingService', () => {
 
   it('should forward console.error messages to Sentry and preserve console output', () => {
     const originalConsoleErrorSpy = spyOn(console, 'error').and.callFake(() => undefined);
-    const captureMessageSpy = spyOn(Sentry, 'captureMessage');
-    const withScopeSpy = spyOn(Sentry, 'withScope').and.callFake(mockWithScope as typeof Sentry.withScope);
+    const captureMessageSpy = Sentry.captureMessage;
+    const withScopeSpy = Sentry.withScope;
 
     service.installConsoleErrorCapture();
     console.error('Order submission failed', { orderId: '123' });
@@ -52,8 +65,7 @@ describe('ErrorReportingService', () => {
   });
 
   it('should forward Error instances from console.error as exceptions', () => {
-    const captureExceptionSpy = spyOn(Sentry, 'captureException');
-    spyOn(Sentry, 'withScope').and.callFake(mockWithScope as typeof Sentry.withScope);
+    const captureExceptionSpy = Sentry.captureException;
     spyOn(console, 'error').and.callFake(() => undefined);
 
     const error = new Error('Printer offline');
@@ -65,8 +77,7 @@ describe('ErrorReportingService', () => {
   });
 
   it('should capture handled exceptions with normalized errors', () => {
-    const captureExceptionSpy = spyOn(Sentry, 'captureException');
-    spyOn(Sentry, 'withScope').and.callFake(mockWithScope as typeof Sentry.withScope);
+    const captureExceptionSpy = Sentry.captureException;
 
     service.captureHandledException({
       feature: 'order-summary',
@@ -79,5 +90,25 @@ describe('ErrorReportingService', () => {
 
     expect(captureExceptionSpy).toHaveBeenCalledWith(jasmine.any(Error));
     expect((captureExceptionSpy.calls.mostRecent().args[0] as Error).message).toBe('API Error');
+  });
+
+  it('should report HTTP errors by status and code, never the English message', () => {
+    const scope = { setLevel: jasmine.createSpy(), setTag: jasmine.createSpy(), setContext: jasmine.createSpy() };
+    Sentry.withScope.and.callFake((cb: (s: typeof scope) => void) => cb(scope));
+
+    service.captureHandledException({
+      feature: 'order-summary',
+      action: 'submit-order',
+      error: new HttpErrorResponse({
+        status: 403,
+        error: { code: 'POS_NOT_ASSIGNED', message: 'English text' },
+      }),
+    });
+
+    expect((Sentry.captureException.calls.mostRecent().args[0] as Error).message).toBe('HTTP 403 POS_NOT_ASSIGNED');
+    expect(scope.setContext).toHaveBeenCalledWith(
+      'handled_exception',
+      jasmine.objectContaining({ statusCode: 403, code: 'POS_NOT_ASSIGNED' })
+    );
   });
 });

@@ -7,6 +7,12 @@ Most day-to-day work (build/lint/test) should be run from `cartayaPos/`.
 
 - Install deps: `cd cartayaPos && npm ci`
 - Run dev server: `cd cartayaPos && npm run start` (uses `ionic serve --external`)
+- Tailscale URL (dev server on port 8100, served from the devcontainer): `https://cartaya-pos-dev.tailbc95f3.ts.net`
+  - `http://localhost:8100` is a host-side address and is not reachable from inside the container.
+  - To inspect it in a browser, use the `agent-browser` skill.
+- Local backend API (Tailscale): `https://cartaya-api-dev.tailbc95f3.ts.net`
+  - `cartayaPos/src/environments/environment.ts` (`apiUrl`) points to it for local development.
+  - `environment.prod.ts` is unchanged and keeps pointing to production.
 
 ## Build / Lint / Test
 

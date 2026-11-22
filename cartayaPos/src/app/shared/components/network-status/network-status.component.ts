@@ -3,23 +3,24 @@ import { Component, inject, signal } from '@angular/core';
 import { IonIcon } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { close, cloudOfflineOutline } from 'ionicons/icons';
+import { TranslateModule } from '@ngx-translate/core';
 import { NetworkService } from '../../../core/services/network.service';
 
 @Component({
   selector: 'app-network-status',
   standalone: true,
-  imports: [CommonModule, IonIcon],
+  imports: [CommonModule, IonIcon, TranslateModule],
   template: `
     @if (!networkService.isOnline() && isVisible()) {
       <div class="network-banner warning">
         <div class="banner-content">
           <ion-icon [icon]="cloudOfflineOutline"></ion-icon>
           <div>
-            <strong>You're offline</strong>
-            <p>Orders will be queued and synced when back online</p>
+            <strong>{{ 'COMMON.NETWORK.OFFLINE_TITLE' | translate }}</strong>
+            <p>{{ 'COMMON.NETWORK.OFFLINE_MESSAGE' | translate }}</p>
           </div>
         </div>
-        <button class="close-button" (click)="closeBanner()" aria-label="Close banner">
+        <button class="close-button" (click)="closeBanner()" [attr.aria-label]="'COMMON.NETWORK.CLOSE_BANNER' | translate">
           <ion-icon [icon]="closeIcon"></ion-icon>
         </button>
       </div>

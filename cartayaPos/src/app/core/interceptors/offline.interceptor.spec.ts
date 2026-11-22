@@ -1,7 +1,8 @@
+import { TranslateService } from '@ngx-translate/core';
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import {
-    HttpClientTestingModule,
     HttpTestingController,
+    provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ToastController } from '@ionic/angular/standalone';
@@ -36,12 +37,13 @@ describe('OfflineInterceptor', () => {
     ]);
 
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
       providers: [
         provideHttpClient(withInterceptors([offlineInterceptor])),
+        provideHttpClientTesting(),
         { provide: OrderQueueService, useValue: queueServiceSpy },
         { provide: NetworkService, useValue: networkServiceSpy },
         { provide: ToastController, useValue: toastControllerSpy },
+        { provide: TranslateService, useValue: { instant: (key: string) => key } },
       ],
     });
 
@@ -85,7 +87,7 @@ describe('OfflineInterceptor', () => {
 
       httpClient.post(nonOrderUrl, {}).subscribe(
         () => fail('Should error'),
-        (error) => {
+        () => {
           expect(queueService.enqueue).not.toHaveBeenCalled();
           done();
         }
@@ -101,7 +103,7 @@ describe('OfflineInterceptor', () => {
 
       httpClient.post(specificOrderUrl, {}).subscribe(
         () => fail('Should error'),
-        (error) => {
+        () => {
           expect(queueService.enqueue).not.toHaveBeenCalled();
           done();
         }
@@ -320,7 +322,7 @@ describe('OfflineInterceptor', () => {
     it('should return synthetic 202 Accepted response when queueing', (done) => {
       queueService.enqueue.and.returnValue(Promise.resolve('queue-1'));
 
-      httpClient.post(ORDER_URL, ORDER_PAYLOAD).subscribe((response: any) => {
+      httpClient.post(ORDER_URL, ORDER_PAYLOAD, { observe: 'response' }).subscribe((response: any) => {
         expect(response.status).toBe(202);
         expect(response.statusText).toBe('Queued');
         expect(response.body.status).toBe('queued');
@@ -336,7 +338,7 @@ describe('OfflineInterceptor', () => {
     it('should preserve order data in synthetic response', (done) => {
       queueService.enqueue.and.returnValue(Promise.resolve('queue-1'));
 
-      httpClient.post(ORDER_URL, ORDER_PAYLOAD).subscribe((response: any) => {
+      httpClient.post(ORDER_URL, ORDER_PAYLOAD, { observe: 'response' }).subscribe((response: any) => {
         expect(response.body.items).toEqual(ORDER_PAYLOAD.items);
         expect(response.body.totalAmount).toBe(ORDER_PAYLOAD.totalAmount);
         expect(response.body.currency).toBe(ORDER_PAYLOAD.currency);
@@ -352,7 +354,7 @@ describe('OfflineInterceptor', () => {
       const payloadWithoutItems = { totalAmount: 10.0, currency: 'USD' };
       queueService.enqueue.and.returnValue(Promise.resolve('queue-1'));
 
-      httpClient.post(ORDER_URL, payloadWithoutItems).subscribe((response: any) => {
+      httpClient.post(ORDER_URL, payloadWithoutItems, { observe: 'response' }).subscribe((response: any) => {
         expect(response.body.items).toEqual([]);
         done();
       });
@@ -466,7 +468,7 @@ describe('OfflineInterceptor', () => {
         setTimeout(() => {
           expect(toastController.create).toHaveBeenCalledWith(
             jasmine.objectContaining({
-              message: jasmine.stringContaining('queued for sync'),
+              message: 'COMMON.NETWORK.ORDER_QUEUED',
               position: 'bottom',
               color: 'warning',
             })
@@ -493,7 +495,7 @@ describe('OfflineInterceptor', () => {
           const createArgs = createCall?.args[0] as any;
           expect(createArgs?.buttons).toBeDefined();
           const buttons = createArgs?.buttons as any[];
-          expect(buttons?.[0]?.text).toBe('Dismiss');
+          expect(buttons?.[0]?.text).toBe('COMMON.NETWORK.DISMISS');
           done();
         }, 10);
       });
@@ -516,18 +518,19 @@ describe('OfflineInterceptor', () => {
   });
 
   describe('Queue Failure Handling', () => {
-    it('should handle queue service enqueue failure gracefully', (done) => {
+    it('should still return the synthetic response when the queue write fails', (done) => {
+      spyOn(console, 'error');
       queueService.enqueue.and.returnValue(
         Promise.reject(new Error('DB Error'))
       );
 
-      httpClient.post(ORDER_URL, ORDER_PAYLOAD).subscribe(
-        () => fail('Should error'),
-        (error) => {
-          expect(error).toBeDefined();
+      httpClient.post(ORDER_URL, ORDER_PAYLOAD, { observe: 'response' }).subscribe({
+        next: (response) => {
+          expect(response.status).toBe(202);
           done();
-        }
-      );
+        },
+        error: () => fail('Should not error'),
+      });
 
       const req = httpMock.expectOne(ORDER_URL);
       req.error(new ErrorEvent('Network error'));

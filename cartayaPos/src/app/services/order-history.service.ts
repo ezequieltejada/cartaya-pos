@@ -1,10 +1,11 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
+import { translateLoadError } from '../core/utils/api-error';
 import {
-  ApiErrorResponse,
   Order,
   OrderHistoryResponse,
 } from '../models/order.model';
@@ -27,6 +28,7 @@ import {
 export class OrderHistoryService {
   private readonly API_URL = environment.apiUrl;
   private http = inject(HttpClient);
+  private translate = inject(TranslateService);
 
   /**
    * Fetch order history for a specific POS within a time range
@@ -226,53 +228,8 @@ export class OrderHistoryService {
    * @returns Observable that emits an error
    */
   private handleError(error: HttpErrorResponse): Observable<never> {
-    let errorMessage = 'An unknown error occurred while fetching order history';
-
-    if (error.error instanceof ErrorEvent) {
-      // Client-side error
-      errorMessage = `Network error: ${error.error.message}`;
-      console.error('Client-side error:', error.error);
-    } else {
-      // Server-side error
-      const apiError = error.error as ApiErrorResponse;
-
-      switch (error.status) {
-        case 0:
-          errorMessage =
-            'Network error: Unable to reach the server. Please check your connection.';
-          break;
-        case 400:
-          errorMessage = `Bad request: ${apiError?.message || 'Invalid parameters'}`;
-          break;
-        case 401:
-          errorMessage =
-            'Authentication required: Please sign in again to fetch order history.';
-          break;
-        case 403:
-          errorMessage =
-            'Access denied: You do not have permission to view orders for this POS.';
-          break;
-        case 404:
-          errorMessage =
-            'Point of Sale not found: The specified POS does not exist in this tenant.';
-          break;
-        case 500:
-          errorMessage =
-            'Server error: An error occurred while processing your request. Please try again later.';
-          break;
-        default:
-          errorMessage =
-            apiError?.message ||
-            `Error ${error.status}: ${error.statusText || 'Unknown error'}`;
-      }
-
-      console.error('API error:', {
-        status: error.status,
-        message: errorMessage,
-        error: apiError,
-      });
-    }
-
-    return throwError(() => new Error(errorMessage));
+    // UI text is translated from the API error code; message/error are log-only.
+    console.error('API error:', { status: error.status, error: error.error });
+    return throwError(() => new Error(translateLoadError(this.translate, error)));
   }
 }

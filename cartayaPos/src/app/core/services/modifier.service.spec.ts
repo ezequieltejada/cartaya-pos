@@ -4,6 +4,10 @@ import { Modifier } from '../models/modifier.model';
 import { ModifierService } from './modifier.service';
 import { StorageService } from './storage.service';
 
+/** Drops undefined values and the createdAt/updatedAt stamps the API does not provide (the service blanks them). */
+const plain = <T>(value: T): T =>
+  JSON.parse(JSON.stringify(value), (key, val) => (key === 'createdAt' || key === 'updatedAt' ? undefined : val));
+
 describe('ModifierService', () => {
   let service: ModifierService;
   let httpMock: HttpTestingController;
@@ -116,7 +120,7 @@ describe('ModifierService', () => {
       storageService.set.and.returnValue(Promise.resolve());
 
       service.fetchProductModifiers(tenantId, productId, posId).subscribe((modifiers) => {
-        expect(modifiers).toEqual(mockModifiers.filter((m) => m.active));
+        expect(plain(modifiers)).toEqual(plain(mockModifiers.filter((m) => m.active)));
         expect(service.isLoading()).toBe(false);
         done();
       });
@@ -155,7 +159,7 @@ describe('ModifierService', () => {
       storageService.set.and.returnValue(Promise.resolve());
 
       service.fetchProductModifiers(tenantId, productId, posId).subscribe((modifiers) => {
-        expect(modifiers).toEqual(mockModifiers.filter((m) => m.active));
+        expect(plain(modifiers)).toEqual(plain(mockModifiers.filter((m) => m.active)));
         expect(modifiers.length).toBe(3); // Only active modifiers
         done();
       });
@@ -218,7 +222,7 @@ describe('ModifierService', () => {
         const callArgs = storageService.set.calls.mostRecent().args;
         expect(callArgs[0]).toMatch(/^modifiers_/);
         const cachedData = callArgs[1] as Modifier[];
-        expect(cachedData).toEqual(mockModifiers.filter((m) => m.active));
+        expect(plain(cachedData)).toEqual(plain(mockModifiers.filter((m) => m.active)));
         done();
       });
 
@@ -433,7 +437,7 @@ describe('ModifierService', () => {
       req.flush(mockApiResponse);
 
       const callArgs = storageService.set.calls.mostRecent().args;
-      expect(callArgs[1]).toEqual(activeModifiers);
+      expect(plain(callArgs[1])).toEqual(plain(activeModifiers));
     });
   });
 
@@ -488,7 +492,6 @@ describe('ModifierService', () => {
   describe('Edge Cases', () => {
     it('should handle modifiers with zero price delta', (done) => {
       storageService.set.and.returnValue(Promise.resolve());
-      const modsWithZeroDelta = mockModifiers.filter((m) => m.active);
 
       service.fetchProductModifiers(tenantId, productId, posId).subscribe((modifiers) => {
         const zeroModifier = modifiers.find((m) => m.priceDelta === 0);
@@ -620,7 +623,7 @@ describe('ModifierService', () => {
       expect(fetchedModifiers.length).toBe(3);
       expect(cachedModifiers?.length).toBe(3);
       if (cachedModifiers) {
-        expect(fetchedModifiers).toEqual(cachedModifiers);
+        expect(plain(fetchedModifiers)).toEqual(plain(cachedModifiers));
       }
     });
 
@@ -629,11 +632,11 @@ describe('ModifierService', () => {
 
       // Make multiple concurrent requests
       service.fetchProductModifiers(tenantId, 'prod-1', posId).subscribe((modifiers) => {
-        expect(modifiers).toEqual(mockModifiers.filter((m) => m.active));
+        expect(plain(modifiers)).toEqual(plain(mockModifiers.filter((m) => m.active)));
       });
 
       service.fetchProductModifiers(tenantId, 'prod-2', posId).subscribe((modifiers) => {
-        expect(modifiers).toEqual(mockModifiers.filter((m) => m.active));
+        expect(plain(modifiers)).toEqual(plain(mockModifiers.filter((m) => m.active)));
       });
 
       service.fetchProductModifiers(tenantId, 'prod-3', posId).subscribe(() => {
@@ -835,7 +838,7 @@ describe('ModifierService', () => {
 
       // The cached data should include includedQuantity
       const cachedData = cacheCall?.args[1];
-      expect(cachedData).toEqual(
+      expect(plain(cachedData)).toEqual(
         jasmine.arrayContaining([
           jasmine.objectContaining({
             id: 'mod-cheese',

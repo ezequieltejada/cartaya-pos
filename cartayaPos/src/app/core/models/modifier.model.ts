@@ -30,6 +30,14 @@ export interface Modifier {
    includedQuantity?: number;
 
   /**
+   * Maximum quantity a user can select for this modifier.
+   * Optional: when the API does not provide it, the client default
+   * (DEFAULT_MAX_MODIFIER_QUANTITY) applies.
+   * @example 3
+   */
+  maxQuantity?: number;
+
+  /**
    * Display name for the modifier shown to users
    * Should be descriptive and concise (e.g., "Extra Cheese", "Add Bacon")
    * @example "Extra Cheese"

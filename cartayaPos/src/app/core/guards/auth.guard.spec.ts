@@ -1,31 +1,20 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, UrlTree } from '@angular/router';
-import { User } from '../models/user.model';
+import { Observable } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { authGuard } from './auth.guard';
 
 describe('authGuard', () => {
   let authService: jasmine.SpyObj<AuthService>;
   let router: jasmine.SpyObj<Router>;
-  let mockUser: User;
 
   beforeEach(() => {
-    mockUser = {
-      id: 'user-123',
-      email: 'test@example.com',
-      name: 'Test User',
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z',
-    };
-
-    const authServiceSpy = jasmine.createSpyObj('AuthService', [
-      'login',
-      'logout',
-      'checkSession',
-      'clearSession',
-      'getCurrentUser',
-      'getIsAuthenticated',
-    ]);
+    const authServiceSpy = jasmine.createSpyObj(
+      'AuthService',
+      ['login', 'logout', 'checkSession', 'clearSession', 'getCurrentUser', 'getIsAuthenticated'],
+      { sessionChecked: signal(true) }
+    );
 
     const routerSpy = jasmine.createSpyObj('Router', ['createUrlTree']);
 
@@ -62,6 +51,26 @@ describe('authGuard', () => {
 
     expect(result).toEqual(urlTree);
     expect(router.createUrlTree).toHaveBeenCalledWith(['/auth/login']);
+  });
+
+  it('should wait for the startup session check before deciding (deep links)', (done) => {
+    const sessionChecked = signal(false);
+    Object.defineProperty(authService, 'sessionChecked', { value: sessionChecked });
+    authService.getIsAuthenticated.and.returnValue(false);
+
+    const result = TestBed.runInInjectionContext(() =>
+      authGuard({} as any, {} as any)
+    ) as Observable<boolean | UrlTree>;
+
+    result.subscribe((value) => {
+      expect(value).toBeTrue();
+      done();
+    });
+
+    // Session restored: user is now authenticated
+    authService.getIsAuthenticated.and.returnValue(true);
+    sessionChecked.set(true);
+    TestBed.tick();
   });
 
   it('should call getIsAuthenticated method', () => {

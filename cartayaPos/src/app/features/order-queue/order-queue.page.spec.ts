@@ -1,3 +1,6 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { TranslateModule } from '@ngx-translate/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { LoadingController, ToastController } from '@ionic/angular/standalone';
 import { NetworkService } from '../../core/services/network.service';
@@ -28,8 +31,10 @@ describe('OrderQueuePage', () => {
     const toastCtrlSpy = jasmine.createSpyObj('ToastController', ['create']);
 
     await TestBed.configureTestingModule({
-      imports: [OrderQueuePage],
+      imports: [OrderQueuePage, TranslateModule.forRoot()],
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: OrderQueueService, useValue: queueServiceSpy },
         { provide: SyncCoordinatorService, useValue: syncCoordinatorSpy },
         { provide: NetworkService, useValue: networkServiceSpy },

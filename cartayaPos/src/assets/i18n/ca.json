@@ -25,7 +25,14 @@
     "LANGUAGE": "Idioma",
     "ENGLISH": "English",
     "SPANISH": "Español",
-    "CATALAN": "Català"
+    "CATALAN": "Català",
+    "NETWORK": {
+      "OFFLINE_TITLE": "Sense connexió",
+      "OFFLINE_MESSAGE": "Les comandes es posaran en cua i se sincronitzaran en recuperar la connexió",
+      "CLOSE_BANNER": "Tanca l'avís",
+      "ORDER_QUEUED": "Comanda en cua; se sincronitzarà en recuperar la connexió",
+      "DISMISS": "Descarta"
+    }
   },
   "AUTH": {
     "LOGIN": {
@@ -33,6 +40,7 @@
       "CARD_TITLE": "Iniciar Sessió",
       "EMAIL_LABEL": "Correu Electrònic",
       "PASSWORD_LABEL": "Contrasenya",
+      "SHOW_PASSWORD": "Mostra la contrasenya",
       "LOGIN_BUTTON": "Iniciar Sessió",
       "FORGOT_PASSWORD": "Heu oblidat la vostra contrasenya?",
       "LOGGING_IN": "Iniciant sessió...",
@@ -48,7 +56,8 @@
       "LOGIN_FAILED": "Error en iniciar sessió. Si us plau, intenteu de nou.",
       "INVALID_CREDENTIALS": "Correu o contrasenya invàlids.",
       "SESSION_EXPIRED": "La vostra sessió ha expirat. Si us plau, inicieu sessió de nou.",
-      "NO_INTERNET": "Sense connexió a Internet."
+      "NO_INTERNET": "Sense connexió a Internet.",
+      "SERVER_UNREACHABLE": "No es pot connectar amb el servidor. Revisa la connexió i torna-ho a provar."
     }
   },
   "POS_SELECTION": {
@@ -72,7 +81,8 @@
     "PRODUCT_ADDED": "afegit a la comanda",
     "LOADING": "Carregant...",
     "CATEGORY_FILTER": "Categoria",
-    "ALL_CATEGORIES": "Totes les Categories"
+    "ALL_CATEGORIES": "Totes les Categories",
+    "PRICE_NOT_AVAILABLE": "Preu no disponible"
   },
   "MODIFIERS": {
     "TITLE": "Opcions del Producte",
@@ -112,7 +122,17 @@
     "PRINTER_DISCONNECTED": "La impressora va ser desconnectada manualment. La comanda es guardarà sense imprimir.",
     "PRINT_FAILED": "Comanda guardada però la impressió ha fallat",
     "ITEM_REMOVED": "Article eliminat",
-    "SELECT_POS_TENANT": "Si us plau, seleccioneu PdV i Inquilí"
+    "SELECT_POS_TENANT": "Si us plau, seleccioneu PdV i Inquilí",
+    "ITEMS_LABEL": "Articles",
+    "REMOVE_ITEM_TITLE": "Elimina l'article",
+    "REMOVE_ITEM_MESSAGE": "Vols eliminar «{{name}}» de la comanda?",
+    "INCREASE_QUANTITY": "Augmenta la quantitat",
+    "DECREASE_QUANTITY": "Disminueix la quantitat",
+    "ERRORS": {
+      "TITLE": "Comanda no enviada",
+      "NOT_ASSIGNED": "No estàs assignat a aquest punt de venda, per tant la comanda no s'ha enviat. Demana al propietari que t'hi assigni o tria un altre punt de venda.",
+      "POS_NOT_FOUND": "Aquest punt de venda ja no existeix. Tria'n un altre; el teu carret s'ha conservat."
+    }
   },
   "SETTINGS": {
     "TITLE": "Configuració",
@@ -177,5 +197,61 @@
     "LOGOUT": "Tancar Sessió"
   },
   "HOME": "Inici",
-  "WELCOME": "Benvingut a Cartaya POS"
+  "WELCOME": "Benvingut a Cartaya POS",
+  "API_ERRORS": {
+    "INVALID_CREDENTIALS": "Correu o contrasenya incorrectes.",
+    "SESSION_EXPIRED": "La teva sessió ha caducat. Torna a iniciar sessió.",
+    "EMAIL_ALREADY_REGISTERED": "Aquest correu ja està registrat.",
+    "MISSING_PERMISSIONS": "No tens permís per fer aquesta acció.",
+    "POS_NOT_ASSIGNED": "No estàs assignat a aquest punt de venda.",
+    "TENANT_NOT_FOUND": "Negoci no trobat.",
+    "POS_NOT_FOUND": "Punt de venda no trobat. Potser s'ha eliminat.",
+    "PRODUCT_NOT_FOUND": "Producte no trobat.",
+    "ORDER_NOT_FOUND": "Comanda no trobada.",
+    "CATEGORY_NOT_FOUND": "Categoria no trobada.",
+    "MODIFIER_NOT_FOUND": "Modificador no trobat.",
+    "PRICE_NOT_FOUND": "Preu no trobat.",
+    "PICTURE_NOT_FOUND": "Imatge no trobada.",
+    "INVITE_NOT_FOUND": "Invitació no trobada.",
+    "USER_NOT_FOUND": "Usuari no trobat.",
+    "STOCK_NOT_FOUND": "Registre d'estoc no trobat.",
+    "FILE_NOT_FOUND": "Fitxer no trobat.",
+    "ROUTE_NOT_FOUND": "El recurs sol·licitat no existeix.",
+    "RESOURCE_NOT_FOUND": "Recurs no trobat.",
+    "VALIDATION_ERROR": "Alguns camps no són vàlids. Revisa'ls.",
+    "INVALID_JSON": "No s'ha pogut llegir la sol·licitud.",
+    "INVALID_REQUEST": "La sol·licitud no és vàlida.",
+    "INVALID_FILE_TYPE": "Aquest tipus de fitxer no és compatible.",
+    "INVALID_SLUG_FORMAT": "El format de l'identificador no és vàlid.",
+    "INVALID_PRICE_RANGE": "El rang de preus no és vàlid.",
+    "INVALID_OPERATION": "Aquesta operació no està permesa.",
+    "CURRENCY_MISMATCH": "La moneda no coincideix amb l'esperada ({{expected}}).",
+    "TOTAL_MISMATCH": "Els preus han canviat i el total de la comanda ja no coincideix. Revisa la comanda.",
+    "PRODUCT_INACTIVE": "Aquest producte ja no està disponible.",
+    "MODIFIER_INACTIVE": "Aquest modificador ja no està disponible.",
+    "MODIFIER_NOT_ATTACHED": "Aquest modificador no es pot utilitzar amb aquest producte.",
+    "CONFLICT": "Això entra en conflicte amb dades existents.",
+    "DUPLICATE_NAME": "Aquest nom ja està en ús.",
+    "DUPLICATE_SLUG": "Aquest identificador ja està en ús.",
+    "DUPLICATE_SKU": "Aquest SKU ja està en ús.",
+    "ALREADY_MEMBER": "Aquest usuari ja és membre.",
+    "ALREADY_OWNER": "Aquest usuari ja és propietari.",
+    "ALREADY_ASSIGNED": "Ja està assignat.",
+    "INVITE_PENDING": "Ja hi ha una invitació pendent.",
+    "INVITE_NOT_PENDING": "Aquesta invitació ja no està pendent.",
+    "LAST_OWNER": "No es pot eliminar l'últim propietari.",
+    "CATEGORY_IN_USE": "Aquesta categoria està en ús en {{count}} producte(s).",
+    "POS_HAS_ORDERS": "Aquest punt de venda té {{count}} comanda(es) i no es pot eliminar.",
+    "PAYLOAD_TOO_LARGE": "El fitxer és massa gran (màx. {{maxMb}} MB).",
+    "INTERNAL_ERROR": "Error del servidor. Torna-ho a provar més tard.",
+    "UNKNOWN_ERROR": "Alguna cosa ha anat malament. Torna-ho a provar."
+  },
+  "API_FIELD_ERRORS": {
+    "REQUIRED": "Aquest camp és obligatori.",
+    "INVALID": "Aquest valor no és vàlid.",
+    "TOO_SHORT": "Aquest valor és massa curt.",
+    "OUT_OF_RANGE": "Aquest valor està fora de rang.",
+    "NEGATIVE": "Aquest valor no pot ser negatiu.",
+    "NOT_FOUND": "No trobat."
+  }
 }

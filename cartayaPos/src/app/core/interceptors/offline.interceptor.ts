@@ -6,10 +6,11 @@ import {
     HttpRequest,
     HttpResponse,
 } from '@angular/common/http';
-import { inject } from '@angular/core';
+import { Injector, inject } from '@angular/core';
 import { ToastController } from '@ionic/angular/standalone';
 import { Observable, of, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { TranslateService } from '@ngx-translate/core';
 import { NetworkService } from '../services/network.service';
 import { OrderQueueService } from '../services/order-queue.service';
 
@@ -35,6 +36,9 @@ export const offlineInterceptor: HttpInterceptorFn = (
   const queueService = inject(OrderQueueService);
   const networkService = inject(NetworkService);
   const toastController = inject(ToastController);
+  // Resolved lazily: the translation files themselves are loaded over HttpClient,
+  // so injecting TranslateService here eagerly would be a circular dependency.
+  const injector = inject(Injector);
 
   // Only intercept order POST requests
   if (!isOrderRequest(req)) {
@@ -49,7 +53,8 @@ export const offlineInterceptor: HttpInterceptorFn = (
           req,
           error,
           queueService,
-          toastController
+          toastController,
+          () => injector.get(TranslateService)
         );
       }
 
@@ -118,7 +123,8 @@ function queueAndReturnSuccess(
   req: HttpRequest<unknown>,
   error: HttpErrorResponse,
   queueService: OrderQueueService,
-  toastController: ToastController
+  toastController: ToastController,
+  getTranslate: () => TranslateService
 ): Observable<HttpEvent<unknown>> {
   // Extract posId and tenantId from URL
   // URL format: /api/tenants/{tenantId}/pos/{posId}/orders
@@ -141,13 +147,16 @@ function queueAndReturnSuccess(
     itemCount: payload?.items?.length || 0,
   };
 
+  // Resolve now: the injector may be gone by the time the queue write finishes
+  const translate = getTranslate();
+
   // Queue the order asynchronously
   queueService
     .enqueue(payload, posId, tenantId, metadata)
     .then((queueId) => {
       console.log(`Order queued with ID: ${queueId}`);
       // Show user feedback
-      showQueuedToast(toastController);
+      showQueuedToast(toastController, translate);
     })
     .catch((queueError) => {
       console.error('Failed to queue order:', queueError);
@@ -179,17 +188,18 @@ function queueAndReturnSuccess(
  * Show toast notification that order was queued
  */
 async function showQueuedToast(
-  toastController: ToastController
+  toastController: ToastController,
+  translate: TranslateService
 ): Promise<void> {
   const toast = await toastController.create({
-    message: 'Order queued for sync when online',
+    message: translate.instant('COMMON.NETWORK.ORDER_QUEUED'),
     duration: 3000,
     position: 'bottom',
     color: 'warning',
     icon: 'cloud-upload-outline',
     buttons: [
       {
-        text: 'Dismiss',
+        text: translate.instant('COMMON.NETWORK.DISMISS'),
         role: 'cancel',
       },
     ],

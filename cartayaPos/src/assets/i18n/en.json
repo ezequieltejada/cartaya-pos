@@ -25,7 +25,14 @@
     "LANGUAGE": "Language",
     "ENGLISH": "English",
     "SPANISH": "Español",
-    "CATALAN": "Català"
+    "CATALAN": "Català",
+    "NETWORK": {
+      "OFFLINE_TITLE": "You're offline",
+      "OFFLINE_MESSAGE": "Orders will be queued and synced when back online",
+      "CLOSE_BANNER": "Close banner",
+      "ORDER_QUEUED": "Order queued for sync when online",
+      "DISMISS": "Dismiss"
+    }
   },
   "AUTH": {
     "LOGIN": {
@@ -33,6 +40,7 @@
       "CARD_TITLE": "Login",
       "EMAIL_LABEL": "Email",
       "PASSWORD_LABEL": "Password",
+      "SHOW_PASSWORD": "Show password",
       "LOGIN_BUTTON": "Login",
       "FORGOT_PASSWORD": "Forgot password?",
       "LOGGING_IN": "Logging in...",
@@ -48,7 +56,8 @@
       "LOGIN_FAILED": "Login failed. Please try again.",
       "INVALID_CREDENTIALS": "Invalid email or password.",
       "SESSION_EXPIRED": "Your session has expired. Please sign in again.",
-      "NO_INTERNET": "No internet connection."
+      "NO_INTERNET": "No internet connection.",
+      "SERVER_UNREACHABLE": "Cannot reach the server. Check your connection and try again."
     }
   },
   "POS_SELECTION": {
@@ -72,7 +81,8 @@
     "PRODUCT_ADDED": "added to order",
     "LOADING": "Loading...",
     "CATEGORY_FILTER": "Category",
-    "ALL_CATEGORIES": "All Categories"
+    "ALL_CATEGORIES": "All Categories",
+    "PRICE_NOT_AVAILABLE": "Price not available"
   },
   "MODIFIERS": {
     "TITLE": "Product Options",
@@ -112,7 +122,17 @@
     "PRINTER_DISCONNECTED": "Printer was manually disconnected. Order will be saved without printing.",
     "PRINT_FAILED": "Order saved but print failed",
     "ITEM_REMOVED": "Item removed",
-    "SELECT_POS_TENANT": "Please select PoS and Tenant"
+    "SELECT_POS_TENANT": "Please select PoS and Tenant",
+    "ITEMS_LABEL": "Items",
+    "REMOVE_ITEM_TITLE": "Remove item",
+    "REMOVE_ITEM_MESSAGE": "Remove \"{{name}}\" from the order?",
+    "INCREASE_QUANTITY": "Increase quantity",
+    "DECREASE_QUANTITY": "Decrease quantity",
+    "ERRORS": {
+      "TITLE": "Order not sent",
+      "NOT_ASSIGNED": "You are not assigned to this PoS, so the order was not sent. Ask the owner to assign you to it or choose another PoS.",
+      "POS_NOT_FOUND": "This PoS no longer exists. Please choose another PoS; your cart has been kept."
+    }
   },
   "SETTINGS": {
     "TITLE": "Settings",
@@ -177,5 +197,61 @@
     "ERROR_LOAD_FAILED": "Failed to load order history"
   },
   "HOME": "Home",
-  "WELCOME": "Welcome to Cartaya POS"
+  "WELCOME": "Welcome to Cartaya POS",
+  "API_ERRORS": {
+    "INVALID_CREDENTIALS": "Incorrect email or password.",
+    "SESSION_EXPIRED": "Your session has expired. Please sign in again.",
+    "EMAIL_ALREADY_REGISTERED": "This email is already registered.",
+    "MISSING_PERMISSIONS": "You don't have permission to do this.",
+    "POS_NOT_ASSIGNED": "You're not assigned to this point of sale.",
+    "TENANT_NOT_FOUND": "Business not found.",
+    "POS_NOT_FOUND": "Point of sale not found. It may have been deleted.",
+    "PRODUCT_NOT_FOUND": "Product not found.",
+    "ORDER_NOT_FOUND": "Order not found.",
+    "CATEGORY_NOT_FOUND": "Category not found.",
+    "MODIFIER_NOT_FOUND": "Modifier not found.",
+    "PRICE_NOT_FOUND": "Price not found.",
+    "PICTURE_NOT_FOUND": "Picture not found.",
+    "INVITE_NOT_FOUND": "Invitation not found.",
+    "USER_NOT_FOUND": "User not found.",
+    "STOCK_NOT_FOUND": "Stock record not found.",
+    "FILE_NOT_FOUND": "File not found.",
+    "ROUTE_NOT_FOUND": "The requested resource does not exist.",
+    "RESOURCE_NOT_FOUND": "Resource not found.",
+    "VALIDATION_ERROR": "Some fields are not valid. Please review them.",
+    "INVALID_JSON": "The request could not be read.",
+    "INVALID_REQUEST": "The request is not valid.",
+    "INVALID_FILE_TYPE": "This file type is not supported.",
+    "INVALID_SLUG_FORMAT": "The identifier format is not valid.",
+    "INVALID_PRICE_RANGE": "The price range is not valid.",
+    "INVALID_OPERATION": "This operation is not allowed.",
+    "CURRENCY_MISMATCH": "The currency does not match the expected one ({{expected}}).",
+    "TOTAL_MISMATCH": "Prices have changed and the order total no longer matches. Please review your order.",
+    "PRODUCT_INACTIVE": "This product is no longer available.",
+    "MODIFIER_INACTIVE": "This modifier is no longer available.",
+    "MODIFIER_NOT_ATTACHED": "This modifier can't be used with this product.",
+    "CONFLICT": "This conflicts with existing data.",
+    "DUPLICATE_NAME": "That name is already in use.",
+    "DUPLICATE_SLUG": "That identifier is already in use.",
+    "DUPLICATE_SKU": "That SKU is already in use.",
+    "ALREADY_MEMBER": "This user is already a member.",
+    "ALREADY_OWNER": "This user is already an owner.",
+    "ALREADY_ASSIGNED": "Already assigned.",
+    "INVITE_PENDING": "An invitation is already pending.",
+    "INVITE_NOT_PENDING": "This invitation is no longer pending.",
+    "LAST_OWNER": "The last owner can't be removed.",
+    "CATEGORY_IN_USE": "This category is in use by {{count}} product(s).",
+    "POS_HAS_ORDERS": "This point of sale has {{count}} order(s) and cannot be deleted.",
+    "PAYLOAD_TOO_LARGE": "The file is too large (max {{maxMb}} MB).",
+    "INTERNAL_ERROR": "Server error. Please try again later.",
+    "UNKNOWN_ERROR": "Something went wrong. Please try again."
+  },
+  "API_FIELD_ERRORS": {
+    "REQUIRED": "This field is required.",
+    "INVALID": "This value is not valid.",
+    "TOO_SHORT": "This value is too short.",
+    "OUT_OF_RANGE": "This value is out of range.",
+    "NEGATIVE": "This value cannot be negative.",
+    "NOT_FOUND": "Not found."
+  }
 }

@@ -45,6 +45,12 @@ export class AuthService {
   private readonly accessToken = signal<string | null>(null);
   private readonly refreshToken = signal<string | null>(null);
 
+  /**
+   * True once the startup session check has finished (successfully or not).
+   * The auth guard waits for it so deep links survive a fresh page load.
+   */
+  readonly sessionChecked = signal(false);
+
   // Computed signals
   readonly isAuthenticated = computed(() => this.currentUser() !== null);
 
@@ -189,7 +195,7 @@ export class AuthService {
         this.isLoading.set(false);
         this.router.navigate(['/auth/login'], { replaceUrl: true });
       }),
-      catchError((error) => {
+      catchError(() => {
         return new Observable<void>((observer) => {
           this.clearSession().then(() => {
             this.isLoading.set(false);
