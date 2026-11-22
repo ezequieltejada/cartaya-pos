@@ -16,3 +16,6 @@ cartayaPos/android/gradle/daemon/
 cartayaPos/android/gradle/native/
 cartayaPos/android/gradle/wrapper/dists/
 cartayaPos/android/gradle/android/
+
+# Local secrets (Tailscale auth key, etc.)
+.secrets/
