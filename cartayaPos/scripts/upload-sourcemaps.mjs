@@ -2,8 +2,12 @@ import { existsSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const sentryOrg = process.env.SENTRY_ORG ?? 'estudio-pws';
-const sentryProject = process.env.SENTRY_PROJECT ?? 'cartaya-pos';
+// Rustrak ignores the org but sentry-cli requires a non-empty value.
+const sentryOrg = process.env.SENTRY_ORG ?? 'rustrak';
+// Rustrak project slug or numeric id (the last segment of the DSN).
+const sentryProject = process.env.SENTRY_PROJECT ?? '4';
+// Source maps go to the Rustrak server, not sentry.io.
+const sentryUrl = process.env.SENTRY_URL ?? 'https://rustrak.ezetejada.com';
 const buildDirArg = process.argv[2] ?? 'www';
 const buildDir = resolve(process.cwd(), buildDirArg);
 const sentryCliExecutable = process.platform === 'win32'
@@ -33,7 +37,7 @@ function collectSourceMaps(directory) {
 function runSentryCli(args) {
   const result = spawnSync(sentryCliExecutable, args, {
     stdio: 'inherit',
-    env: process.env,
+    env: { ...process.env, SENTRY_URL: sentryUrl },
   });
 
   if (result.status !== 0) {
@@ -66,7 +70,7 @@ if (sourceMaps.length === 0) {
 console.log(`Injecting debug IDs into ${buildDir}`);
 runSentryCli(['sourcemaps', 'inject', buildDir]);
 
-console.log(`Uploading source maps from ${buildDir} to ${sentryOrg}/${sentryProject}`);
+console.log(`Uploading source maps from ${buildDir} to ${sentryUrl} (project ${sentryProject})`);
 runSentryCli(['--org', sentryOrg, '--project', sentryProject, 'sourcemaps', 'upload', buildDir]);
 
 for (const sourceMapPath of sourceMaps) {

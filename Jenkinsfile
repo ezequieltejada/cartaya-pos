@@ -142,11 +142,12 @@ pipeline {
                         // Generates the 'www' directory
                         sh 'npm run build'
 
-                        echo "--- Uploading Sentry Source Maps ---"
+                        echo "--- Uploading Source Maps to Rustrak ---"
                         sh '''
                             if [ -n "${SENTRY_AUTH_TOKEN:-}" ]; then
-                                export SENTRY_ORG=estudio-pws
-                                export SENTRY_PROJECT=cartaya-pos
+                                export SENTRY_URL=https://rustrak.ezetejada.com
+                                export SENTRY_ORG=rustrak
+                                export SENTRY_PROJECT=4
                                 npm run sentry:sourcemaps
                             elif [ "${BRANCH_NAME:-}" = "main" ]; then
                                 echo "SENTRY_AUTH_TOKEN is required on main to upload Sentry source maps."

@@ -2,7 +2,8 @@ export const environment = {
   production: true,
   apiUrl: 'https://api.cartaya.app',
   sentry: {
-    dsn: 'https://f95c5f8fcb4fe592d54068c2b42ee3fc@o4509323360272384.ingest.us.sentry.io/4511242496245760',
+    dsn: 'https://9876bd9f9b6d4dce8c006bbb1bf8db22@rustrak.ezetejada.com/4',
+    environment: 'production',
     tracesSampleRate: 0.1,
   },
 };
