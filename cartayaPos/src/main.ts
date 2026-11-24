@@ -19,10 +19,13 @@ import { languageHeaderInterceptor } from './app/core/interceptors/language-head
 import { offlineInterceptor } from './app/core/interceptors/offline.interceptor';
 import { ErrorReportingService } from './app/core/services/error-reporting.service';
 import { environment } from './environments/environment';
+import packageJson from '../package.json';
 
 Sentry.init(
   {
     dsn: environment.sentry.dsn,
+    environment: environment.sentry.environment,
+    release: `cartaya-pos@${packageJson.version}`,
     integrations: [SentryAngular.browserTracingIntegration()],
     tracesSampleRate: environment.sentry.tracesSampleRate,
   },
