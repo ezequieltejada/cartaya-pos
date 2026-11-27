@@ -1,20 +1,17 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { AlertController, ToastController } from '@ionic/angular';
+import { AlertController } from '@ionic/angular';
 import {
     IonButton,
     IonIcon,
-    IonItem,
-    IonLabel,
-    IonList,
     IonSpinner,
-    IonText,
 } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
-import { add, checkmark, chevronDown, chevronUp, close, pencil, remove, trash } from 'ionicons/icons';
+import { add, checkmark, chevronDown, chevronUp, close, pencil, pencilOutline, remove, trash, trashOutline } from 'ionicons/icons';
 import { SelectedModifier } from '../../models/order.model';
+import { LoggerService } from '../../core/services/logger.service';
 import { MoneyService } from '../../core/services/money.service';
 import { MAX_LINE_QUANTITY, OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
@@ -24,6 +21,7 @@ import { TenantService } from '../../core/services/tenant.service';
 import { parseApiError, translateLoadError } from '../../core/utils/api-error';
 import { Printer } from '../../services/printer';
 import { MoneyPipe } from '../../shared/pipes/money.pipe';
+import { NotificationService } from '../../core/services/notification.service';
 
 /**
  * OrderSummaryComponent
@@ -39,16 +37,13 @@ import { MoneyPipe } from '../../shared/pipes/money.pipe';
     CommonModule,
     MoneyPipe,
     TranslateModule,
-    IonList,
-    IonItem,
-    IonLabel,
     IonButton,
-    IonText,
     IonIcon,
     IonSpinner,
   ],
 })
 export class OrderSummaryComponent {
+  private readonly log = inject(LoggerService).scope('order-summary');
   private orderService = inject(OrderService);
   private posService = inject(PosService);
   private tenantService = inject(TenantService);
@@ -57,7 +52,7 @@ export class OrderSummaryComponent {
   private moneyService = inject(MoneyService);
   private printer = inject(Printer);
   private router = inject(Router);
-  private toastController = inject(ToastController);
+  private notifications = inject(NotificationService);
   private alertController = inject(AlertController);
   private translate = inject(TranslateService);
 
@@ -71,13 +66,13 @@ export class OrderSummaryComponent {
     const items = this.orderService.orderItems();
     // DEBUG: Step 4 - Order Summary Display
     items.forEach((item, index) => {
-      console.debug(`STEP 4 - Order item ${index} to display:`, {
+      this.log.trace('Order item to display', {
+        index,
         itemId: item.id,
         productName: item.productName,
         basePrice: item.basePrice,
         subtotal: item.subtotal,
         modifiersCount: item.modifiers.length,
-        fullItem: JSON.stringify(item, null, 2)
       });
     });
     return items;
@@ -91,7 +86,7 @@ export class OrderSummaryComponent {
   private isShowingCashConfirmation = false;
 
   constructor() {
-    addIcons({ pencil, trash, close, checkmark, chevronUp, chevronDown, add, remove });
+    addIcons({ pencil, pencilOutline, trash, trashOutline, close, checkmark, chevronUp, chevronDown, add, remove });
   }
 
   /**
@@ -151,7 +146,7 @@ export class OrderSummaryComponent {
    */
   private async cancelOrder(): Promise<void> {
     this.orderService.clearOrder();
-    this.showToast('ORDER_SUMMARY.CANCEL_ORDER', 'bottom');
+    this.showToast('ORDER_SUMMARY.CANCEL_ORDER');
     
     // Navigate back to products page
     await this.router.navigate(['/products']);
@@ -200,13 +195,13 @@ export class OrderSummaryComponent {
     const tenantId = this.tenantService.getCurrentTenantId();
 
     if (!posId || !tenantId) {
-      this.showToast('ORDER_SUMMARY.SELECT_POS_TENANT', 'top');
+      this.showToast('ORDER_SUMMARY.SELECT_POS_TENANT');
       return;
     }
 
     // Check if a printer is selected
     if (!this.printer.selectedPrinter) {
-      this.showToast('ORDER_SUMMARY.NO_PRINTER_SELECTED', 'top');
+      this.showToast('ORDER_SUMMARY.NO_PRINTER_SELECTED');
       // Continue with order submission even without printer
       this.submitOrderWithoutPrinter(posId, tenantId);
       return;
@@ -214,7 +209,7 @@ export class OrderSummaryComponent {
 
     // Check if user manually disconnected from the printer
     if (this.printer.isUserManuallyDisconnected()) {
-      this.showToast('ORDER_SUMMARY.PRINTER_DISCONNECTED', 'top');
+      this.showToast('ORDER_SUMMARY.PRINTER_DISCONNECTED');
       // Continue with order submission even without printer
       this.submitOrderWithoutPrinter(posId, tenantId);
       return;
@@ -232,12 +227,12 @@ export class OrderSummaryComponent {
     this.orderService.submitOrder(posId, tenantId).subscribe({
       next: async () => {
         try {
-          this.showToast('ORDER_SUMMARY.ORDER_COMPLETED_NO_PRINT', 'top');
+          this.showToast('ORDER_SUMMARY.ORDER_COMPLETED_NO_PRINT');
           // Navigate to products page after successful order
           await this.router.navigate(['/products']);
         } catch (error) {
-          console.error('Error after order submission:', error);
-          this.showToast('COMMON.ERRORS.GENERIC', 'top');
+          this.log.error('Error after order submission', error);
+          this.showToast('COMMON.ERRORS.GENERIC');
           await this.router.navigate(['/products']);
         }
       },
@@ -256,12 +251,12 @@ export class OrderSummaryComponent {
         try {
           // Print receipt (will attempt to reconnect if necessary)
           await this.printReceipt(response);
-          this.showToast('ORDER_SUMMARY.ORDER_COMPLETED', 'top');
+          this.showToast('ORDER_SUMMARY.ORDER_COMPLETED');
           // Navigate to products page after successful order
           await this.router.navigate(['/products']);
         } catch (error) {
-          console.error('Error printing receipt:', error);
-          this.showToast('ORDER_SUMMARY.PRINT_FAILED', 'top');
+          this.log.error('Error printing receipt', error);
+          this.showToast('ORDER_SUMMARY.PRINT_FAILED');
           // Navigate to products even if printing failed
           await this.router.navigate(['/products']);
         }
@@ -342,7 +337,7 @@ export class OrderSummaryComponent {
     if (!accepted) return;
 
     this.orderService.removeItem(itemId);
-    this.showToast('ORDER_SUMMARY.ITEM_REMOVED', 'bottom');
+    this.showToast('ORDER_SUMMARY.ITEM_REMOVED');
   }
 
   /**
@@ -362,8 +357,8 @@ export class OrderSummaryComponent {
    * cart is kept so the user can fix it and retry.
    */
   private async handleSubmitError(error: unknown): Promise<void> {
-    console.error('Order submission failed:', error);
     const { code, params } = parseApiError(error);
+    this.log.error('Order submission failed', undefined, { code, params });
     const message = translateLoadError(this.translate, error);
 
     const alert = await this.alertController.create({
@@ -409,7 +404,7 @@ export class OrderSummaryComponent {
     if (!tenantId) return;
     this.settingsService.loadTenantSettings(tenantId);
     this.productService.fetchProductsWithPrices(tenantId, true).subscribe({
-      error: (err) => console.error('Failed to refresh prices:', err),
+      error: (err) => this.log.error('Failed to refresh prices', err),
     });
   }
 
@@ -425,14 +420,24 @@ export class OrderSummaryComponent {
   /**
    * Shows a toast notification
    */
-  private async showToast(messageKey: string, position: 'top' | 'middle' | 'bottom'): Promise<void> {
+  private async showToast(messageKey: string): Promise<void> {
     const message = this.translate.instant(messageKey);
-    const toast = await this.toastController.create({
-      message,
-      duration: 2000,
-      position,
-    });
-    await toast.present();
+    const warnings = [
+      'ORDER_SUMMARY.SELECT_POS_TENANT',
+      'ORDER_SUMMARY.NO_PRINTER_SELECTED',
+      'ORDER_SUMMARY.PRINTER_DISCONNECTED',
+      'ORDER_SUMMARY.ORDER_COMPLETED_NO_PRINT',
+    ];
+    const errors = ['COMMON.ERRORS.GENERIC', 'ORDER_SUMMARY.PRINT_FAILED'];
+    if (messageKey === 'ORDER_SUMMARY.ORDER_COMPLETED') {
+      await this.notifications.success(message);
+    } else if (warnings.includes(messageKey)) {
+      await this.notifications.warning(message);
+    } else if (errors.includes(messageKey)) {
+      await this.notifications.error(message);
+    } else {
+      await this.notifications.info(message);
+    }
   }
 
   /**
@@ -493,13 +498,13 @@ export class OrderSummaryComponent {
     get displayItems(): any[] {
       const items = this.orderItems();
       items.forEach((item, index) => {
-        console.debug(`STEP 4 - Order item ${index} to display:`, {
+        this.log.trace('Order item to display', {
+          index,
           itemId: item.id,
           productName: item.productName,
           basePrice: item.basePrice,
           subtotal: item.subtotal,
-          modifiers: item.modifiers,
-          fullItem: JSON.stringify(item, null, 2)
+          modifiersCount: item.modifiers.length,
         });
       });
       return items;

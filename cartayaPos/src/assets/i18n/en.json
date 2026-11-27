@@ -38,6 +38,7 @@
     "LOGIN": {
       "TITLE": "Cartaya POS",
       "CARD_TITLE": "Login",
+      "SUBTITLE": "Sign in to your point of sale",
       "EMAIL_LABEL": "Email",
       "PASSWORD_LABEL": "Password",
       "SHOW_PASSWORD": "Show password",
@@ -82,6 +83,7 @@
     "LOADING": "Loading...",
     "CATEGORY_FILTER": "Category",
     "ALL_CATEGORIES": "All Categories",
+    "EMPTY_CATEGORY": "empty",
     "PRICE_NOT_AVAILABLE": "Price not available"
   },
   "MODIFIERS": {
@@ -96,6 +98,8 @@
     "SELECT_LABEL": "Select Modifiers",
     "CONFIRM_BUTTON": "Add to Cart",
     "BACK_BUTTON": "Back",
+    "DECREASE": "Decrease",
+    "INCREASE": "Increase",
     "TOTAL_LABEL": "Total",
     "ITEM_ADDED": "Item added to order",
     "ITEM_UPDATED": "Item updated"
@@ -156,6 +160,20 @@
     "UNKNOWN_DEVICE": "Unknown Device",
     "CLEAR_SELECTION": "Clear Selection"
   },
+  "ORDER_DETAIL": {
+    "TITLE": "Order #",
+    "LOADING": "Loading order details...",
+    "RETRY": "Retry",
+    "DATE": "Date & time",
+    "STATUS": "Status",
+    "ITEMS": "Items",
+    "QTY": "Qty",
+    "SUBTOTAL": "Subtotal",
+    "TOTAL": "Total",
+    "PRINT": "Print receipt",
+    "PRINTING": "Printing...",
+    "BACK": "Back"
+  },
   "MENU": {
     "TITLE": "Menu",
     "PRODUCTS": "Products",
@@ -163,6 +181,8 @@
     "ORDER_QUEUE": "Order Queue",
     "SETTINGS": "Settings",
     "LANGUAGE": "Language",
+    "DARK_MODE": "Dark mode",
+    "DARK_MODE_SHORT": "Dark",
     "LOGOUT": "Logout"
   },
   "CART": {
@@ -178,12 +198,33 @@
     "EMPTY_MESSAGE": "All orders have been synced",
     "ORDER_PREFIX": "Order #",
     "ITEMS_CONNECTOR": "items ·",
+    "RETRY_ALL": "Retry all",
+    "RETRY_ONE": "Retry",
+    "REMOVE": "Remove",
+    "RETRYING_ALL": "Retrying all orders...",
+    "RETRYING_ONE": "Retrying order...",
+    "CANNOT_RETRY_OFFLINE": "Cannot retry while offline",
+    "ALL_SYNCED": "All {{count}} orders synced!",
+    "PARTIAL_SYNCED": "{{successful}}/{{total}} orders synced",
+    "RETRY_FAILED": "Retry failed",
+    "ORDER_SYNCED": "Order synced successfully!",
+    "ORDER_REMOVED": "Order removed from queue",
+    "REMOVE_FAILED": "Failed to remove order",
     "STATUS": {
       "PENDING": "pending",
       "SYNCING": "syncing",
       "OUT_OF_SYNC": "out-of-sync",
       "SYNCED": "synced"
     }
+  },
+  "DASHBOARD": {
+    "USER_SECTION": "User",
+    "NAME": "Name",
+    "EMAIL": "Email",
+    "POS_SECTION": "Point of sale",
+    "LOCATION": "Location",
+    "ADDRESS": "Address",
+    "SLUG": "Identifier"
   },
   "ORDER_HISTORY": {
     "TITLE": "Order History",
@@ -193,6 +234,7 @@
     "RETRY_BUTTON": "Retry",
     "EMPTY_MESSAGE": "No orders in the last 24 hours",
     "ORDER_PREFIX": "Order #",
+    "STATUS": { "RECEIVED": "Received", "COMPLETED": "Completed", "UNKNOWN": "Other" },
     "ERROR_MISSING_INFO": "Tenant or POS information is missing",
     "ERROR_LOAD_FAILED": "Failed to load order history"
   },

@@ -1,148 +1,125 @@
 <app-page-header title="{{ 'SETTINGS.TITLE' | translate }}"></app-page-header>
 
-<ion-content class="ion-padding">
-  <div class="settings-container">
-    <!-- Language Settings Section -->
-    <ion-card class="language-card">
-      <ion-card-header>
-        <ion-card-title>{{ 'COMMON.LANGUAGE' | translate }}</ion-card-title>
-      </ion-card-header>
-      <ion-card-content>
-        <div class="language-switcher-wrapper">
-          <app-language-switcher
-            displayMode="modal"
-            (languageChanged)="onLanguageChanged($event)">
-          </app-language-switcher>
-        </div>
-      </ion-card-content>
-    </ion-card>
+<ion-content>
+  <main class="settings">
+    @let printer = printerService.selectedPrinter;
+    @let connected = printerService.isConnected && !!printer;
+    @let selectedAddress = printerService.selectedAddress;
+    @let scanning = printerService.isScanning;
+    @let found = printerService.discoveredPrinters;
 
-    <!-- Connection Status Section -->
-    <ion-card class="status-card">
-      <ion-card-header>
-        <ion-card-title>{{ 'SETTINGS.PRINTER_CONNECTION' | translate }}</ion-card-title>
-      </ion-card-header>
-      <ion-card-content>
-        <div class="status-indicator">
-          <ion-badge [color]="statusColor">
-            <ion-icon 
-              [name]="isConnected ? 'checkmark-circle' : 'bluetooth-outline'"
-              class="status-icon">
-            </ion-icon>
-            {{ connectionStatus }}
-          </ion-badge>
-        </div>
+    <!-- Language -->
+    <section class="section" aria-labelledby="settings-language">
+      <h2 id="settings-language" class="type-heading section__title">{{ 'COMMON.LANGUAGE' | translate }}</h2>
+      <div class="panel">
+        <app-language-switcher displayMode="modal"></app-language-switcher>
+      </div>
+    </section>
 
-        <!-- Selected Printer Info -->
-        @if (selectedPrinter) {
-          <div class="printer-info">
-            <div class="info-item">
-              <span class="info-label">{{ 'SETTINGS.PRINTER_NAME' | translate }}</span>
-              <span class="info-value">{{ selectedPrinter.name || ('SETTINGS.UNKNOWN_DEVICE' | translate) }}</span>
-            </div>
+    <!-- Printer connection -->
+    <section class="section" aria-labelledby="settings-printer">
+      <h2 id="settings-printer" class="type-heading section__title">{{ 'SETTINGS.PRINTER_CONNECTION' | translate }}</h2>
+      <div class="panel">
+        <div class="status">
+          <div class="status__text">
+            <span class="type-label status__label">{{ 'SETTINGS.CONNECTION_STATUS' | translate }}</span>
+            @if (printer) {
+              <span class="type-title">{{ printer.name || ('SETTINGS.UNKNOWN_DEVICE' | translate) }}</span>
+            }
           </div>
-        } @else {
-          <div class="no-printer-selected">
-            <p>{{ 'SETTINGS.NO_PRINTER_SELECTED' | translate }}</p>
-          </div>
-        }
+          <span class="type-label badge" [class.badge--success]="connected">
+            @if (connected) {
+              <ion-icon name="checkmark-circle" aria-hidden="true"></ion-icon>
+              {{ 'SETTINGS.CONNECTED' | translate }}
+            } @else if (printer) {
+              {{ 'SETTINGS.SELECTED_NOT_CONNECTED' | translate }}
+            } @else {
+              {{ 'SETTINGS.NO_PRINTER_SELECTED' | translate }}
+            }
+          </span>
+        </div>
 
-        <!-- Action Buttons inside Connection Card -->
-        <div class="connection-actions">
-          @if (selectedPrinter && !isConnected) {
-            <ion-button 
-              (click)="connectToPrinter()"
-              expand="block"
-              color="primary">
-              <ion-icon slot="start" name="bluetooth-outline"></ion-icon>
-              {{ 'SETTINGS.CONNECT_BUTTON' | translate }}
-            </ion-button>
-          }
-          @if (isConnected) {
-            <ion-button 
-              (click)="disconnectFromPrinter()"
-              expand="block"
-              color="danger">
-              <ion-icon slot="start" name="close-circle-outline"></ion-icon>
-              {{ 'SETTINGS.DISCONNECT_BUTTON' | translate }}
-            </ion-button>
-          }
-          @if (selectedPrinter) {
-            <ion-button 
-              (click)="clearPrinterSelection()"
-              expand="block"
-              color="medium"
-              fill="outline">
-              <ion-icon slot="start" name="close-circle-outline"></ion-icon>
+        @if (printer) {
+          <div class="actions">
+            @if (!connected) {
+              <ion-button expand="block" (click)="printerService.connect()">
+                <ion-icon slot="start" name="bluetooth-outline"></ion-icon>
+                {{ 'SETTINGS.CONNECT_BUTTON' | translate }}
+              </ion-button>
+            } @else {
+              <ion-button expand="block" fill="outline" class="btn-danger" (click)="printerService.disconnect()">
+                <ion-icon slot="start" name="close-circle-outline"></ion-icon>
+                {{ 'SETTINGS.DISCONNECT_BUTTON' | translate }}
+              </ion-button>
+            }
+            <ion-button expand="block" fill="outline" class="btn-secondary" (click)="printerService.clearPrinterSelection()">
               {{ 'SETTINGS.CLEAR_SELECTION' | translate }}
             </ion-button>
-          }
-        </div>
-      </ion-card-content>
-    </ion-card>
+          </div>
+        }
+      </div>
+    </section>
 
-    <!-- Scan Section -->
-    <ion-card class="scan-card">
-      <ion-card-header>
-        <ion-card-title>{{ 'SETTINGS.AVAILABLE_PRINTERS' | translate }}</ion-card-title>
-      </ion-card-header>
-      <ion-card-content>
-        <!-- Permission error banner -->
+    <!-- Available printers -->
+    <section class="section" aria-labelledby="settings-available">
+      <h2 id="settings-available" class="type-heading section__title">{{ 'SETTINGS.AVAILABLE_PRINTERS' | translate }}</h2>
+      <div class="panel">
         @if (printerService.permissionError) {
-          <div class="permission-error">
-            <ion-icon name="close-circle-outline" color="danger"></ion-icon>
-            <p>{{ printerService.permissionError }}</p>
-          </div>
+          <p class="alert type-body-sm" role="alert">
+            <ion-icon name="close-circle-outline" aria-hidden="true"></ion-icon>
+            <span>{{ printerService.permissionError }}</span>
+          </p>
         }
-
         @if (printerService.connectionError) {
-          <div class="permission-error">
-            <ion-icon name="close-circle-outline" color="danger"></ion-icon>
-            <p>{{ printerService.connectionError }}</p>
-          </div>
+          <p class="alert type-body-sm" role="alert">
+            <ion-icon name="close-circle-outline" aria-hidden="true"></ion-icon>
+            <span>{{ printerService.connectionError }}</span>
+          </p>
         }
 
-        <ion-button 
-          (click)="scanForPrinters()" 
-          [disabled]="isScanning"
+        <!-- Scan is the primary action only while there is no printer chosen yet -->
+        <ion-button
           expand="block"
-          color="primary">
-          @if (isScanning) {
+          [fill]="printer ? 'outline' : 'solid'"
+          [class.btn-secondary]="!!printer"
+          [disabled]="scanning"
+          (click)="printerService.scanForPrinters()"
+        >
+          @if (scanning) {
             <ion-spinner slot="start" name="crescent"></ion-spinner>
           } @else {
             <ion-icon slot="start" name="bluetooth-outline"></ion-icon>
           }
-          {{ isScanning ? ('SETTINGS.SCANNING' | translate) : ('SETTINGS.SCAN_FOR_PRINTERS' | translate) }}
+          {{ scanning ? ('SETTINGS.SCANNING' | translate) : ('SETTINGS.SCAN_FOR_PRINTERS' | translate) }}
         </ion-button>
 
-        <!-- Printers List -->
-        @if (discoveredPrinters.length > 0) {
-          <ion-list class="printers-list">
-            @for (printer of discoveredPrinters; track printer.address) {
-              <ion-item 
-                (click)="selectPrinter(printer.address)"
-                [class.selected]="selectedAddress === printer.address"
-                button>
-                <ion-icon 
-                  slot="start"
-                  [name]="selectedAddress === printer.address ? 'radio-button-on' : 'radio-button-off'"
-                  class="radio-icon">
-                </ion-icon>
-                <ion-label>
-                  <h3>{{ printer.name || ('SETTINGS.UNKNOWN_DEVICE' | translate) }}</h3>
-                </ion-label>
-                @if (isConnected && selectedAddress === printer.address) {
-                  <ion-icon slot="end" name="checkmark-circle" color="success"></ion-icon>
+        @if (found.length > 0) {
+          <div class="printers" role="radiogroup" [attr.aria-label]="'SETTINGS.AVAILABLE_PRINTERS' | translate">
+            @for (device of found; track device.address) {
+              <button
+                type="button"
+                role="radio"
+                class="printer"
+                [class.printer--selected]="selectedAddress === device.address"
+                [attr.aria-checked]="selectedAddress === device.address"
+                (click)="printerService.selectPrinter(device.address)"
+              >
+                <ion-icon
+                  [name]="selectedAddress === device.address ? 'radio-button-on' : 'radio-button-off'"
+                  class="printer__radio"
+                  aria-hidden="true"
+                ></ion-icon>
+                <span class="type-title printer__name">{{ device.name || ('SETTINGS.UNKNOWN_DEVICE' | translate) }}</span>
+                @if (connected && selectedAddress === device.address) {
+                  <ion-icon name="checkmark-circle" class="printer__ok" aria-hidden="true"></ion-icon>
                 }
-              </ion-item>
+              </button>
             }
-          </ion-list>
-        } @else if (!isScanning) {
-          <div class="empty-state">
-            <p>{{ 'SETTINGS.NO_PRINTERS_FOUND' | translate }}</p>
           </div>
+        } @else if (!scanning) {
+          <p class="type-body-sm status__muted empty">{{ 'SETTINGS.NO_PRINTERS_FOUND' | translate }}</p>
         }
-      </ion-card-content>
-    </ion-card>
-  </div>
+      </div>
+    </section>
+  </main>
 </ion-content>

@@ -3,6 +3,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { Observable, catchError, map, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Modifier } from '../models/modifier.model';
+import { LoggerService } from './logger.service';
 import { StorageService } from './storage.service';
 
 /**
@@ -73,6 +74,7 @@ export interface ModifiersApiResponse {
   providedIn: 'root',
 })
 export class ModifierService {
+  private readonly log = inject(LoggerService).scope('modifier');
   private httpClient = inject(HttpClient);
   private storageService = inject(StorageService);
 
@@ -107,7 +109,7 @@ export class ModifierService {
       const cached = await this.storageService.get<Modifier[]>(key);
       return cached || null;
     } catch (e) {
-      console.debug('Failed to retrieve modifiers cache:', e);
+      this.log.trace('Failed to retrieve modifiers cache', { error: String(e) });
       return null;
     }
   }
@@ -125,7 +127,7 @@ export class ModifierService {
       const key = this.getCacheKey(posId);
       await this.storageService.set(key, modifiers);
     } catch (e) {
-      console.debug('Failed to save modifiers cache:', e);
+      this.log.trace('Failed to save modifiers cache', { error: String(e) });
     }
   }
 
@@ -218,10 +220,7 @@ export class ModifierService {
           void this.cacheModifiers(posId, modifiers);
         }),
         catchError((error) => {
-          console.error(
-            `Failed to fetch modifiers for product ${productId}:`,
-            error
-          );
+          this.log.error('Failed to fetch modifiers', error, { productId });
           this.isLoading.set(false);
           // Return empty array on error for graceful degradation
           return of([]);

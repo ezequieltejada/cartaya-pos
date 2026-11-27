@@ -1,6 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import type { TranslateService } from '@ngx-translate/core';
 
+import { environment } from '../../../environments/environment';
+
 export const UNKNOWN_ERROR_CODE = 'UNKNOWN_ERROR';
 
 /** Every code the API contract (cartaya-api docs/API_ERRORS.md) can return. */
@@ -77,7 +79,10 @@ export function parseApiError(error: unknown): ParsedApiError {
     : [];
 
   if (code === UNKNOWN_ERROR_CODE && status !== 0 && body?.['code'] !== undefined) {
-    console.warn('Unknown API error code:', body['code']);
+    // Pure util (no DI, cannot inject LoggerService); dev-only and logs just the code string.
+    if (!environment.production) {
+      console.warn('Unknown API error code:', body['code']);
+    }
   }
   return { status, code, params, details };
 }

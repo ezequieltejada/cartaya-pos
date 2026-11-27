@@ -33,6 +33,7 @@ describe('ErrorReportingService', () => {
     captureMessage: jasmine.Spy;
     captureException: jasmine.Spy;
     withScope: jasmine.Spy;
+    logger: Record<'debug' | 'info' | 'warn' | 'error', jasmine.Spy>;
   };
 
   beforeEach(() => {
@@ -40,6 +41,12 @@ describe('ErrorReportingService', () => {
       captureMessage: jasmine.createSpy('captureMessage'),
       captureException: jasmine.createSpy('captureException'),
       withScope: jasmine.createSpy('withScope').and.callFake(mockWithScope),
+      logger: {
+        debug: jasmine.createSpy('debug'),
+        info: jasmine.createSpy('info'),
+        warn: jasmine.createSpy('warn'),
+        error: jasmine.createSpy('error'),
+      },
     };
     TestBed.configureTestingModule({
       providers: [{ provide: SENTRY_CLIENT, useValue: Sentry as unknown as typeof SentryNs }],
@@ -110,5 +117,32 @@ describe('ErrorReportingService', () => {
       'handled_exception',
       jasmine.objectContaining({ statusCode: 403, code: 'POS_NOT_ASSIGNED' })
     );
+  });
+
+  describe('captureLog', () => {
+    it('should send a structured log with the scope and flat attributes', () => {
+      service.captureLog('debug', 'printer', 'connect attempt', {
+        address: 'AA:BB',
+        retries: 2,
+        printer: { name: 'P1' },
+        failure: new Error('boom'),
+      });
+
+      expect(Sentry.logger.debug).toHaveBeenCalledWith('[printer] connect attempt', {
+        scope: 'printer',
+        address: 'AA:BB',
+        retries: 2,
+        printer: '{"name":"P1"}',
+        failure: 'Error: boom',
+      });
+    });
+
+    it('should route each level to its own logger method', () => {
+      service.captureLog('warn', 'printer', 'probe failed');
+      service.captureLog('error', 'printer', 'connect failed');
+
+      expect(Sentry.logger.warn).toHaveBeenCalledTimes(1);
+      expect(Sentry.logger.error).toHaveBeenCalledTimes(1);
+    });
   });
 });

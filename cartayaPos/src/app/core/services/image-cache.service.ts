@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Platform } from '@ionic/angular';
 import { environment } from '../../../environments/environment';
 import { Product } from '../models/product.model';
+import { LoggerService } from './logger.service';
 
 /**
  * Image Cache Service
@@ -25,6 +26,7 @@ import { Product } from '../models/product.model';
   providedIn: 'root',
 })
 export class ImageCacheService {
+  private readonly log = inject(LoggerService).scope('image-cache');
   private platform = inject(Platform);
   private objectUrls = new Map<string, string>();
   private isInitialized = false;
@@ -58,7 +60,7 @@ export class ImageCacheService {
       });
       this.isInitialized = true;
     } catch (e) {
-      console.debug('IndexedDB not available, using HTTP cache only:', e);
+      this.log.trace('IndexedDB not available, using HTTP cache only', { error: String(e) });
       this.isNativeApp = false;
     }
   }
@@ -100,7 +102,7 @@ export class ImageCacheService {
       const response = await fetch(url);
 
       if (!response.ok) {
-        console.warn(`Failed to fetch image ${filename}: ${response.status}`);
+        this.log.warn('Failed to fetch image', { filename, status: response.status });
         return null;
       }
 
@@ -117,13 +119,13 @@ export class ImageCacheService {
             cachedAt: Date.now(),
           });
         } catch (e) {
-          console.debug('Failed to cache image in IndexedDB:', e);
+          this.log.trace('Failed to cache image in IndexedDB', { error: String(e) });
         }
       }
 
       return this.createObjectUrl(key, blob);
     } catch (error) {
-      console.warn(`Error getting image URL for ${filename}:`, error);
+      this.log.warn('Error getting image URL', { filename, error: String(error) });
       return null;
     }
   }
@@ -170,7 +172,7 @@ export class ImageCacheService {
     await Promise.all(
       preloadPromises.map((p) =>
         p.catch((error) => {
-          console.debug('Image preload failed (non-blocking):', error);
+          this.log.trace('Image preload failed (non-blocking)', { error: String(error) });
           return null;
         })
       )
@@ -195,9 +197,9 @@ export class ImageCacheService {
         await this.db.clear('image-cache');
       }
 
-      console.debug('Image cache cleared');
+      this.log.trace('Image cache cleared');
     } catch (error) {
-      console.warn('Error clearing image cache:', error);
+      this.log.warn('Error clearing image cache', { error: String(error) });
     }
   }
 
@@ -214,7 +216,7 @@ export class ImageCacheService {
       const allCached = await this.db.getAll('image-cache');
       return allCached.reduce((sum: number, item: any) => sum + item.blob.size, 0);
     } catch (error) {
-      console.warn('Error getting cache size:', error);
+      this.log.warn('Error getting cache size', { error: String(error) });
       return 0;
     }
   }

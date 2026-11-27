@@ -4,6 +4,7 @@ import { Platform } from '@ionic/angular';
 import { Subscription, interval } from 'rxjs';
 import { filter, throttleTime } from 'rxjs/operators';
 import { NetworkService } from './network.service';
+import { LoggerService } from './logger.service';
 import { OrderQueueService, RetryResult } from './order-queue.service';
 
 /**
@@ -41,6 +42,7 @@ export class SyncCoordinatorService implements OnDestroy {
   private queueService = inject(OrderQueueService);
   private networkService = inject(NetworkService);
   private platform = inject(Platform);
+  private readonly log = inject(LoggerService).scope('sync');
 
   // Writable signal for sync state
   private readonly _syncState = signal<SyncState>({
@@ -72,12 +74,12 @@ export class SyncCoordinatorService implements OnDestroy {
    */
   initialize(): void {
     if (this.isInitialized) {
-      console.warn('SyncCoordinator already initialized');
+      this.log.warn('SyncCoordinator already initialized');
       return;
     }
 
     this.isInitialized = true;
-    console.log('Initializing SyncCoordinator...');
+    this.log.trace('Initializing SyncCoordinator');
 
     // Listen for network state changes
     this.setupNetworkListener();
@@ -109,7 +111,7 @@ export class SyncCoordinatorService implements OnDestroy {
     this.appStateSubscription?.unsubscribe();
     this.periodicSyncSubscription?.unsubscribe();
     this.isInitialized = false;
-    console.log('SyncCoordinator destroyed');
+    this.log.trace('SyncCoordinator destroyed');
   }
 
   /**
@@ -134,7 +136,7 @@ export class SyncCoordinatorService implements OnDestroy {
         throttleTime(2000)
       )
       .subscribe((status) => {
-        console.log('Network restored, triggering sync:', status);
+        this.log.trace('Network restored, triggering sync', { connected: status.connected });
         this.syncQueue();
       });
   }
@@ -148,7 +150,7 @@ export class SyncCoordinatorService implements OnDestroy {
 
     App.addListener('appStateChange', (state) => {
       if (state.isActive && this.networkService.getIsOnline()) {
-        console.log('App resumed to foreground, checking queue...');
+        this.log.trace('App resumed to foreground, checking queue');
         // Only sync if queue has items
         const pendingCount = this.queueService.pendingCount();
         const outOfSyncCount = this.queueService.outOfSyncCount();
@@ -175,7 +177,7 @@ export class SyncCoordinatorService implements OnDestroy {
         filter(() => !this._syncState().isSyncing) // Don't start if already syncing
       )
       .subscribe(() => {
-        console.log('Periodic sync triggered');
+        this.log.trace('Periodic sync triggered');
         this.syncQueue();
       });
   }
@@ -187,13 +189,13 @@ export class SyncCoordinatorService implements OnDestroy {
   async syncQueue(): Promise<void> {
     // Don't sync if already syncing
     if (this._syncState().isSyncing) {
-      console.log('Sync already in progress, skipping...');
+      this.log.trace('Sync already in progress, skipping');
       return;
     }
 
     // Don't sync if offline
     if (!this.networkService.getIsOnline()) {
-      console.log('Cannot sync: offline');
+      this.log.trace('Cannot sync: offline');
       return;
     }
 
@@ -201,11 +203,11 @@ export class SyncCoordinatorService implements OnDestroy {
     const pendingCount = this.queueService.pendingCount();
     const outOfSyncCount = this.queueService.outOfSyncCount();
     if (pendingCount === 0 && outOfSyncCount === 0) {
-      console.log('Queue is empty, nothing to sync');
+      this.log.trace('Queue is empty, nothing to sync');
       return;
     }
 
-    console.log('Starting queue sync...');
+    this.log.trace('Starting queue sync');
     this._syncState.update((state) => ({
       ...state,
       isSyncing: true,
@@ -213,7 +215,7 @@ export class SyncCoordinatorService implements OnDestroy {
 
     try {
       const result = await this.queueService.processQueue();
-      console.log('Sync completed:', result);
+      this.log.trace('Sync completed', { total: result.total, successful: result.successful, failed: result.failed });
 
       this._syncState.update(() => ({
         isSyncing: false,
@@ -221,7 +223,7 @@ export class SyncCoordinatorService implements OnDestroy {
         lastSyncResult: result,
       }));
     } catch (error) {
-      console.error('Sync failed:', error);
+      this.log.error('Sync failed', error);
 
       this._syncState.update(() => ({
         isSyncing: false,

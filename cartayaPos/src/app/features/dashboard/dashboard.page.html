@@ -1,81 +1,62 @@
-<ion-header>
-  <ion-toolbar>
-    <ion-buttons slot="start">
-      <ion-menu-button></ion-menu-button>
-    </ion-buttons>
-    <ion-title>Dashboard</ion-title>
-  </ion-toolbar>
-</ion-header>
+<app-page-header title="{{ 'HOME' | translate }}"></app-page-header>
 
-<ion-content class="ion-padding">
-  <div class="dashboard-container">
-    <h1>Welcome</h1>
+<ion-content>
+  <main class="dashboard">
+    <h1 class="type-display dashboard__title">{{ 'WELCOME' | translate }}</h1>
 
-    <!-- User Information Card -->
-    <ion-card *ngIf="currentUser" class="info-card">
-      <ion-card-header>
-        <ion-card-title>User Information</ion-card-title>
-      </ion-card-header>
-      <ion-card-content>
-        <div class="info-item">
-          <span class="label">Name:</span>
-          <span class="value">{{ currentUser.name || 'N/A' }}</span>
-        </div>
-        <div class="info-item">
-          <span class="label">Email:</span>
-          <span class="value">{{ currentUser.email }}</span>
-        </div>
-      </ion-card-content>
-    </ion-card>
+    @if (currentUser; as user) {
+      <section class="section" aria-labelledby="dashboard-user">
+        <h2 id="dashboard-user" class="type-heading section__title">{{ 'DASHBOARD.USER_SECTION' | translate }}</h2>
+        <dl class="panel">
+          <div class="row">
+            <dt class="type-label row__label">{{ 'DASHBOARD.NAME' | translate }}</dt>
+            <dd class="type-body row__value">{{ user.name || '—' }}</dd>
+          </div>
+          <div class="row">
+            <dt class="type-label row__label">{{ 'DASHBOARD.EMAIL' | translate }}</dt>
+            <dd class="type-body row__value">{{ user.email }}</dd>
+          </div>
+        </dl>
+      </section>
+    }
 
-    <!-- PoS Information Card -->
-    <ion-card *ngIf="selectedPos" class="info-card">
-      <ion-card-header>
-        <ion-card-title>Point of Sale</ion-card-title>
-      </ion-card-header>
-      <ion-card-content>
-        <div class="info-item">
-          <span class="label">Location:</span>
-          <span class="value">{{ selectedPos.name }}</span>
-        </div>
-        <div class="info-item" *ngIf="selectedPos.location">
-          <span class="label">Address:</span>
-          <span class="value">{{ selectedPos.location }}</span>
-        </div>
-        <div class="info-item">
-          <span class="label">Slug:</span>
-          <span class="value">{{ selectedPos.slug }}</span>
-        </div>
-      </ion-card-content>
-    </ion-card>
+    @if (selectedPos; as pos) {
+      <section class="section" aria-labelledby="dashboard-pos">
+        <h2 id="dashboard-pos" class="type-heading section__title">{{ 'DASHBOARD.POS_SECTION' | translate }}</h2>
+        <dl class="panel">
+          <div class="row">
+            <dt class="type-label row__label">{{ 'DASHBOARD.LOCATION' | translate }}</dt>
+            <dd class="type-body row__value">{{ pos.name }}</dd>
+          </div>
+          @if (pos.location) {
+            <div class="row">
+              <dt class="type-label row__label">{{ 'DASHBOARD.ADDRESS' | translate }}</dt>
+              <dd class="type-body row__value">{{ pos.location }}</dd>
+            </div>
+          }
+          <div class="row">
+            <dt class="type-label row__label">{{ 'DASHBOARD.SLUG' | translate }}</dt>
+            <dd class="type-body row__value">{{ pos.slug }}</dd>
+          </div>
+        </dl>
+      </section>
+    }
 
-    <!-- Quick Actions Card -->
-    <ion-card>
-      <ion-card-header>
-        <ion-card-title>Quick Actions</ion-card-title>
-      </ion-card-header>
-      <ion-card-content>
-        <ion-button expand="block" (click)="navigateToProducts()">
-          <ion-icon slot="start" name="grid-outline"></ion-icon>
-          View Products
-        </ion-button>
-        <ion-button expand="block" (click)="navigateToSettings()">
-          <ion-icon slot="start" name="settings-outline"></ion-icon>
-          Settings
-        </ion-button>
-      </ion-card-content>
-    </ion-card>
-
-    <!-- Actions -->
     <div class="actions">
-      <ion-button
-        expand="block"
-        color="danger"
-        (click)="onLogout()"
-        [disabled]="isLoading"
-      >
-        {{ isLoading ? 'Logging out...' : 'Logout' }}
+      <ion-button expand="block" fill="outline" class="btn-secondary" (click)="navigateToSettings()">
+        <ion-icon slot="start" name="settings-outline" aria-hidden="true"></ion-icon>
+        {{ 'MENU.SETTINGS' | translate }}
+      </ion-button>
+      <ion-button expand="block" fill="outline" class="btn-danger" (click)="onLogout()" [disabled]="isLoading">
+        {{ (isLoading ? 'COMMON.LOADING.MESSAGE' : 'MENU.LOGOUT') | translate }}
       </ion-button>
     </div>
-  </div>
+  </main>
 </ion-content>
+
+<div class="bar">
+  <ion-button class="bar__primary" expand="block" (click)="navigateToProducts()">
+    <ion-icon slot="start" name="grid-outline" aria-hidden="true"></ion-icon>
+    {{ 'MENU.PRODUCTS' | translate }}
+  </ion-button>
+</div>

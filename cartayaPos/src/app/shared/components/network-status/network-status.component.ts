@@ -1,107 +1,39 @@
-import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
-import { IonIcon } from '@ionic/angular/standalone';
-import { addIcons } from 'ionicons';
-import { close, cloudOfflineOutline } from 'ionicons/icons';
-import { TranslateModule } from '@ngx-translate/core';
+import { Component, effect, inject } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
 import { NetworkService } from '../../../core/services/network.service';
+import { NotificationService } from '../../../core/services/notification.service';
 
+const OFFLINE_NOTICE_ID = 'network-offline';
+
+/**
+ * Renders nothing. While the device is offline it keeps a persistent warning toast
+ * (through NotificationService) and dismisses it as soon as the connection is back.
+ */
 @Component({
   selector: 'app-network-status',
   standalone: true,
-  imports: [CommonModule, IonIcon, TranslateModule],
-  template: `
-    @if (!networkService.isOnline() && isVisible()) {
-      <div class="network-banner warning">
-        <div class="banner-content">
-          <ion-icon [icon]="cloudOfflineOutline"></ion-icon>
-          <div>
-            <strong>{{ 'COMMON.NETWORK.OFFLINE_TITLE' | translate }}</strong>
-            <p>{{ 'COMMON.NETWORK.OFFLINE_MESSAGE' | translate }}</p>
-          </div>
-        </div>
-        <button class="close-button" (click)="closeBanner()" [attr.aria-label]="'COMMON.NETWORK.CLOSE_BANNER' | translate">
-          <ion-icon [icon]="closeIcon"></ion-icon>
-        </button>
-      </div>
-    }
-  `,
-  styles: [`
-    :host {
-      display: block;
-    }
-
-    .network-banner {
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      width: 100%;
-      box-sizing: border-box;
-      
-      .banner-content {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex: 1;
-      }
-      
-      ion-icon {
-        font-size: 24px;
-        flex-shrink: 0;
-      }
-      
-      p {
-        margin: 4px 0 0;
-        font-size: 12px;
-        opacity: 0.9;
-      }
-      
-      strong {
-        display: block;
-        margin-bottom: 4px;
-      }
-
-      .close-button {
-        background: none;
-        border: none;
-        padding: 4px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        color: inherit;
-        
-        ion-icon {
-          font-size: 20px;
-          margin: 0;
-        }
-        
-        &:hover {
-          opacity: 0.7;
-        }
-      }
-
-      &.warning {
-        background-color: var(--ion-color-warning);
-        color: var(--ion-color-warning-contrast);
-      }
-    }
-  `],
+  template: '',
 })
 export class NetworkStatusComponent {
-  networkService = inject(NetworkService);
-  cloudOfflineOutline = cloudOfflineOutline;
-  closeIcon = close;
-  isVisible = signal(true);
-  
-  constructor() {
-    addIcons({ cloudOfflineOutline, close });
-  }
+  readonly networkService = inject(NetworkService);
+  private readonly notifications = inject(NotificationService);
+  private readonly translate = inject(TranslateService);
 
-  closeBanner(): void {
-    this.isVisible.set(false);
+  constructor() {
+    effect(() => {
+      if (this.networkService.isOnline()) {
+        void this.notifications.dismiss(OFFLINE_NOTICE_ID);
+        return;
+      }
+      void this.notifications.warning(
+        `${this.translate.instant('COMMON.NETWORK.OFFLINE_TITLE')}. ${this.translate.instant('COMMON.NETWORK.OFFLINE_MESSAGE')}`,
+        {
+          id: OFFLINE_NOTICE_ID,
+          duration: 0,
+          icon: 'cloud-offline-outline',
+          dismissText: this.translate.instant('COMMON.NETWORK.DISMISS'),
+        }
+      );
+    });
   }
 }

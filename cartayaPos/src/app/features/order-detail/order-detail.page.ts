@@ -4,23 +4,18 @@ import { ActivatedRoute, Router } from '@angular/router';
 import {
   IonButton,
   IonButtons,
-  IonCard,
-  IonCardContent,
   IonContent,
   IonHeader,
   IonIcon,
-  IonItem,
-  IonLabel,
-  IonList,
   IonSpinner,
   IonTitle,
   IonToolbar,
   LoadingController,
-  ToastController,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { alertCircleOutline, arrowBack, printOutline } from 'ionicons/icons';
 import { firstValueFrom } from 'rxjs';
+import { LoggerService } from '../../core/services/logger.service';
 import { PosService } from '../../core/services/pos.service';
 import { ProductService } from '../../core/services/product.service';
 import { TenantService } from '../../core/services/tenant.service';
@@ -29,7 +24,10 @@ import { OrderHistoryService } from '../../services/order-history.service';
 import { Printer } from '../../services/printer';
 import { MoneyService } from '../../core/services/money.service';
 import { shortOrderRef } from '../../core/utils/order-ref';
+import { TranslateModule } from '@ngx-translate/core';
+import { orderStatusClass, orderStatusLabelKey } from '../../core/utils/order-status';
 import { MoneyPipe } from '../../shared/pipes/money.pipe';
+import { NotificationService } from '../../core/services/notification.service';
 
 @Component({
   selector: 'app-order-detail',
@@ -38,6 +36,7 @@ import { MoneyPipe } from '../../shared/pipes/money.pipe';
   standalone: true,
   imports: [
     CommonModule,
+    TranslateModule,
     IonContent,
     IonHeader,
     IonToolbar,
@@ -45,16 +44,12 @@ import { MoneyPipe } from '../../shared/pipes/money.pipe';
     IonButton,
     IonIcon,
     IonTitle,
-    IonList,
-    IonItem,
-    IonLabel,
-    IonCard,
-    IonCardContent,
     IonSpinner,
     MoneyPipe,
   ],
 })
 export class OrderDetailPage implements OnInit {
+  private readonly log = inject(LoggerService).scope('order-detail');
   private route = inject(ActivatedRoute);
   private orderHistoryService = inject(OrderHistoryService);
   private tenantService = inject(TenantService);
@@ -63,7 +58,7 @@ export class OrderDetailPage implements OnInit {
   private router = inject(Router);
   private printerService = inject(Printer);
   private loadingCtrl = inject(LoadingController);
-  private toastCtrl = inject(ToastController);
+  private notifications = inject(NotificationService);
   private moneyService = inject(MoneyService);
 
   readonly shortRef = shortOrderRef;
@@ -123,7 +118,7 @@ export class OrderDetailPage implements OnInit {
       const errorMsg =
         err instanceof Error ? err.message : 'Failed to load order details';
       this.error.set(errorMsg);
-      console.error('Error loading order:', err);
+      this.log.error('Error loading order', err);
     } finally {
       this.isLoading.set(false);
     }
@@ -167,7 +162,7 @@ export class OrderDetailPage implements OnInit {
         items: enrichedItems
       };
     } catch (error) {
-      console.warn('Failed to enrich order with product names, using fallback:', error);
+      this.log.warn('Failed to enrich order with product names, using fallback', error);
       // Return order as-is if enrichment fails - receipt will use fallback names
       return order;
     }
@@ -246,18 +241,8 @@ export class OrderDetailPage implements OnInit {
    * @param status The order status
    * @returns Ionic color value for the badge
    */
-  getStatusBadgeColor(status?: string): string {
-    switch (status) {
-      case 'completed':
-        return 'success';
-      case 'cancelled':
-        return 'warning';
-      case 'refunded':
-        return 'danger';
-      default:
-        return 'medium';
-    }
-  }
+  readonly statusClass = orderStatusClass;
+  readonly statusLabel = orderStatusLabelKey;
 
   /**
    * Trigger manual print for the historical order
@@ -300,7 +285,7 @@ export class OrderDetailPage implements OnInit {
       const errorMsg =
         error instanceof Error ? error.message : 'Unknown error occurred';
       await this.showError(`Failed to print receipt: ${errorMsg}`);
-      console.error('Print error:', error);
+      this.log.error('Print error', error);
     } finally {
       this.isPrinting.set(false);
     }
@@ -375,29 +360,14 @@ export class OrderDetailPage implements OnInit {
    * Display success toast notification
    */
   private async showSuccess(message: string): Promise<void> {
-    const toast = await this.toastCtrl.create({
-      message,
-      duration: 3000,
-      color: 'success',
-      position: 'bottom',
-      icon: 'checkmark-circle-outline',
-    });
-    await toast.present();
+    await this.notifications.success(message);
   }
 
   /**
    * Display error toast notification
    */
   private async showError(message: string): Promise<void> {
-    const toast = await this.toastCtrl.create({
-      message,
-      duration: 4000,
-      color: 'danger',
-      position: 'bottom',
-      icon: 'alert-circle-outline',
-      buttons: [{ text: 'Dismiss', role: 'cancel' }],
-    });
-    await toast.present();
+    await this.notifications.error(message);
   }
 
   /**

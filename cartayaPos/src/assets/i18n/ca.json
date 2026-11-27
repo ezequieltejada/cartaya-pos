@@ -38,6 +38,7 @@
     "LOGIN": {
       "TITLE": "Cartaya POS",
       "CARD_TITLE": "Iniciar Sessió",
+      "SUBTITLE": "Accedeix al teu punt de venda",
       "EMAIL_LABEL": "Correu Electrònic",
       "PASSWORD_LABEL": "Contrasenya",
       "SHOW_PASSWORD": "Mostra la contrasenya",
@@ -82,6 +83,7 @@
     "LOADING": "Carregant...",
     "CATEGORY_FILTER": "Categoria",
     "ALL_CATEGORIES": "Totes les Categories",
+    "EMPTY_CATEGORY": "buida",
     "PRICE_NOT_AVAILABLE": "Preu no disponible"
   },
   "MODIFIERS": {
@@ -96,6 +98,8 @@
     "SELECT_LABEL": "Seleccioneu Opcions",
     "CONFIRM_BUTTON": "Afegir al Carretó",
     "BACK_BUTTON": "Enrere",
+    "DECREASE": "Disminuir",
+    "INCREASE": "Augmentar",
     "TOTAL_LABEL": "Total",
     "ITEM_ADDED": "Article afegit a la comanda",
     "ITEM_UPDATED": "Article actualitzat"
@@ -169,12 +173,33 @@
     "EMPTY_MESSAGE": "Totes les comandes han estat sincronitzades",
     "ORDER_PREFIX": "Comanda #",
     "ITEMS_CONNECTOR": "articles ·",
+    "RETRY_ALL": "Reintentar tots",
+    "RETRY_ONE": "Reintentar",
+    "REMOVE": "Eliminar",
+    "RETRYING_ALL": "Reintentant totes les comandes...",
+    "RETRYING_ONE": "Reintentant la comanda...",
+    "CANNOT_RETRY_OFFLINE": "No es pot reintentar sense connexió",
+    "ALL_SYNCED": "{{count}} comandes sincronitzades!",
+    "PARTIAL_SYNCED": "{{successful}}/{{total}} comandes sincronitzades",
+    "RETRY_FAILED": "El reintent ha fallat",
+    "ORDER_SYNCED": "Comanda sincronitzada!",
+    "ORDER_REMOVED": "Comanda eliminada de la cua",
+    "REMOVE_FAILED": "No s'ha pogut eliminar la comanda",
     "STATUS": {
       "PENDING": "pendent",
       "SYNCING": "sincronitzant",
       "OUT_OF_SYNC": "fora de sincronia",
       "SYNCED": "sincronitzat"
     }
+  },
+  "DASHBOARD": {
+    "USER_SECTION": "Usuari",
+    "NAME": "Nom",
+    "EMAIL": "Correu electrònic",
+    "POS_SECTION": "Punt de venda",
+    "LOCATION": "Ubicació",
+    "ADDRESS": "Adreça",
+    "SLUG": "Identificador"
   },
   "ORDER_HISTORY": {
     "TITLE": "Historial de Comandes",
@@ -184,8 +209,23 @@
     "RETRY_BUTTON": "Reintentar",
     "EMPTY_MESSAGE": "No hi ha comandes en les últimes 24 hores",
     "ORDER_PREFIX": "Comanda #",
+    "STATUS": { "RECEIVED": "Rebut", "COMPLETED": "Completat", "UNKNOWN": "Altre" },
     "ERROR_MISSING_INFO": "Falta informació de l'inquilí o PdV",
     "ERROR_LOAD_FAILED": "Error en carregar l'historial de comandes"
+  },
+  "ORDER_DETAIL": {
+    "TITLE": "Comanda #",
+    "LOADING": "Carregant detalls de la comanda...",
+    "RETRY": "Reintenta",
+    "DATE": "Data i hora",
+    "STATUS": "Estat",
+    "ITEMS": "Articles",
+    "QTY": "Quant.",
+    "SUBTOTAL": "Subtotal",
+    "TOTAL": "Total",
+    "PRINT": "Imprimeix el rebut",
+    "PRINTING": "Imprimint...",
+    "BACK": "Enrere"
   },
   "MENU": {
     "TITLE": "Menú",
@@ -194,6 +234,8 @@
     "ORDER_QUEUE": "Cua de Comandes",
     "SETTINGS": "Configuració",
     "LANGUAGE": "Idioma",
+    "DARK_MODE": "Mode fosc",
+    "DARK_MODE_SHORT": "Fosc",
     "LOGOUT": "Tancar Sessió"
   },
   "HOME": "Inici",

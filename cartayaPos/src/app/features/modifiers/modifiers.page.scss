@@ -1,0 +1,202 @@
+// Product detail / modifiers — tokens only. Mobile first; two-column cap on desktop.
+
+ion-content {
+  --background: var(--surface);
+}
+
+.mods {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
+  padding: var(--space-6) var(--space-4) var(--space-12);
+  color: var(--ink);
+}
+
+.mods__muted {
+  color: var(--ink-muted);
+}
+
+// ---- Product summary ----
+.mods__product {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.mods__name {
+  margin: 0;
+  color: var(--ink);
+}
+
+.mods__description {
+  margin: var(--space-2) 0 0;
+  color: var(--ink-muted);
+}
+
+// ---- States ----
+.mods__state {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  min-height: 30vh;
+  justify-content: center;
+  text-align: center;
+
+  h2,
+  p {
+    margin: 0;
+  }
+
+  ion-spinner {
+    align-self: center;
+  }
+}
+
+.mods__error-title {
+  color: var(--danger);
+}
+
+// ---- Modifier rows ----
+.mods__section-title {
+  margin: 0 0 var(--space-3);
+  color: var(--ink-muted);
+}
+
+.mods__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mod {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+
+  &--active {
+    border: 2px solid var(--ink);
+    padding: calc(var(--space-3) - 1px) calc(var(--space-4) - 1px);
+  }
+}
+
+.mod__info {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.mod__name {
+  color: var(--ink);
+}
+
+.mod__price,
+.mod__included,
+.mod__breakdown {
+  color: var(--ink-muted);
+}
+
+// Status is always carried by text ("+1,00 €", "Primeros 2 incluidos"), colour only reinforces.
+.mod__included {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.mod__price--negative {
+  color: var(--danger);
+}
+
+// ---- Stepper: 44px targets ----
+.stepper {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.stepper__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  font-size: 22px;
+  color: var(--ink);
+  background: transparent;
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    border-color: var(--ink);
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+}
+
+.stepper__value {
+  min-width: 36px;
+  text-align: center;
+  color: var(--ink);
+}
+
+// ---- Sticky bar ----
+.mods__bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: var(--shadow-raised);
+}
+
+.mods__total {
+  display: flex;
+  flex-direction: column;
+}
+
+.mods__total-value {
+  color: var(--ink);
+}
+
+.mods__confirm {
+  flex: 1 1 auto;
+  max-width: 320px;
+  --border-radius: var(--radius-md);
+  min-height: 52px;
+  font-size: 16px;
+}
+
+@media (min-width: 768px) {
+  .mods {
+    padding-inline: var(--space-8);
+  }
+
+  .mods__bar {
+    padding-inline: var(--space-8);
+  }
+}

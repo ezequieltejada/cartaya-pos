@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Platform } from '@ionic/angular';
 import { Observable, fromEvent, merge } from 'rxjs';
 import { distinctUntilChanged, map, startWith } from 'rxjs/operators';
+import { LoggerService } from './logger.service';
 
 /**
  * Network status information
@@ -42,6 +43,7 @@ enum ConnectionType {
   providedIn: 'root',
 })
 export class NetworkService {
+  private readonly log = inject(LoggerService).scope('network');
   private platform = inject(Platform);
 
   // Writable signals (internal state)
@@ -110,10 +112,7 @@ export class NetworkService {
         this._connectionType.set(this.mapConnectionType(status.connectionType));
       });
     } catch (error) {
-      console.warn(
-        'Capacitor Network plugin not available, falling back to browser API',
-        error
-      );
+      this.log.warn('Capacitor Network plugin not available, falling back to browser API', error);
       this.initializeBrowserNetwork();
     }
   }
@@ -190,7 +189,7 @@ export class NetworkService {
             timestamp: new Date().toISOString(),
           });
         } catch (error) {
-          console.warn('Failed to initialize Capacitor Network Observable', error);
+          this.log.warn('Failed to initialize Capacitor Network Observable', error);
           observer.next({
             connected: navigator.onLine,
             connectionType: navigator.onLine ? 'wifi' : 'none',
@@ -288,7 +287,7 @@ export class NetworkService {
           timestamp: new Date().toISOString(),
         };
       } catch (error) {
-        console.warn('Failed to check network status via Capacitor', error);
+        this.log.warn('Failed to check network status via Capacitor', error);
         const connected = navigator.onLine;
         this._isOnline.set(connected);
         this._connectionType.set(connected ? 'wifi' : 'none');

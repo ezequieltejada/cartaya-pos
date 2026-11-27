@@ -1,0 +1,28 @@
+/*
+ * Dark theme surfaces: local overrides on top of the vendored tokens.css.
+ *
+ * Why: pure black (#000) / near-black (#0a0a0a) pages make white text vibrate, smear on OLED while
+ * scrolling and flatten depth. Material and Apple HIG both recommend a dark grey base where HIGHER
+ * surfaces are LIGHTER (elevation = lightness), and text slightly below pure white.
+ *
+ * Brand black (--black) is untouched: the logo lockup is drawn on black, so hero bands that carry
+ * the logo (login, POS selection) stay black. Everything else follows the grey scale below.
+ *
+ * TODO: mirror these values in the Carta Ya design system (source of truth) and tokens.json, then
+ * drop this file when tokens.css ships them.
+ */
+
+:root {
+  /* Top bars: an elevated surface in both themes (warm grey on light, lighter grey on dark) with a hairline.
+     Brand black is kept for the logo bands only (login, POS selection). */
+  --top-bar: var(--surface-raised);
+  --on-top-bar: var(--ink);
+  --top-bar-border: var(--border);
+}
+
+:root[data-theme='dark'] {
+  --surface: #121212; /* base (was #0a0a0a) */
+  --surface-raised: #1e1e1e; /* cards, sheets, inputs (was #1a1a1a) */
+  --border: #2f2f2f; /* hairlines, visible on both base and raised */
+  --ink: #ededed; /* ~16:1 on base, no pure-white vibration (was #ffffff) */
+}

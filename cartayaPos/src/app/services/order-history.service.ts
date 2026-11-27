@@ -4,6 +4,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
+import { LoggerService } from '../core/services/logger.service';
 import { translateLoadError } from '../core/utils/api-error';
 import {
   Order,
@@ -29,6 +30,7 @@ export class OrderHistoryService {
   private readonly API_URL = environment.apiUrl;
   private http = inject(HttpClient);
   private translate = inject(TranslateService);
+  private readonly log = inject(LoggerService).scope('order-history');
 
   /**
    * Fetch order history for a specific POS within a time range
@@ -229,7 +231,7 @@ export class OrderHistoryService {
    */
   private handleError(error: HttpErrorResponse): Observable<never> {
     // UI text is translated from the API error code; message/error are log-only.
-    console.error('API error:', { status: error.status, error: error.error });
+    this.log.error('API error', undefined, { status: error.status });
     return throwError(() => new Error(translateLoadError(this.translate, error)));
   }
 }

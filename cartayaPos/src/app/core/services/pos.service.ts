@@ -6,6 +6,7 @@ import { Pos } from '../models/pos.model';
 import { AuthService } from './auth.service';
 import { StorageService } from './storage.service';
 import { TenantService } from './tenant.service';
+import { LoggerService } from './logger.service';
 
 /**
  * Point of Sale (PoS) Service
@@ -19,6 +20,7 @@ export class PosService {
   private storageService = inject(StorageService);
   private tenantService = inject(TenantService);
   private authService = inject(AuthService);
+  private readonly log = inject(LoggerService).scope('pos');
 
   private readonly API_URL = `${environment.apiUrl}/api`;
 
@@ -50,7 +52,7 @@ export class PosService {
     
     if (!activeTenantId) {
       this.isLoading.set(false);
-      console.error('No tenant ID available for fetching PoS locations');
+      this.log.error('No tenant ID available for fetching PoS locations');
       return of([]);
     }
 
@@ -64,7 +66,7 @@ export class PosService {
         map((response): Pos[] => response.data),
         catchError((error) => {
           this.isLoading.set(false);
-          console.error('Failed to fetch PoS locations:', error);
+          this.log.error('Failed to fetch PoS locations', error);
           return of([]);
         })
       );
@@ -117,7 +119,7 @@ export class PosService {
         this.selectedPos.set(pos);
       }
     } catch (e) {
-      console.debug('Failed to restore selected PoS:', e);
+      this.log.trace('Failed to restore selected PoS', { error: String(e) });
     }
   }
 }

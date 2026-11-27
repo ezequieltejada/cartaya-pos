@@ -1,117 +1,99 @@
-<div class="order-summary-container" *ngIf="hasItems(); else emptyState">
-  <!-- Order Items List -->
-  <div class="order-items-container">
-    <ion-list>
-      <ng-container *ngFor="let item of orderItems(); trackBy: trackByItemId">
-        @if (item.id) {
-          <ion-item class="order-item">
-            <ion-label>
-              <h2>{{ item.productName }}</h2>
-              
-              <!-- Modifiers List -->
-              <div class="modifiers-list" *ngIf="item.modifiers.length > 0">
-                <ion-text 
-                  *ngFor="let modifier of item.modifiers" 
-                  class="modifier-item"
-                  color="medium"
-                >
-                  <span class="modifier-name">{{ modifier.name }}</span>
-                  <span class="modifier-quantity" *ngIf="modifier.quantity > 1">
-                    x{{ modifier.quantity }}
-                  </span>
-                  <span class="modifier-price" 
-                    [class.positive]="(calculateModifierCharge(modifier)) > 0"
-                    [class.negative]="(calculateModifierCharge(modifier)) < 0">
-                    {{ formatModifierPrice(modifier) }}
-                  </span>
-                </ion-text>
-              </div>
-              <div class="quantity-stepper">
-                <ion-button
-                  fill="outline"
-                  size="small"
-                  class="qty-decrement"
-                  [disabled]="item.quantity <= 1"
-                  (click)="changeQuantity(item.id, -1)"
-                  [attr.aria-label]="'ORDER_SUMMARY.DECREASE_QUANTITY' | translate"
-                >
-                  <ion-icon name="remove" slot="icon-only"></ion-icon>
-                </ion-button>
-                <span class="quantity-value" aria-live="polite">{{ item.quantity }}</span>
-                <ion-button
-                  fill="outline"
-                  size="small"
-                  class="qty-increment"
-                  [disabled]="item.quantity >= maxLineQuantity"
-                  (click)="changeQuantity(item.id, 1)"
-                  [attr.aria-label]="'ORDER_SUMMARY.INCREASE_QUANTITY' | translate"
-                >
-                  <ion-icon name="add" slot="icon-only"></ion-icon>
-                </ion-button>
-              </div>
-            </ion-label>
-
-            <div slot="end" class="item-actions">
-              @if (item.subtotal !== undefined) {
-                <span class="item-price">{{ item.subtotal | money }}</span>
-              } @else {
-                <span class="item-price">{{ 'COMMON.BUTTONS.OK' | translate }}</span>
-              }
-              <ion-button
-                fill="clear"
-                color="primary"
-                size="small"
+<div class="summary" *ngIf="hasItems(); else emptyState">
+  <!-- Line items -->
+  <ul class="summary__list">
+    <ng-container *ngFor="let item of orderItems(); trackBy: trackByItemId">
+      @if (item.id) {
+        <li class="line">
+          <div class="line__head">
+            <h2 class="type-title line__name">{{ item.productName }}</h2>
+            <div class="line__actions">
+              <button
+                type="button"
+                class="icon-btn"
                 (click)="editItem(item.id)"
                 [attr.aria-label]="'COMMON.BUTTONS.EDIT' | translate"
               >
-                <ion-icon name="pencil" slot="icon-only"></ion-icon>
-              </ion-button>
-              <ion-button
-                fill="clear"
-                color="danger"
-                size="small"
+                <ion-icon name="pencil-outline" aria-hidden="true"></ion-icon>
+              </button>
+              <button
+                type="button"
+                class="icon-btn icon-btn--danger"
                 (click)="removeItem(item.id)"
                 [attr.aria-label]="'COMMON.BUTTONS.DELETE' | translate"
               >
-                <ion-icon name="trash" slot="icon-only"></ion-icon>
-              </ion-button>
+                <ion-icon name="trash-outline" aria-hidden="true"></ion-icon>
+              </button>
             </div>
-          </ion-item>
-        }
-      </ng-container>
-    </ion-list>
-  </div>
+          </div>
 
-  <!-- Order Total Section -->
-  <div class="total-section">
-    <div class="total-row">
-      <span class="label">{{ 'ORDER_SUMMARY.TOTAL' | translate }}:</span>
-      <span class="total-amount">{{ orderTotal() | money }}</span>
+          <ul class="line__mods" *ngIf="item.modifiers.length > 0">
+            <li class="type-body-sm line__mod" *ngFor="let modifier of item.modifiers">
+              <span>
+                {{ modifier.name }}
+                <span *ngIf="modifier.quantity > 1">×{{ modifier.quantity }}</span>
+              </span>
+              <span class="line__mod-price">{{ formatModifierPrice(modifier) }}</span>
+            </li>
+          </ul>
+
+          <div class="line__foot">
+            <div class="stepper" role="group" [attr.aria-label]="item.productName">
+              <button
+                type="button"
+                class="stepper__btn qty-decrement"
+                [disabled]="item.quantity <= 1"
+                (click)="changeQuantity(item.id, -1)"
+                [attr.aria-label]="'ORDER_SUMMARY.DECREASE_QUANTITY' | translate"
+              >
+                <ion-icon name="remove" aria-hidden="true"></ion-icon>
+              </button>
+              <span class="stepper__value type-price quantity-value" aria-live="polite">{{ item.quantity }}</span>
+              <button
+                type="button"
+                class="stepper__btn qty-increment"
+                [disabled]="item.quantity >= maxLineQuantity"
+                (click)="changeQuantity(item.id, 1)"
+                [attr.aria-label]="'ORDER_SUMMARY.INCREASE_QUANTITY' | translate"
+              >
+                <ion-icon name="add" aria-hidden="true"></ion-icon>
+              </button>
+            </div>
+
+            @if (item.subtotal !== undefined) {
+              <span class="type-price line__price">{{ item.subtotal | money }}</span>
+            }
+          </div>
+        </li>
+      }
+    </ng-container>
+  </ul>
+
+  <!-- Sticky total + actions -->
+  <footer class="summary__bar">
+    <div class="summary__total">
+      <span class="type-label summary__total-label">{{ 'ORDER_SUMMARY.TOTAL' | translate }}</span>
+      <span class="type-display summary__total-amount">{{ orderTotal() | money }}</span>
     </div>
-  </div>
 
-  <!-- Action Buttons -->
-  <div class="action-buttons">
-    <ion-button expand="block" fill="outline" color="danger" (click)="showCancelConfirmation()">
-      {{ 'ORDER_SUMMARY.CANCEL_ORDER' | translate }}
-    </ion-button>
-    <ion-button
-      expand="block"
-      color="success"
-      (click)="showCashConfirmation()"
-      [disabled]="isSubmitting()"
-    >
-      <ion-spinner *ngIf="isSubmitting()" name="crescent" slot="start"></ion-spinner>
-      {{ isSubmitting() ? ('ORDER_SUMMARY.PROCESSING' | translate) : ('ORDER_SUMMARY.CASH_ORDER' | translate) }}
-    </ion-button>
-  </div>
+    <div class="summary__buttons">
+      <ion-button class="summary__cancel" fill="outline" (click)="showCancelConfirmation()">
+        {{ 'ORDER_SUMMARY.CANCEL_ORDER' | translate }}
+      </ion-button>
+      <ion-button
+        class="summary__confirm"
+        (click)="showCashConfirmation()"
+        [disabled]="isSubmitting()"
+      >
+        <ion-spinner *ngIf="isSubmitting()" name="crescent" slot="start"></ion-spinner>
+        {{ isSubmitting() ? ('ORDER_SUMMARY.PROCESSING' | translate) : ('ORDER_SUMMARY.CASH_ORDER' | translate) }}
+      </ion-button>
+    </div>
+  </footer>
 </div>
 
 <!-- Empty State -->
 <ng-template #emptyState>
   <div class="empty-state">
-    <ion-text color="medium">
-      <p>{{ 'ORDER_SUMMARY.NO_ITEMS' | translate }}</p>
-    </ion-text>
+    <h2 class="type-heading">{{ 'ORDER_SUMMARY.NO_ITEMS' | translate }}</h2>
   </div>
 </ng-template>

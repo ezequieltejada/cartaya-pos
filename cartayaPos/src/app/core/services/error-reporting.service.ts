@@ -66,6 +66,43 @@ export class ErrorReportingService {
     this.isConsoleErrorInstalled = false;
   }
 
+  /**
+   * Sends a structured log to Rustrak ("Logs" section, via `Sentry.logger`).
+   * Only delivered when `enableLogs` is on (development); otherwise the SDK drops it.
+   * Keep `message` static and put variable values in `data` so logs stay searchable.
+   */
+  captureLog(
+    level: 'debug' | 'info' | 'warn' | 'error',
+    scope: string,
+    message: string,
+    data: Record<string, unknown> = {}
+  ): void {
+    this.sentry.logger[level](`[${scope}] ${message}`, { scope, ...this.logAttributes(data) });
+  }
+
+  /** Log attributes must be flat primitives: objects are serialized to JSON strings. */
+  private logAttributes(data: Record<string, unknown>): Record<string, string | number | boolean> {
+    const attributes: Record<string, string | number | boolean> = {};
+    for (const [key, value] of Object.entries(data)) {
+      attributes[key] =
+        typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+          ? value
+          : this.serializeForLog(value);
+    }
+    return attributes;
+  }
+
+  private serializeForLog(value: unknown): string {
+    if (value instanceof Error) {
+      return `${value.name}: ${value.message}`;
+    }
+    try {
+      return JSON.stringify(value) ?? String(value);
+    } catch {
+      return String(value);
+    }
+  }
+
   captureHandledException(report: HandledExceptionReport): void {
     const normalizedError = this.normalizeError(report.error);
 

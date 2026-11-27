@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { SUPPORTED_LANGUAGES, type Language } from '../models/language.model';
 import { AuthService } from './auth.service';
 import { LanguageState } from './language-state.service';
+import { LoggerService } from './logger.service';
 import { SettingsService } from './settings.service';
 import { StorageService } from './storage.service';
 
@@ -24,6 +25,7 @@ import { StorageService } from './storage.service';
 export class LanguageService {
   private readonly LANGUAGE_PREFERENCE_KEY = 'user_language_preference';
 
+  private readonly log = inject(LoggerService).scope('language');
   private translateService = inject(TranslateService);
   private storageService = inject(StorageService);
   private languageState = inject(LanguageState);
@@ -71,12 +73,12 @@ export class LanguageService {
       // Check if there are any unsynchronized changes and retry sync
       await this.checkSyncStatus();
     } catch (error) {
-      console.error('Failed to initialize language:', error);
+      this.log.error('Failed to initialize language', error);
       // Ultimate fallback to English
       try {
         await this.setLanguage('en');
       } catch (fallbackError) {
-        console.error('Failed to set fallback language:', fallbackError);
+        this.log.error('Failed to set fallback language', fallbackError);
       }
     } finally {
       this.languageState.setLoading(false);
@@ -101,7 +103,7 @@ export class LanguageService {
 
     // Validate language is supported, fallback to 'en' if not
     if (!this.isLanguageSupported(targetLanguage)) {
-      console.warn(`Unsupported language: ${targetLanguage}, falling back to 'en'`);
+      this.log.warn('Unsupported language, falling back to default', { language: targetLanguage, fallback: 'en' });
       targetLanguage = 'en';
     }
 
@@ -124,12 +126,12 @@ export class LanguageService {
         // skips the call when there is no session), so it must not be forced here
         await this.syncWithBackend(targetLanguage);
       } catch (error) {
-        console.error('Backend sync failed:', error);
+        this.log.error('Backend sync failed', error);
         this.languageState.setSyncStatus(false);
         // Continue - local storage is source of truth
       }
     } catch (error) {
-      console.error('Failed to set language:', error);
+      this.log.error('Failed to set language', error);
       this.languageState.setError(error as Error);
     } finally {
       this.languageState.setLoading(false);
@@ -176,7 +178,7 @@ export class LanguageService {
       try {
         await this.syncWithBackend(currentLang);
       } catch (error) {
-        console.error('Failed to retry language sync on startup:', error);
+        this.log.error('Failed to retry language sync on startup', error);
         // Continue - will retry on next app startup
       }
     }
@@ -204,7 +206,7 @@ export class LanguageService {
       this.languageState.setSyncStatus(true);
       this.languageState.setError(null);
     } catch (error) {
-      console.error('Failed to sync language with backend:', error);
+      this.log.error('Failed to sync language with backend', error);
       this.languageState.setSyncStatus(false);
       this.languageState.setError(error as Error);
       // Don't throw - local storage is source of truth

@@ -21,7 +21,7 @@
 
   <!-- Error State -->
   @if (error() && orders().length === 0) {
-    <div class="state-container error-state">
+    <div class="state-container error-state" role="alert">
       <ion-icon name="alert-circle-outline"></ion-icon>
       <p>{{ error() }}</p>
       <ion-button expand="block" (click)="retryLoadOrders()">
@@ -40,33 +40,30 @@
 
   <!-- Orders List -->
   @if (orders().length > 0) {
-    <ion-list class="orders-list">
-      @for (order of orders(); track order.id || order.orderId) {
-        <ion-item
-          button
-          detail
-          (click)="openOrderDetail(order)"
-          class="order-item"
-        >
-          <div class="order-header" slot="start">
-            <h2 class="order-number">{{ 'ORDER_HISTORY.ORDER_PREFIX' | translate }}{{ shortRef(order.orderId || order.id) }}</h2>
-            <p class="order-date">
-              {{ order.createdAt | date: 'short' }}
-            </p>
-          </div>
+    <main class="history">
+      <ul class="history__list">
+        @for (order of orders(); track order.id || order.orderId) {
+          <li>
+            <button type="button" class="order" (click)="openOrderDetail(order)">
+              <span class="order__main">
+                <span class="type-title order__number">{{ 'ORDER_HISTORY.ORDER_PREFIX' | translate }}{{ shortRef(order.orderId || order.id) }}</span>
+                <span class="type-body-sm order__date">{{ order.createdAt | date: 'short' }}</span>
+              </span>
 
-          <div class="order-footer" slot="end">
-            <span class="order-total">
-              {{ order.totalAmount | money }}
-            </span>
-            @if (order.status) {
-              <ion-label class="status-badge" [attr.color]="getStatusBadgeColor(order.status)">
-                {{ order.status | titlecase }}
-              </ion-label>
-            }
-          </div>
-        </ion-item>
-      }
-    </ion-list>
+              <span class="order__side">
+                <span class="type-price order__total">{{ order.totalAmount | money }}</span>
+                @if (order.status) {
+                  <span class="type-label badge" [ngClass]="'badge--' + statusClass(order.status)">
+                    {{ statusLabel(order.status) | translate }}
+                  </span>
+                }
+              </span>
+
+              <ion-icon name="chevron-forward" class="order__chevron" aria-hidden="true"></ion-icon>
+            </button>
+          </li>
+        }
+      </ul>
+    </main>
   }
 </ion-content>

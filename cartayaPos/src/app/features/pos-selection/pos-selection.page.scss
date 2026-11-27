@@ -1,38 +1,175 @@
-.loading-container {
+// POS selection — same language as login: black hero + rounded sheet. Tokens only.
+// Mobile: one column of cards, sticky action. Desktop (>= 768px): centred, cards in a grid.
+
+ion-content {
+  --background: var(--black);
+}
+
+.pos {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  min-height: 50vh;
-  gap: 1rem;
+  min-height: 100%;
+  background: var(--black);
 }
 
-.empty-state {
+.pos__hero {
   display: flex;
-  justify-content: center;
+  flex: 0 0 auto;
   align-items: center;
-  min-height: 50vh;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4) var(--space-4);
+  padding-top: calc(var(--space-6) + env(safe-area-inset-top));
+}
+
+.pos__logo {
+  display: block;
+  width: min(60vw, 240px);
+  height: auto;
+  aspect-ratio: 1;
+  margin-block: calc(var(--space-8) * -1); // logo file has empty margin on black
+}
+
+.pos__sheet {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding: var(--space-6) var(--space-4) 0;
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.pos__inner {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  max-width: 440px;
+  margin-inline: auto;
+}
+
+.pos__title {
+  margin: 0 0 var(--space-1);
+  color: var(--ink);
+}
+
+.pos__prompt {
+  margin: 0 0 var(--space-4);
+  color: var(--ink-muted);
+}
+
+.pos__muted {
+  color: var(--ink-muted);
+}
+
+.pos__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: 30vh;
   text-align: center;
+
+  h2,
+  p {
+    margin: 0;
+  }
 }
 
-.instruction-text {
-  margin-bottom: 1.5rem;
-  font-size: 1.1rem;
+.pos__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
-.pos-item {
-  margin-bottom: 1rem;
-  border: 1px solid var(--ion-border-color);
-  border-radius: 8px;
+.pos__card {
+  --color: var(--ink);
+  --border-radius: 100%;
+  --size: 24px;
+  --border-width: 2px;
+  --border-color: var(--border-strong);
+  --border-color-checked: var(--ink);
+  --color-checked: var(--ink);
+  box-sizing: border-box;
+  min-height: 72px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+
+  &::part(label) {
+    white-space: normal;
+    margin-inline-start: var(--space-4);
+  }
+
+  &.pos__card--selected {
+    border: 2px solid var(--ink);
+    padding: calc(var(--space-3) - 1px) calc(var(--space-4) - 1px);
+  }
 }
 
-.pos-item h2 {
-  font-size: 1.1rem;
-  font-weight: 600;
+.pos__card-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
-.pos-item p {
-  margin: 0.5rem 0 0 0;
-  font-size: 0.9rem;
-  opacity: 0.7;
+.pos__name {
+  color: var(--ink);
+}
+
+// Sticky action, always reachable on long lists; pinned to the bottom on short ones.
+.pos__actions {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  padding: var(--space-6) 0 var(--space-4);
+  padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+  background: var(--surface);
+}
+
+.pos__continue {
+  --border-radius: var(--radius-md);
+  min-height: 52px;
+  font-size: 16px;
+}
+
+// Desktop: two columns like the login (brand left, selection right).
+@media (min-width: 768px) {
+  .pos {
+    flex-direction: row;
+  }
+
+  .pos__hero {
+    flex: 1 1 50%;
+    padding: var(--space-12) var(--space-8);
+  }
+
+  .pos__logo {
+    width: min(32vw, 420px);
+    margin-block: calc(var(--space-12) * -1);
+  }
+
+  .pos__sheet {
+    flex: 1 1 50%;
+    justify-content: center;
+    padding: var(--space-12) var(--space-8);
+    border-radius: 0;
+  }
+
+  .pos__inner {
+    flex: 0 0 auto;
+    gap: 0;
+  }
+
+  .pos__title {
+    margin-bottom: var(--space-1);
+  }
+
+  .pos__actions {
+    margin-top: var(--space-4);
+    padding: 0;
+  }
 }

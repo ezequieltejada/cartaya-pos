@@ -1,44 +1,53 @@
-<ion-header>
-  <ion-toolbar>
-    <ion-title>{{ 'POS_SELECTION.TITLE' | translate }}</ion-title>
-  </ion-toolbar>
-</ion-header>
+<ion-content [fullscreen]="true">
+  <main class="pos">
+    <header class="pos__hero">
+      <img src="assets/logotipo.svg" alt="Carta Ya" class="pos__logo" />
+    </header>
 
-<ion-content class="ion-padding">
-  <div *ngIf="isLoading" class="loading-container">
-    <ion-spinner></ion-spinner>
-    <p>{{ 'POS_SELECTION.LOADING_MESSAGE' | translate }}</p>
-  </div>
+    <section class="pos__sheet">
+      <div class="pos__inner">
+      <h1 class="pos__title type-display">{{ 'POS_SELECTION.TITLE' | translate }}</h1>
+      <div *ngIf="isLoading" class="pos__state" role="status">
+        <ion-spinner></ion-spinner>
+        <p class="type-body">{{ 'POS_SELECTION.LOADING_MESSAGE' | translate }}</p>
+      </div>
 
-  <div *ngIf="hasNoPosAvailable" class="empty-state">
-    <ion-text>
-      <h2>{{ 'POS_SELECTION.NO_POS_AVAILABLE' | translate }}</h2>
-      <p>{{ 'POS_SELECTION.NO_POS_MESSAGE' | translate }}</p>
-    </ion-text>
-  </div>
+      <div *ngIf="hasNoPosAvailable" class="pos__state">
+        <h2 class="type-heading">{{ 'POS_SELECTION.NO_POS_AVAILABLE' | translate }}</h2>
+        <p class="type-body pos__muted">{{ 'POS_SELECTION.NO_POS_MESSAGE' | translate }}</p>
+      </div>
 
-  <div *ngIf="!isLoading && !hasNoPosAvailable">
-    <ion-text>
-      <p class="instruction-text">{{ 'POS_SELECTION.SELECT_PROMPT' | translate }}</p>
-    </ion-text>
+      <ng-container *ngIf="!isLoading && !hasNoPosAvailable">
+        <p class="pos__prompt type-body">{{ 'POS_SELECTION.SELECT_PROMPT' | translate }}</p>
 
-    <ion-radio-group [(ngModel)]="selectedPosId">
-      <ion-item *ngFor="let pos of availablePos" class="pos-item">
-        <ion-label>
-          <h2>{{ pos.name }}</h2>
-          <p *ngIf="pos.location">{{ pos.location }}</p>
-        </ion-label>
-        <ion-radio [value]="pos.id" slot="start"></ion-radio>
-      </ion-item>
-    </ion-radio-group>
+        <ion-radio-group [(ngModel)]="selectedPosId" class="pos__list">
+          <ion-radio
+            *ngFor="let pos of availablePos"
+            class="pos__card"
+            [class.pos__card--selected]="selectedPosId === pos.id"
+            [value]="pos.id"
+            labelPlacement="end"
+            justify="start"
+          >
+            <span class="pos__card-text">
+              <span class="type-title pos__name">{{ pos.name }}</span>
+              <span *ngIf="pos.location" class="type-body-sm pos__muted">{{ pos.location }}</span>
+            </span>
+          </ion-radio>
+        </ion-radio-group>
 
-    <ion-button
-      expand="block"
-      [disabled]="!selectedPosId"
-      (click)="onContinue()"
-      class="ion-margin-top"
-    >
-      {{ 'POS_SELECTION.CONTINUE_BUTTON' | translate }}
-    </ion-button>
-  </div>
+        <div class="pos__actions">
+          <ion-button
+            class="pos__continue"
+            expand="block"
+            [disabled]="!selectedPosId"
+            (click)="onContinue()"
+          >
+            {{ 'POS_SELECTION.CONTINUE_BUTTON' | translate }}
+          </ion-button>
+        </div>
+      </ng-container>
+      </div>
+    </section>
+  </main>
 </ion-content>

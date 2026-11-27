@@ -6,7 +6,7 @@
 ion-card {
   cursor: pointer;
   transition: transform 0.2s ease-in-out;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-raised);
   border-radius: 8px;
   overflow: hidden;
   height: 100%;
@@ -16,7 +16,7 @@ ion-card {
 
   &:hover {
     transform: scale(0.98);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-raised);
   }
 
   &:active {
@@ -40,7 +40,7 @@ ion-img {
   justify-content: center;
   align-items: center;
   width: 100%;
-  color: var(--ion-color-medium, #92949c);
+  color: var(--ink-muted);
   font-size: 40px;
 }
 
@@ -74,11 +74,11 @@ ion-card-content {
   .price {
     font-weight: 600;
     font-size: 1.1rem;
-    color: var(--ion-color-primary, #0066cc);
+    color: var(--ink);
     margin: 8px 0;
 
     &.unavailable {
-      color: var(--ion-color-medium, #92949c);
+      color: var(--ink-muted);
       font-style: italic;
       font-weight: normal;
     }
@@ -86,7 +86,7 @@ ion-card-content {
 
   .description {
     font-size: 0.9rem;
-    color: var(--ion-color-medium, #92949c);
+    color: var(--ink-muted);
     margin: 4px 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -99,7 +99,7 @@ ion-card-content {
 
   .category {
     font-size: 0.85rem;
-    color: var(--ion-color-medium-shade, #72767e);
+    color: var(--ink-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }

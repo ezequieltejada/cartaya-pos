@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { MenuController } from '@ionic/angular';
+import { LoggerService } from './logger.service';
 
 /**
  * MenuService
@@ -18,6 +19,7 @@ import { MenuController } from '@ionic/angular';
 })
 export class MenuService {
   private menuController = inject(MenuController);
+  private readonly log = inject(LoggerService).scope('menu');
 
   /**
    * Gets a menu element by its ID from the DOM
@@ -37,13 +39,13 @@ export class MenuService {
     try {
       const menu = this.getMenuElement(menuId);
       if (!menu) {
-        console.warn(`Menu with ID "${menuId}" not found`);
+        this.log.warn('Menu not found', { menuId });
         return false;
       }
       await menu.open();
       return true;
     } catch (error) {
-      console.error(`Failed to open menu "${menuId}":`, error);
+      this.log.error('Failed to open menu', error, { menuId });
       return false;
     }
   }
@@ -57,13 +59,13 @@ export class MenuService {
     try {
       const menu = this.getMenuElement(menuId);
       if (!menu) {
-        console.warn(`Menu with ID "${menuId}" not found`);
+        this.log.warn('Menu not found', { menuId });
         return false;
       }
       await menu.close();
       return true;
     } catch (error) {
-      console.error(`Failed to close menu "${menuId}":`, error);
+      this.log.error('Failed to close menu', error, { menuId });
       return false;
     }
   }
@@ -77,12 +79,12 @@ export class MenuService {
     try {
       const menu = this.getMenuElement(menuId);
       if (!menu) {
-        console.warn(`Menu with ID "${menuId}" not found`);
+        this.log.warn('Menu not found', { menuId });
         return false;
       }
       return await menu.toggle();
     } catch (error) {
-      console.error(`Failed to toggle menu "${menuId}":`, error);
+      this.log.error('Failed to toggle menu', error, { menuId });
       return false;
     }
   }
@@ -96,12 +98,12 @@ export class MenuService {
     try {
       const menu = this.getMenuElement(menuId);
       if (!menu) {
-        console.warn(`Menu with ID "${menuId}" not found`);
+        this.log.warn('Menu not found', { menuId });
         return false;
       }
       return await menu.isOpen();
     } catch (error) {
-      console.error(`Failed to check if menu "${menuId}" is open:`, error);
+      this.log.error('Failed to check if menu is open', error, { menuId });
       return false;
     }
   }

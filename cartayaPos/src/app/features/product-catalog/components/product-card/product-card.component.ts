@@ -14,6 +14,7 @@ import { imageOutline } from 'ionicons/icons';
 import { Modifier } from '../../../../core/models/modifier.model';
 import { Product } from '../../../../core/models/product.model';
 import { ImageCacheService } from '../../../../core/services/image-cache.service';
+import { LoggerService } from '../../../../core/services/logger.service';
 import { ModifierService } from '../../../../core/services/modifier.service';
 import { MoneyService } from '../../../../core/services/money.service';
 import { PosService } from '../../../../core/services/pos.service';
@@ -48,6 +49,7 @@ import { TenantService } from '../../../../core/services/tenant.service';
   styleUrls: ['./product-card.component.scss'],
 })
 export class ProductCardComponent implements OnChanges {
+  private readonly log = inject(LoggerService).scope('product-card');
   private moneyService = inject(MoneyService);
   private translate = inject(TranslateService);
   private modifierService = inject(ModifierService);
@@ -107,7 +109,7 @@ export class ProductCardComponent implements OnChanges {
           this.defaultModifiers.set(defaultMods);
         },
         error: (error) => {
-          console.error('Failed to load default modifiers:', error);
+          this.log.error('Failed to load default modifiers', error, { productId: this.product?.id });
           this.defaultModifiers.set([]);
         },
       });
@@ -142,7 +144,7 @@ export class ProductCardComponent implements OnChanges {
       
       this.imageUrl.set(url);
     } catch (error) {
-      console.error('Failed to load product image:', error);
+      this.log.error('Failed to load product image', error, { productId: this.product?.id });
       this.imageUrl.set(null);
     }
   }

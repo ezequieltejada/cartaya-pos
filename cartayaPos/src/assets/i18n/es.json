@@ -38,6 +38,7 @@
     "LOGIN": {
       "TITLE": "Cartaya POS",
       "CARD_TITLE": "Iniciar Sesión",
+      "SUBTITLE": "Accede a tu punto de venta",
       "EMAIL_LABEL": "Correo Electrónico",
       "PASSWORD_LABEL": "Contraseña",
       "SHOW_PASSWORD": "Mostrar contraseña",
@@ -82,6 +83,7 @@
     "LOADING": "Cargando...",
     "CATEGORY_FILTER": "Categoría",
     "ALL_CATEGORIES": "Todas las Categorías",
+    "EMPTY_CATEGORY": "vacía",
     "PRICE_NOT_AVAILABLE": "Precio no disponible"
   },
   "MODIFIERS": {
@@ -96,6 +98,8 @@
     "SELECT_LABEL": "Seleccione Opciones",
     "CONFIRM_BUTTON": "Añadir al Carrito",
     "BACK_BUTTON": "Atrás",
+    "DECREASE": "Disminuir",
+    "INCREASE": "Aumentar",
     "TOTAL_LABEL": "Total",
     "ITEM_ADDED": "Artículo añadido al pedido",
     "ITEM_UPDATED": "Artículo actualizado"
@@ -169,12 +173,33 @@
     "EMPTY_MESSAGE": "Todos los pedidos han sido sincronizados",
     "ORDER_PREFIX": "Pedido #",
     "ITEMS_CONNECTOR": "artículos ·",
+    "RETRY_ALL": "Reintentar todos",
+    "RETRY_ONE": "Reintentar",
+    "REMOVE": "Eliminar",
+    "RETRYING_ALL": "Reintentando todos los pedidos...",
+    "RETRYING_ONE": "Reintentando pedido...",
+    "CANNOT_RETRY_OFFLINE": "No se puede reintentar sin conexión",
+    "ALL_SYNCED": "¡{{count}} pedidos sincronizados!",
+    "PARTIAL_SYNCED": "{{successful}}/{{total}} pedidos sincronizados",
+    "RETRY_FAILED": "El reintento falló",
+    "ORDER_SYNCED": "¡Pedido sincronizado!",
+    "ORDER_REMOVED": "Pedido eliminado de la cola",
+    "REMOVE_FAILED": "No se pudo eliminar el pedido",
     "STATUS": {
       "PENDING": "pendiente",
       "SYNCING": "sincronizando",
       "OUT_OF_SYNC": "fuera de sincronía",
       "SYNCED": "sincronizado"
     }
+  },
+  "DASHBOARD": {
+    "USER_SECTION": "Usuario",
+    "NAME": "Nombre",
+    "EMAIL": "Correo electrónico",
+    "POS_SECTION": "Punto de venta",
+    "LOCATION": "Ubicación",
+    "ADDRESS": "Dirección",
+    "SLUG": "Identificador"
   },
   "ORDER_HISTORY": {
     "TITLE": "Historial de Pedidos",
@@ -184,8 +209,23 @@
     "RETRY_BUTTON": "Reintentar",
     "EMPTY_MESSAGE": "No hay pedidos en las últimas 24 horas",
     "ORDER_PREFIX": "Pedido #",
+    "STATUS": { "RECEIVED": "Recibido", "COMPLETED": "Completado", "UNKNOWN": "Otro" },
     "ERROR_MISSING_INFO": "Falta información del inquilino o PdV",
     "ERROR_LOAD_FAILED": "Error al cargar el historial de pedidos"
+  },
+  "ORDER_DETAIL": {
+    "TITLE": "Pedido #",
+    "LOADING": "Cargando detalles del pedido...",
+    "RETRY": "Reintentar",
+    "DATE": "Fecha y hora",
+    "STATUS": "Estado",
+    "ITEMS": "Artículos",
+    "QTY": "Cant.",
+    "SUBTOTAL": "Subtotal",
+    "TOTAL": "Total",
+    "PRINT": "Imprimir recibo",
+    "PRINTING": "Imprimiendo...",
+    "BACK": "Atrás"
   },
   "MENU": {
     "TITLE": "Menú",
@@ -194,6 +234,8 @@
     "ORDER_QUEUE": "Cola de Pedidos",
     "SETTINGS": "Configuración",
     "LANGUAGE": "Idioma",
+    "DARK_MODE": "Modo oscuro",
+    "DARK_MODE_SHORT": "Oscuro",
     "LOGOUT": "Cerrar Sesión"
   },
   "HOME": "Inicio",

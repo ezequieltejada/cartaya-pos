@@ -18,6 +18,7 @@ import { capacitorHttpInterceptor } from './app/core/interceptors/capacitor-http
 import { languageHeaderInterceptor } from './app/core/interceptors/language-header.interceptor';
 import { offlineInterceptor } from './app/core/interceptors/offline.interceptor';
 import { ErrorReportingService } from './app/core/services/error-reporting.service';
+import { ThemeService } from './app/core/services/theme.service';
 import { environment } from './environments/environment';
 import packageJson from '../package.json';
 
@@ -28,6 +29,7 @@ Sentry.init(
     release: `cartaya-pos@${packageJson.version}`,
     integrations: [SentryAngular.browserTracingIntegration()],
     tracesSampleRate: environment.sentry.tracesSampleRate,
+    enableLogs: environment.sentry.enableLogs,
   },
   SentryAngular.init
 );
@@ -74,6 +76,7 @@ bootstrapApplication(AppComponent, {
     provideAppInitializer(() => {
       inject(SentryAngular.TraceService);
       inject(ErrorReportingService).installConsoleErrorCapture();
+      inject(ThemeService).init();
     }),
   ],
 });

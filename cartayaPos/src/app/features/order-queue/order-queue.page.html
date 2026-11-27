@@ -1,8 +1,4 @@
-<app-page-header title="{{ 'ORDER_QUEUE.TITLE' | translate }}">
-  <ion-button slot="end" (click)="retryAll()" [disabled]="!networkService.getIsOnline() || queueService.totalQueueSize() === 0">
-    <ion-icon slot="icon-only" [icon]="syncOutline"></ion-icon>
-  </ion-button>
-</app-page-header>
+<app-page-header title="{{ 'ORDER_QUEUE.TITLE' | translate }}"></app-page-header>
 
 <ion-content>
   <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
@@ -14,64 +10,86 @@
     ></ion-refresher-content>
   </ion-refresher>
 
-  @if (!networkService.isOnline()) {
-    <div class="offline-banner">
-      <p>{{ 'ORDER_QUEUE.OFFLINE_MESSAGE' | translate }}</p>
-    </div>
-  }
+  <main class="queue">
+    @if (!networkService.isOnline()) {
+      <div class="notice" role="status">
+        <ion-icon name="cloud-offline-outline" class="notice__icon" aria-hidden="true"></ion-icon>
+        <p class="type-body-sm">{{ 'ORDER_QUEUE.OFFLINE_MESSAGE' | translate }}</p>
+      </div>
+    }
 
-  @if (syncCoordinator.syncState().isSyncing) {
-    <div class="sync-status">
-      <ion-spinner name="crescent"></ion-spinner>
-      <p>{{ 'ORDER_QUEUE.SYNCING_MESSAGE' | translate }}</p>
-    </div>
-  }
+    @if (syncCoordinator.syncState().isSyncing) {
+      <div class="notice" role="status">
+        <ion-spinner name="crescent"></ion-spinner>
+        <p class="type-body-sm">{{ 'ORDER_QUEUE.SYNCING_MESSAGE' | translate }}</p>
+      </div>
+    }
 
-  @if (queueService.totalQueueSize() === 0) {
-    <div class="empty-state">
-      <ion-icon [icon]="refreshOutline"></ion-icon>
-      <h2>{{ 'ORDER_QUEUE.EMPTY_TITLE' | translate }}</h2>
-      <p>{{ 'ORDER_QUEUE.EMPTY_MESSAGE' | translate }}</p>
-    </div>
-  } @else {
-    <ion-list>
-      @for (order of queueService.queuedOrders(); track order.id) {
-        <ion-item>
-          <ion-label>
-            <h2>{{ 'ORDER_QUEUE.ORDER_PREFIX' | translate }}{{ shortRef(order.metadata?.orderNumber || order.id) }}</h2>
-            <p>{{ order.metadata?.itemCount || 0 }} {{ 'ORDER_QUEUE.ITEMS_CONNECTOR' | translate }} {{ order.metadata?.total || 0 | money }}</p>
-            <p class="timestamp">{{ formatDate(order.createdAt) }}</p>
-            @if (errorText(order); as text) {
-              <p class="error-text">{{ text }}</p>
-            }
-          </ion-label>
-
-          <ion-badge [color]="getStatusColor(order.status)" slot="end">
-            {{ getTranslatedStatus(order.status) }}
-          </ion-badge>
-
-          @if (order.status !== 'synced' && order.status !== 'syncing') {
-            <div class="action-buttons">
-              <ion-button
-                fill="clear"
-                size="small"
-                (click)="retryOne(order)"
-                [disabled]="!networkService.getIsOnline()"
-              >
-                <ion-icon slot="icon-only" [icon]="syncOutline"></ion-icon>
-              </ion-button>
-              <ion-button
-                fill="clear"
-                size="small"
-                color="danger"
-                (click)="removeOrder(order)"
-              >
-                <ion-icon slot="icon-only" [icon]="trashOutline"></ion-icon>
-              </ion-button>
+    @if (queueService.totalQueueSize() === 0) {
+      <div class="state">
+        <ion-icon [icon]="refreshOutline" class="state__icon" aria-hidden="true"></ion-icon>
+        <h2 class="type-heading state__title">{{ 'ORDER_QUEUE.EMPTY_TITLE' | translate }}</h2>
+        <p class="type-body state__text">{{ 'ORDER_QUEUE.EMPTY_MESSAGE' | translate }}</p>
+      </div>
+    } @else {
+      <ul class="queue__list">
+        @for (order of queueService.queuedOrders(); track order.id) {
+          <li class="order">
+            <div class="order__row">
+              <div class="order__main">
+                <span class="type-title order__number">{{ 'ORDER_QUEUE.ORDER_PREFIX' | translate }}{{ shortRef(order.metadata?.orderNumber || order.id) }}</span>
+                <span class="type-body-sm order__muted">
+                  {{ order.metadata?.itemCount || 0 }} {{ 'ORDER_QUEUE.ITEMS_CONNECTOR' | translate }} {{ order.metadata?.total || 0 | money }}
+                </span>
+                <span class="type-body-sm order__muted">{{ formatDate(order.createdAt) }}</span>
+              </div>
+              <span class="type-label badge" [ngClass]="'badge--' + statusClass(order.status)">
+                {{ getTranslatedStatus(order.status) }}
+              </span>
             </div>
-          }
-        </ion-item>
-      }
-    </ion-list>
-  }
+
+            @if (errorText(order); as text) {
+              <p class="type-body-sm order__error">{{ text }}</p>
+            }
+
+            @if (order.status !== 'synced' && order.status !== 'syncing') {
+              <div class="order__actions">
+                <button
+                  type="button"
+                  class="action"
+                  (click)="retryOne(order)"
+                  [disabled]="!networkService.getIsOnline()"
+                >
+                  <ion-icon [icon]="syncOutline" aria-hidden="true"></ion-icon>
+                  <span class="type-label">{{ 'ORDER_QUEUE.RETRY_ONE' | translate }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="action action--danger"
+                  (click)="removeOrder(order)"
+                >
+                  <ion-icon [icon]="trashOutline" aria-hidden="true"></ion-icon>
+                  <span class="type-label">{{ 'ORDER_QUEUE.REMOVE' | translate }}</span>
+                </button>
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </main>
 </ion-content>
+
+@if (queueService.totalQueueSize() > 0) {
+  <footer class="bar">
+    <ion-button
+      class="bar__action"
+      expand="block"
+      (click)="retryAll()"
+      [disabled]="!networkService.getIsOnline()"
+    >
+      <ion-icon [icon]="syncOutline" slot="start"></ion-icon>
+      {{ 'ORDER_QUEUE.RETRY_ALL' | translate }}
+    </ion-button>
+  </footer>
+}

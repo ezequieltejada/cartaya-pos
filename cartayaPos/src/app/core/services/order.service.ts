@@ -10,6 +10,7 @@ import {
 import { Product } from '../models/product.model';
 import { SettingsService } from './settings.service';
 import { StorageService } from './storage.service';
+import { LoggerService } from './logger.service';
 
 /**
  * Stored order state in local storage
@@ -64,6 +65,7 @@ export class OrderService {
   private httpClient = inject(HttpClient);
   private storageService = inject(StorageService);
   private settingsService = inject(SettingsService);
+  private readonly log = inject(LoggerService).scope('order');
 
   private readonly API_URL = `${environment.apiUrl}/api`;
   private readonly STORAGE_KEY = 'currentOrder';
@@ -136,7 +138,11 @@ export class OrderService {
   addConfiguredProduct(product: Product, modifiers: SelectedModifier[]): void {
     // Validate product
     if (!product.id || !product.name || product.defaultPrice?.amount === undefined) {
-      console.error('Invalid product: missing required fields', product);
+      this.log.error('Invalid product: missing required fields', undefined, {
+        productId: product.id,
+        hasName: !!product.name,
+        hasPrice: product.defaultPrice?.amount !== undefined,
+      });
       return;
     }
 
@@ -216,7 +222,7 @@ export class OrderService {
     const itemIndex = items.findIndex((item) => item.id === itemId);
 
     if (itemIndex === -1) {
-      console.error(`Item with id ${itemId} not found`);
+      this.log.error('Order item not found', undefined, { itemId });
       return;
     }
 
@@ -293,7 +299,7 @@ export class OrderService {
         this.clearOrder();
       }),
       catchError((error) => {
-        console.error('Order submission failed:', error);
+        this.log.error('Order submission failed', error);
         throw error;
       }),
       finalize(() => {
@@ -377,7 +383,7 @@ export class OrderService {
     this.storageService
       .set(this.STORAGE_KEY, state)
       .catch((error) => {
-        console.error('Failed to save order to storage:', error);
+        this.log.error('Failed to save order to storage', error);
         // Graceful degradation - don't throw
       });
   }
@@ -396,7 +402,7 @@ export class OrderService {
         }
       })
       .catch((error) => {
-        console.error('Failed to load order from storage:', error);
+        this.log.error('Failed to load order from storage', error);
         // Graceful degradation - initialize with empty order
       });
   }
@@ -408,7 +414,7 @@ export class OrderService {
     this.storageService
       .remove(this.STORAGE_KEY)
       .catch((error) => {
-        console.error('Failed to remove order from storage:', error);
+        this.log.error('Failed to remove order from storage', error);
         // Graceful degradation - don't throw
       });
   }
