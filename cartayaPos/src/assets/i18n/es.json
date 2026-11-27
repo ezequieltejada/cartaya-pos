@@ -234,6 +234,7 @@
     "ORDER_QUEUE": "Cola de Pedidos",
     "SETTINGS": "Configuración",
     "LANGUAGE": "Idioma",
+    "DARK_MODE": "Modo oscuro",
     "LOGOUT": "Cerrar Sesión"
   },
   "HOME": "Inicio",

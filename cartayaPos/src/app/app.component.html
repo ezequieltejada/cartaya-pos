@@ -40,17 +40,31 @@
             <ion-label>{{ 'MENU.SETTINGS' | translate }}</ion-label>
           </ion-item>
         </ion-menu-toggle>
-
-        <!-- Logout -->
-        <ion-item-divider></ion-item-divider>
-        <ion-menu-toggle auto-hide="false">
-          <ion-item button (click)="logout()" class="logout-item">
-            <ion-icon slot="start" name="log-out-outline"></ion-icon>
-            <ion-label>{{ 'MENU.LOGOUT' | translate }}</ion-label>
-          </ion-item>
-        </ion-menu-toggle>
       </ion-list>
     </ion-content>
+
+    <!-- Footer: appearance (left) and logout (right), two small columns pinned to the bottom -->
+    <ion-footer class="menu-footer">
+      <div class="menu-footer__grid">
+        <!-- Stays open so the change is visible right away -->
+        <label class="menu-footer__cell menu-footer__theme">
+          <span class="type-body-sm menu-footer__text">{{ 'MENU.DARK_MODE' | translate }}</span>
+          <ion-toggle
+            class="theme-toggle"
+            [checked]="theme.isDark()"
+            [attr.aria-label]="'MENU.DARK_MODE' | translate"
+            (ionChange)="theme.setMode($event.detail.checked ? 'dark' : 'light')"
+          ></ion-toggle>
+        </label>
+
+        <ion-menu-toggle auto-hide="false">
+          <button type="button" class="menu-footer__cell menu-footer__logout" (click)="logout()">
+            <ion-icon name="log-out-outline" aria-hidden="true"></ion-icon>
+            <span class="type-body-sm menu-footer__text">{{ 'MENU.LOGOUT' | translate }}</span>
+          </button>
+        </ion-menu-toggle>
+      </div>
+    </ion-footer>
   </ion-menu>
 
   <!-- Main Content -->

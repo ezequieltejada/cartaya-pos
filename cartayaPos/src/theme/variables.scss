@@ -10,9 +10,9 @@
   --ion-border-color: var(--border);
   --ion-backdrop-color: var(--black);
 
-  --ion-toolbar-background: var(--black);
-  --ion-toolbar-color: var(--white);
-  --ion-toolbar-border-color: var(--black);
+  --ion-toolbar-background: var(--top-bar);
+  --ion-toolbar-color: var(--on-top-bar);
+  --ion-toolbar-border-color: var(--top-bar-border);
   --ion-item-background: var(--surface);
   --ion-item-color: var(--ink);
   --ion-item-border-color: var(--border);
@@ -113,24 +113,19 @@ ion-button[color='primary']:not([fill='clear']):not([fill='outline']) {
   --box-shadow: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) ion-button:not([fill='clear']):not([fill='outline']) {
-    --box-shadow: none;
-  }
-}
-
-// Top bars are brand black in both themes (DESIGN.md: "black = top bars"). Controls inside stay white.
+// Top bars: elevated surface + hairline in both themes (--top-bar, see dark-overrides.css).
 ion-toolbar {
-  --background: var(--black);
-  --color: var(--white);
-  --border-width: 0;
+  --background: var(--top-bar);
+  --color: var(--on-top-bar);
+  --border-color: var(--top-bar-border);
+  --border-width: 0 0 1px 0;
 }
 
 ion-toolbar ion-back-button,
 ion-toolbar ion-menu-button,
 ion-toolbar ion-buttons ion-button {
-  --color: var(--white);
-  --icon-color: var(--white);
+  --color: var(--on-top-bar);
+  --icon-color: var(--on-top-bar);
 }
 
 // Buttons: sentence case, extra-bold (outline/clear included). Uppercase belongs to .type-label.

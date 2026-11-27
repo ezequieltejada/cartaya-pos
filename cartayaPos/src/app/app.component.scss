@@ -1,18 +1,19 @@
 // Side menu — tokens only. Icons inherit text colour so they stay legible in both themes.
 
 ion-menu {
-  --width: 300px;
+  --width: 320px;
   --background: var(--surface);
   --border: 1px solid var(--border);
 
   ion-toolbar {
-    --background: var(--black);
-    --color: var(--white);
-    --border-width: 0;
+    --background: var(--top-bar);
+    --color: var(--on-top-bar);
+    --border-color: var(--top-bar-border);
+    --border-width: 0 0 1px 0;
   }
 
   ion-toolbar ion-button {
-    --color: var(--white);
+    --color: var(--on-top-bar);
   }
 
   ion-title {
@@ -52,25 +53,77 @@ ion-menu {
     }
   }
 
-  ion-item-divider {
-    --background: transparent;
-    min-height: var(--space-4);
-    border: 0;
-  }
-
   ion-badge {
     --background: var(--inverse);
     --color: var(--on-inverse);
   }
-}
 
-ion-menu ion-item.logout-item {
-  --color: var(--danger);
+  // Footer: two small columns pinned to the bottom of the menu.
+  .menu-footer {
+    border-top: 1px solid var(--border);
+    background: var(--surface);
 
-  > ion-icon[slot='start'] {
+    &::before {
+      display: none; // Ionic's default footer shadow
+    }
+  }
+
+  .menu-footer__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-2);
+    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  }
+
+  .menu-footer__cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 var(--space-2);
+    font-family: var(--font-sans);
+    color: var(--ink);
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+
+    ion-icon {
+      flex: 0 0 auto;
+      font-size: 20px;
+    }
+  }
+
+  ion-menu-toggle {
+    display: block;
+  }
+
+  .menu-footer__text {
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .menu-footer__cell.menu-footer__logout {
+    width: 100%;
     color: var(--danger);
+    border: 1px solid var(--danger);
+    background: transparent;
+    cursor: pointer;
+  }
+
+  // Dark mode switch: grey track + high-contrast handle off, inverted on (same as the login toggle).
+  .theme-toggle {
+    --track-background: var(--border-strong);
+    --track-background-checked: var(--ink);
+    --handle-background: var(--ink);
+    --handle-background-checked: var(--surface);
+    --handle-box-shadow: none;
+    flex: 0 0 auto;
   }
 }
+
 
 .language-switcher-container {
   display: flex;

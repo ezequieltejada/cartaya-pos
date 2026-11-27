@@ -1,14 +1,15 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Device } from '@capacitor/device';
-import { IonApp, IonBadge, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonItem, IonItemDivider, IonLabel, IonList, IonMenu, IonMenuToggle, IonRouterOutlet, IonTitle, IonToolbar, MenuController, Platform } from '@ionic/angular/standalone';
+import { IonApp, IonBadge, IonButton, IonButtons, IonContent, IonFooter, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonMenu, IonMenuToggle, IonRouterOutlet, IonTitle, IonToggle, IonToolbar, MenuController, Platform } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
-import { cartOutline, checkmarkCircleOutline, close, closeCircleOutline, cloudUploadOutline, gridOutline, homeOutline, imageOutline, logOutOutline, menu, receiptOutline, settingsOutline } from 'ionicons/icons';
+import { cartOutline, checkmarkCircleOutline, close, closeCircleOutline, cloudUploadOutline, gridOutline, homeOutline, imageOutline, logOutOutline, menu, moonOutline, receiptOutline, settingsOutline, sunnyOutline } from 'ionicons/icons';
 import { Subscription } from 'rxjs';
 import { AuthService } from './core/services/auth.service';
 import { LanguageService } from './core/services/language.service';
 import { LoggerService } from './core/services/logger.service';
+import { ThemeService } from './core/services/theme.service';
 import { OrderQueueService } from './core/services/order-queue.service';
 import { PosService } from './core/services/pos.service';
 import { StorageService } from './core/services/storage.service';
@@ -20,7 +21,7 @@ import { Printer } from './services/printer';
 @Component({
   selector: 'app-root',
   templateUrl: 'app.component.html',
-  imports: [IonApp, IonRouterOutlet, IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonIcon, IonLabel, IonMenuToggle, RouterLink, RouterLinkActive, TranslateModule, IonBadge, IonItemDivider, IonButtons, IonButton],
+  imports: [IonApp, IonRouterOutlet, IonMenu, IonHeader, IonToolbar, IonTitle, IonContent, IonList, IonItem, IonIcon, IonLabel, IonMenuToggle, RouterLink, RouterLinkActive, TranslateModule, IonBadge, IonButtons, IonButton, IonToggle, IonFooter],
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit, OnDestroy {
@@ -36,13 +37,14 @@ export class AppComponent implements OnInit, OnDestroy {
   private syncCoordinator = inject(SyncCoordinatorService);
   private printerService = inject(Printer);
   queueService = inject(OrderQueueService);
+  protected readonly theme = inject(ThemeService);
   private router = inject(Router);
   private translate = inject(TranslateService);
   private capApp = inject(CAPACITOR_APP);
   private backButtonSubscription?: Subscription;
 
   constructor() {
-    addIcons({ menu, imageOutline, cartOutline, checkmarkCircleOutline, logOutOutline, homeOutline, gridOutline, settingsOutline, closeCircleOutline, receiptOutline, cloudUploadOutline, close });
+    addIcons({ menu, imageOutline, cartOutline, checkmarkCircleOutline, logOutOutline, homeOutline, gridOutline, settingsOutline, closeCircleOutline, receiptOutline, cloudUploadOutline, close, moonOutline, sunnyOutline });
   }
 
   async ngOnInit() {
