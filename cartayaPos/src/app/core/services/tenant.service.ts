@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 import { Tenant } from '../models/tenant.model';
 import { ImageCacheService } from './image-cache.service';
 import { StorageService } from './storage.service';
+import { LoggerService } from './logger.service';
 
 /**
  * Tenant Service
@@ -18,6 +19,7 @@ export class TenantService {
   private httpClient = inject(HttpClient);
   private storageService = inject(StorageService);
   private imageCacheService = inject(ImageCacheService);
+  private readonly log = inject(LoggerService).scope('tenant');
 
   private readonly API_URL = `${environment.apiUrl}/api`;
 
@@ -48,7 +50,7 @@ export class TenantService {
         map((response): Tenant[] => response.data),
         catchError((error) => {
           this.isLoading.set(false);
-          console.error('Failed to fetch user tenants:', error);
+          this.log.error('Failed to fetch user tenants', error);
           return of([]);
         })
       );
@@ -100,7 +102,7 @@ export class TenantService {
         this.selectedTenant.set(tenant);
       }
     } catch (e) {
-      console.debug('Failed to restore selected tenant:', e);
+      this.log.trace('Failed to restore selected tenant', { error: String(e) });
     }
   }
 }

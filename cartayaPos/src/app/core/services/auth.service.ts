@@ -5,6 +5,7 @@ import { Observable, catchError, map, of, switchMap, tap, throwError } from 'rxj
 import { environment } from '../../../environments/environment';
 import { User } from '../models/user.model';
 import { ImageCacheService } from './image-cache.service';
+import { LoggerService } from './logger.service';
 import { ProductService } from './product.service';
 import { StorageService } from './storage.service';
 import { TenantService } from './tenant.service';
@@ -28,6 +29,7 @@ export interface AuthTokens {
   providedIn: 'root',
 })
 export class AuthService {
+  private readonly log = inject(LoggerService).scope('auth');
   private httpClient = inject(HttpClient);
   private router = inject(Router);
   private storageService = inject(StorageService);
@@ -99,7 +101,7 @@ export class AuthService {
         this.refreshToken.set(refreshToken);
       }
     } catch (error) {
-      console.error('Failed to load tokens from storage:', error);
+      this.log.error('Failed to load tokens from storage', error);
     }
   }
 
@@ -159,13 +161,13 @@ export class AuthService {
           return this.tenantService.fetchUserTenants().pipe(
             map((tenants) => {
               if (tenants.length === 0) {
-                console.warn('User has no assigned tenants');
+                this.log.warn('User has no assigned tenants');
               }
               this.isLoading.set(false);
               return user;
             }),
             catchError((error) => {
-              console.error('Failed to fetch tenants after login:', error);
+              this.log.error('Failed to fetch tenants after login', error);
               this.isLoading.set(false);
               // Still return the user even if tenant fetch fails
               return of(user);
@@ -248,7 +250,7 @@ export class AuthService {
           };
         }),
         catchError((error) => {
-          console.error('Failed to refresh token:', error);
+          this.log.error('Failed to refresh token', error);
           // If refresh fails, clear session and redirect to login
           this.clearSession();
           this.router.navigate(['/auth/login'], { replaceUrl: true });
@@ -312,7 +314,7 @@ export class AuthService {
           }
         });
       }).catch((error) => {
-        console.error('Failed to load tokens:', error);
+        this.log.error('Failed to load tokens', error);
         this.isLoading.set(false);
         observer.next(null);
         observer.complete();

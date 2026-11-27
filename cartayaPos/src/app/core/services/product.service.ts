@@ -8,6 +8,7 @@ import { Product } from '../models/product.model';
 import { translateLoadError } from '../utils/api-error';
 import { formatMoney } from '../utils/money';
 import { ImageCacheService } from './image-cache.service';
+import { LoggerService } from './logger.service';
 import { StorageService } from './storage.service';
 import { TenantService } from './tenant.service';
 
@@ -50,6 +51,7 @@ export function normalizeSearchText(value: string | null | undefined): string {
   providedIn: 'root',
 })
 export class ProductService {
+  private readonly log = inject(LoggerService).scope('product');
   private httpClient = inject(HttpClient);
   private storageService = inject(StorageService);
   private tenantService = inject(TenantService);
@@ -153,7 +155,7 @@ export class ProductService {
 
       return cached.products;
     } catch (e) {
-      console.debug('Failed to retrieve product cache:', e);
+      this.log.trace('Failed to retrieve product cache', { error: String(e) });
       return null;
     }
   }
@@ -175,7 +177,7 @@ export class ProductService {
       };
       await this.storageService.set(key, cache);
     } catch (e) {
-      console.debug('Failed to save product cache:', e);
+      this.log.trace('Failed to save product cache', { error: String(e) });
     }
   }
 
@@ -206,7 +208,7 @@ export class ProductService {
         }
       }
     } catch (e) {
-      console.debug('Failed to clear product cache:', e);
+      this.log.trace('Failed to clear product cache', { error: String(e) });
     }
   }
 
@@ -228,7 +230,7 @@ export class ProductService {
     const activeTenantId = tenantId || this.tenantService.getCurrentTenantId();
 
     if (!activeTenantId) {
-      console.error('No tenant ID available for fetching products');
+      this.log.error('No tenant ID available for fetching products');
       return of([]);
     }
 
@@ -267,7 +269,7 @@ export class ProductService {
               void this.setCache(activeTenantId, data);
             }),
             catchError((error) => {
-              console.error('Failed to fetch products:', error);
+              this.log.error('Failed to fetch products', error);
               this.isLoading.set(false);
 
               // Set user-friendly error message
@@ -331,7 +333,7 @@ export class ProductService {
 
       return cached;
     } catch (e) {
-      console.debug('Failed to retrieve price cache:', e);
+      this.log.trace('Failed to retrieve price cache', { error: String(e) });
       return null;
     }
   }
@@ -355,7 +357,7 @@ export class ProductService {
       };
       await this.storageService.set(key, cache);
     } catch (e) {
-      console.debug('Failed to save price cache:', e);
+      this.log.trace('Failed to save price cache', { error: String(e) });
     }
   }
 
@@ -383,7 +385,7 @@ export class ProductService {
           currency: price.currency,
         })),
         catchError((error) => {
-          console.warn(`Failed to fetch price for product ${productId}:`, error);
+          this.log.warn('Failed to fetch product price', { productId, error });
           return of(null);
         })
       );
@@ -467,7 +469,7 @@ export class ProductService {
       .pipe(
         map((response) => response.pictures || []),
         catchError((error) => {
-          console.debug(`Failed to fetch pictures for product ${productId}:`, error);
+          this.log.trace('Failed to fetch product pictures', { productId, error: String(error) });
           return of([]);
         })
       );
@@ -530,7 +532,7 @@ export class ProductService {
     const activeTenantId = tenantId || this.tenantService.getCurrentTenantId();
 
     if (!activeTenantId) {
-      console.error('No tenant ID available for fetching products');
+      this.log.error('No tenant ID available for fetching products');
       return of([]);
     }
 
@@ -597,7 +599,7 @@ export class ProductService {
                 this.isLoading.set(false);
               }),
               catchError((error) => {
-                console.error('Failed to fetch prices:', error);
+                this.log.error('Failed to fetch prices', error);
                 this.isLoading.set(false);
                 // Return products with pictures but without prices on error
                 return of(productsWithPictures);
@@ -617,7 +619,7 @@ export class ProductService {
           this.imageCacheService
             .preloadProductImages(activeTenantId, productsWithPricesAndPictures)
             .catch((error) => {
-              console.debug('Image preloading failed (non-blocking):', error);
+              this.log.trace('Image preloading failed (non-blocking)', { error: String(error) });
             });
         }
       })

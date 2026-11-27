@@ -8,6 +8,7 @@ import { cartOutline, checkmarkCircleOutline, close, closeCircleOutline, cloudUp
 import { Subscription } from 'rxjs';
 import { AuthService } from './core/services/auth.service';
 import { LanguageService } from './core/services/language.service';
+import { LoggerService } from './core/services/logger.service';
 import { OrderQueueService } from './core/services/order-queue.service';
 import { PosService } from './core/services/pos.service';
 import { StorageService } from './core/services/storage.service';
@@ -23,6 +24,7 @@ import { Printer } from './services/printer';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit, OnDestroy {
+  private readonly log = inject(LoggerService).scope('app');
   private platform = inject(Platform);
   private menuController = inject(MenuController);
   private storageService = inject(StorageService);
@@ -57,14 +59,14 @@ export class AppComponent implements OnInit, OnDestroy {
       await this.tenantService.restoreSelectedTenant();
       this.printerService.loadPersistedPrinter();
     } catch (error) {
-      console.error('Failed to initialize storage:', error);
+      this.log.error('Failed to initialize storage', error);
     }
 
     // Initialize language on app startup (depends on StorageService)
     try {
       await this.languageService.init();
     } catch (error) {
-      console.error('Failed to initialize language:', error);
+      this.log.error('Failed to initialize language', error);
       // Continue with app startup even if language init fails
     }
 
@@ -163,23 +165,23 @@ export class AppComponent implements OnInit, OnDestroy {
       const deviceLanguage = languageCodeResult.value;
 
       if (deviceLanguage) {
-        console.log('Device language detected:', deviceLanguage);
+        this.log.trace('Device language detected', { deviceLanguage });
         // Map common language codes to supported languages (en, es)
         return this.mapLanguageCode(deviceLanguage);
       }
     } catch (error) {
-      console.warn('Could not retrieve device language:', error);
+      this.log.warn('Could not retrieve device language', error);
     }
 
     // Fallback to browser language
     const browserLanguage = this.getBrowserLanguage();
     if (browserLanguage) {
-      console.log('Browser language detected:', browserLanguage);
+      this.log.trace('Browser language detected', { browserLanguage });
       return this.mapLanguageCode(browserLanguage);
     }
 
     // Default to English
-    console.log('Using default language: en');
+    this.log.trace('Using default language', { language: 'en' });
     return 'en';
   }
 
@@ -219,7 +221,7 @@ export class AppComponent implements OnInit, OnDestroy {
    * @param languageCode - The selected language code ('en', 'es', or 'ca')
    */
   onLanguageChanged(languageCode: string): void {
-    console.log('Language changed to:', languageCode);
+    this.log.trace('Language changed', { languageCode });
     // Optionally close menu after language change for better UX
     // this.menuController.close('main-menu');
   }

@@ -28,6 +28,7 @@ Sentry.init(
     release: `cartaya-pos@${packageJson.version}`,
     integrations: [SentryAngular.browserTracingIntegration()],
     tracesSampleRate: environment.sentry.tracesSampleRate,
+    enableLogs: environment.sentry.enableLogs,
   },
   SentryAngular.init
 );

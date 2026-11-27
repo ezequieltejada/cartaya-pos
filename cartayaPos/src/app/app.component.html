@@ -4,7 +4,7 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-button (click)="closeMenu()">
+          <ion-button fill="clear" (click)="closeMenu()" [attr.aria-label]="'COMMON.BUTTONS.CANCEL' | translate">
             <ion-icon name="close"></ion-icon>
           </ion-button>
         </ion-buttons>

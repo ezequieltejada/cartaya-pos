@@ -2,6 +2,7 @@ import { computed, inject, Injectable, InjectionToken, NgZone, OnDestroy, signal
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { Device } from '@capacitor/device';
 import { CapacitorThermalPrinter } from 'capacitor-thermal-printer';
+import { LoggerService } from '../core/services/logger.service';
 import { CAPACITOR_APP } from '../core/tokens/capacitor-app.token';
 
 /**
@@ -100,9 +101,10 @@ export class Printer implements OnDestroy {
   ngZone = inject(NgZone);
   private readonly thermal = inject(THERMAL_PRINTER);
   private readonly capApp = inject(CAPACITOR_APP);
+  private readonly log = inject(LoggerService).scope('printer');
 
   constructor() {
-    console.log('PRINTER_DEBUG: Printer service constructed');
+    this.log.trace('Printer service constructed');
   }
 
   ngOnDestroy(): void {
@@ -144,9 +146,9 @@ export class Printer implements OnDestroy {
         this.handleNativeDisconnected();
       });
 
-      console.log('PRINTER_DEBUG: Printer connection listeners registered');
+      this.log.trace('Printer connection listeners registered');
     } catch (error) {
-      console.error('PRINTER_DEBUG: Failed to register printer connection listeners:', error);
+      this.log.error('Failed to register printer connection listeners', error);
       this.connectionListenersReady = null;
     }
   }
@@ -159,9 +161,9 @@ export class Printer implements OnDestroy {
         }
       });
 
-      console.log('PRINTER_DEBUG: Printer app state listener registered');
+      this.log.trace('Printer app state listener registered');
     } catch (error) {
-      console.error('PRINTER_DEBUG: Failed to register printer app state listener:', error);
+      this.log.error('Failed to register printer app state listener', error);
       this.appStateListenerReady = null;
     }
   }
@@ -184,14 +186,14 @@ export class Printer implements OnDestroy {
       try {
         await handle.remove();
       } catch (error) {
-        console.warn('PRINTER_DEBUG: Failed to remove printer listener:', error);
+        this.log.warn('Failed to remove printer listener', error);
       }
     }));
   }
 
   private handleNativeConnected(device: PrinterDevice): void {
     this.ngZone.run(() => {
-      console.log(`PRINTER_DEBUG: Native connected event received for address=${device.address}`);
+      this.log.trace('native connected event received', { address: device.address });
       this.printerAvailable.set(true);
       this.clearConnectionError();
       this.userManuallyDisconnected = false;
@@ -252,12 +254,12 @@ export class Printer implements OnDestroy {
         this.handleDetectedDisconnection(source);
       });
     } catch (error) {
-      console.warn(`PRINTER_DEBUG: Connection status probe failed during ${source}`, error);
+      this.log.warn('connection status probe failed', { source, error });
     }
   }
 
   private handleDetectedDisconnection(source: 'active-check' | 'app-resume' | 'native-event' | 'poll'): void {
-    console.warn(`PRINTER_DEBUG: Printer connection lost via ${source}`);
+    this.log.warn('printer connection lost', { source });
     this.isConnected = false;
     this.printerAvailable.set(true);
     this.clearConnectionError();
@@ -320,7 +322,7 @@ export class Printer implements OnDestroy {
 
       this.isConnected = true;
     } catch (error) {
-      console.warn('PRINTER_DEBUG: isConnected() check failed, falling back to cached state', error);
+      this.log.warn('isConnected() check failed, falling back to cached state', error);
     }
 
     if (!expectedAddress) {
@@ -341,7 +343,7 @@ export class Printer implements OnDestroy {
     }
 
     if (await this.hasActiveConnection(address)) {
-      console.log(`PRINTER_DEBUG: Reusing existing printer connection for address=${address}`);
+      this.log.trace('reusing existing printer connection', { address });
       return;
     }
 
@@ -356,7 +358,7 @@ export class Printer implements OnDestroy {
     try {
       this.userManuallyDisconnected = false;
 
-      console.log(`PRINTER_DEBUG: Calling CapacitorThermalPrinter.connect({ address: ${address} })`);
+      this.log.trace('calling thermal printer connect', { address });
       const device = await this.thermal.connect({ address });
 
       if (device === null) {
@@ -369,7 +371,7 @@ export class Printer implements OnDestroy {
         this.selectedAddress = device.address;
       }
 
-      console.log(`PRINTER_DEBUG: Connected successfully to device name=${device.name} address=${device.address}`);
+      this.log.trace('connected successfully', { name: device.name, address: device.address });
       this.isConnected = true;
       this.printerAvailable.set(true);
       this.clearConnectionError();
@@ -405,10 +407,10 @@ export class Printer implements OnDestroy {
     try {
       const info = await Device.getInfo();
       const major = parseInt(info.osVersion, 10);
-      console.log(`PRINTER_DEBUG: Android OS version string="${info.osVersion}" parsed major=${major}`);
+      this.log.trace('android OS version parsed', { osVersion: info.osVersion, major });
       return isNaN(major) ? 0 : major;
     } catch (err) {
-      console.warn('PRINTER_DEBUG: Could not read device OS version', err);
+      this.log.warn('Could not read device OS version', err);
       return 0;
     }
   }
@@ -426,11 +428,11 @@ export class Printer implements OnDestroy {
 
     // Not on Android – nothing to check on iOS or web.
     if (androidVersion === 0) {
-      console.log('PRINTER_DEBUG: Not on Android – skipping permission check');
+      this.log.trace('Not on Android – skipping permission check');
       return true;
     }
 
-    console.log(`PRINTER_DEBUG: Checking Bluetooth permissions for Android ${androidVersion}`);
+    this.log.trace('checking bluetooth permissions', { androidVersion });
     this.permissionError = null;
 
     if (androidVersion >= ANDROID_12_VERSION) {
@@ -449,7 +451,7 @@ export class Printer implements OnDestroy {
    * and let the scan/connect catch block handle "permission denied" errors.
    */
   private async requestModernBluetoothPermissions(): Promise<boolean> {
-    console.log('PRINTER_DEBUG: Modern BT permissions (BLUETOOTH_SCAN/BLUETOOTH_CONNECT) will be requested by the OS on first scan/connect');
+    this.log.trace('Modern BT permissions (BLUETOOTH_SCAN/BLUETOOTH_CONNECT) will be requested by the OS on first scan/connect');
     return true;
   }
 
@@ -457,30 +459,30 @@ export class Printer implements OnDestroy {
    * Check / request ACCESS_FINE_LOCATION for BT discovery on Android ≤ 11.
    */
   private async requestLegacyLocationPermission(): Promise<boolean> {
-    console.log('PRINTER_DEBUG: Checking location permission (Android ≤ 11)');
+    this.log.trace('Checking location permission (Android ≤ 11)');
 
     if (!('permissions' in navigator)) {
       // No Permissions API – assume granted (older WebView)
-      console.log('PRINTER_DEBUG: navigator.permissions not available, assuming location granted');
+      this.log.trace('navigator.permissions not available, assuming location granted');
       return true;
     }
 
     try {
       const status = await (navigator.permissions as any).query({ name: 'geolocation' });
-      console.log(`PRINTER_DEBUG: Location permission status before request: ${status.state}`);
+      this.log.trace('location permission status before request', { state: status.state });
 
       if (status.state === 'denied') {
         this.permissionError =
           'Location permission is required for Bluetooth discovery on this Android version. ' +
           'Please grant Location permission in app settings.';
-        console.warn('PRINTER_DEBUG: Location permission denied – cannot scan');
+        this.log.warn('Location permission denied – cannot scan');
         return false;
       }
 
       // 'granted' or 'prompt' – let the OS handle it on first scan
       return true;
     } catch (err) {
-      console.warn('PRINTER_DEBUG: Error querying location permission', err);
+      this.log.warn('Error querying location permission', err);
       return true; // Optimistic – let scan attempt proceed
     }
   }
@@ -518,11 +520,11 @@ export class Printer implements OnDestroy {
 
     if (!this.selectedPrinter) {
       this.connectionError = 'No printer selected';
-      console.warn('PRINTER_DEBUG: connect() called with no printer selected');
+      this.log.warn('connect() called with no printer selected');
       return false;
     }
 
-    console.log(`PRINTER_DEBUG: Attempting connect to address=${this.selectedPrinter.address} name=${this.selectedPrinter.name}`);
+    this.log.trace('attempting connect', { address: this.selectedPrinter.address, name: this.selectedPrinter.name });
 
     try {
       await this.connectOrThrow(this.selectedPrinter.address);
@@ -540,12 +542,12 @@ export class Printer implements OnDestroy {
    * @returns Promise<boolean> - true if connection successful, false otherwise
    */
   async connectByAddress(address: string): Promise<boolean> {
-    console.log(`PRINTER_DEBUG: connectByAddress called with address=${address}`);
+    this.log.trace('connectByAddress called', { address });
     this.clearConnectionError();
 
     if (!address) {
       this.connectionError = 'No printer address provided for the Bluetooth connection attempt.';
-      console.warn('PRINTER_DEBUG: connectByAddress – no address provided');
+      this.log.warn('connectByAddress – no address provided');
       return false;
     }
 
@@ -565,14 +567,14 @@ export class Printer implements OnDestroy {
   async disconnect(manualDisconnect: boolean = true): Promise<void> {
     try {
       await this.ensureNativeLifecycleReady();
-      console.log(`PRINTER_DEBUG: disconnect() called, manualDisconnect=${manualDisconnect}`);
+      this.log.trace('disconnect() called', { manualDisconnect });
       await this.thermal.disconnect();
       this.isConnected = false;
       this.clearConnectionError();
       this.userManuallyDisconnected = manualDisconnect;
-      console.log('PRINTER_DEBUG: Disconnected from printer');
+      this.log.trace('Disconnected from printer');
     } catch (error) {
-      console.error('PRINTER_DEBUG: disconnect() – caught exception:', error);
+      this.log.error('disconnect() – caught exception', error);
       this.isConnected = false;
       this.userManuallyDisconnected = manualDisconnect;
     }
@@ -584,13 +586,13 @@ export class Printer implements OnDestroy {
 
   async scanForPrinters() {
     await this.ensureNativeLifecycleReady();
-    console.log('PRINTER_DEBUG: scanForPrinters() entered');
+    this.log.trace('scanForPrinters() entered');
     this.permissionError = null;
     this.clearConnectionError();
 
     const permissionsOk = await this.ensureBluetoothPermissions();
     if (!permissionsOk) {
-      console.warn(`PRINTER_DEBUG: scanForPrinters – permission check failed: ${this.permissionError}`);
+      this.log.warn('scanForPrinters – permission check failed', { permissionError: this.permissionError });
       // permissionError is already set; caller / template can surface it
       return;
     }
@@ -598,16 +600,16 @@ export class Printer implements OnDestroy {
     this.isScanning = true;
     this.discoveredPrinters = [];
 
-    console.log('PRINTER_DEBUG: Starting scan (active BT discovery)');
+    this.log.trace('Starting scan (active BT discovery)');
 
     try {
       // Set up listener for discovered devices
       const listenerHandle = await this.thermal.addListener('discoverDevices', async (data) => {
         const devices = data.devices || [];
-        console.log(`PRINTER_DEBUG: discoverDevices event received – raw payload: ${JSON.stringify(data)}`);
-        console.log(`PRINTER_DEBUG: ${devices.length} device(s) surfaced to JS layer`);
+        this.log.trace('discoverDevices event received', { payload: data });
+        this.log.trace('devices surfaced to JS layer', { count: devices.length });
         devices.forEach((d: any, i: number) => {
-          console.log(`PRINTER_DEBUG:   device[${i}] name="${d.name}" address="${d.address}"`);
+          this.log.trace('device found', { index: i, name: d.name, address: d.address });
         });
 
         this.ngZone.run(() => {
@@ -618,33 +620,33 @@ export class Printer implements OnDestroy {
         // Stop scanning once devices are found
         try {
           await this.thermal.stopScan();
-          console.log('PRINTER_DEBUG: stopScan() called after device discovery');
+          this.log.trace('stopScan() called after device discovery');
         } catch (stopErr) {
-          console.error('PRINTER_DEBUG: Error stopping scan after device discovery:', stopErr);
+          this.log.error('Error stopping scan after device discovery', stopErr);
         }
 
         // Remove this listener to avoid duplicate callbacks on the next scan
         try {
           listenerHandle.remove();
-          console.log('PRINTER_DEBUG: discoverDevices listener removed');
+          this.log.trace('discoverDevices listener removed');
         } catch (removeErr) {
-          console.warn('PRINTER_DEBUG: Could not remove discoverDevices listener:', removeErr);
+          this.log.warn('Could not remove discoverDevices listener', removeErr);
         }
       });
 
       // Start scanning
-      console.log('PRINTER_DEBUG: Calling CapacitorThermalPrinter.startScan()');
+      this.log.trace('Calling CapacitorThermalPrinter.startScan()');
       await this.thermal.startScan();
-      console.log('PRINTER_DEBUG: startScan() returned (scan in progress)');
+      this.log.trace('startScan() returned (scan in progress)');
 
       // Add timeout to stop scanning if no devices found within 10 seconds
       setTimeout(async () => {
         if (this.isScanning) {
-          console.log('PRINTER_DEBUG: Scan timeout (10 s) reached – no devices found, stopping scan');
+          this.log.trace('Scan timeout (10 s) reached – no devices found, stopping scan');
           try {
             await this.thermal.stopScan();
           } catch (error) {
-            console.error('PRINTER_DEBUG: Error stopping scan on timeout:', error);
+            this.log.error('Error stopping scan on timeout', error);
           }
           this.ngZone.run(() => { this.isScanning = false; });
         }
@@ -653,9 +655,9 @@ export class Printer implements OnDestroy {
       const permErr = this.extractPermissionError(error);
       if (permErr) {
         this.permissionError = permErr;
-        console.error(`PRINTER_DEBUG: scanForPrinters – permission error: ${permErr}`);
+        this.log.error('scanForPrinters – permission error', permErr);
       } else {
-        console.error('PRINTER_DEBUG: scanForPrinters – caught exception:', error);
+        this.log.error('scanForPrinters – caught exception', error);
       }
       this.ngZone.run(() => { this.isScanning = false; });
     }
@@ -666,12 +668,12 @@ export class Printer implements OnDestroy {
   // ---------------------------------------------------------------------------
 
   selectPrinter(address: string) {
-    console.log(`PRINTER_DEBUG: selectPrinter called with address=${address}`);
+    this.log.trace('selectPrinter called', { address });
     this.selectedAddress = address;
     this.selectedPrinter = this.discoveredPrinters.find(p => p.address === address) || null;
     this.printerAvailable.set(true);
     this.clearConnectionError();
-    console.log(`PRINTER_DEBUG: selectedPrinter=${JSON.stringify(this.selectedPrinter)}`);
+    this.log.trace('selected printer set', { printer: this.selectedPrinter });
 
     // Reset manual disconnection flag when user selects a printer
     this.userManuallyDisconnected = false;
@@ -690,7 +692,7 @@ export class Printer implements OnDestroy {
    * Clear the selected printer (remove selection)
    */
   clearPrinterSelection(): void {
-    console.log('PRINTER_DEBUG: clearPrinterSelection()');
+    this.log.trace('clearPrinterSelection()');
     this.selectedPrinter = null;
     this.selectedAddress = '';
     this.printerAvailable.set(true);
@@ -701,9 +703,9 @@ export class Printer implements OnDestroy {
     // Remove from localStorage
     try {
       localStorage.removeItem(this.STORAGE_KEY);
-      console.log('PRINTER_DEBUG: Printer selection cleared from localStorage');
+      this.log.trace('Printer selection cleared from localStorage');
     } catch (error) {
-      console.error('PRINTER_DEBUG: Error clearing printer from localStorage:', error);
+      this.log.error('Error clearing printer from localStorage', error);
     }
   }
 
@@ -711,7 +713,7 @@ export class Printer implements OnDestroy {
    * Load persisted printer from localStorage
    */
   loadPersistedPrinter(): void {
-    console.log('PRINTER_DEBUG: loadPersistedPrinter()');
+    this.log.trace('loadPersistedPrinter()');
     try {
       const savedPrinterJson = localStorage.getItem(this.STORAGE_KEY);
       if (savedPrinterJson) {
@@ -719,12 +721,12 @@ export class Printer implements OnDestroy {
         this.selectedPrinter = savedPrinter;
         this.selectedAddress = savedPrinter.address || '';
         this.printerAvailable.set(true);
-        console.log(`PRINTER_DEBUG: Loaded persisted printer: name="${savedPrinter.name}" address="${savedPrinter.address}"`);
+        this.log.trace('loaded persisted printer', { name: savedPrinter.name, address: savedPrinter.address });
       } else {
-        console.log('PRINTER_DEBUG: No persisted printer found in localStorage');
+        this.log.trace('No persisted printer found in localStorage');
       }
     } catch (error) {
-      console.error('PRINTER_DEBUG: Error loading persisted printer from localStorage:', error);
+      this.log.error('Error loading persisted printer from localStorage', error);
     }
   }
 
@@ -739,9 +741,9 @@ export class Printer implements OnDestroy {
         address: printer.address
       };
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(printerData));
-      console.log(`PRINTER_DEBUG: Printer saved to localStorage: ${JSON.stringify(printerData)}`);
+      this.log.trace('printer saved to localStorage', { printer: printerData });
     } catch (error) {
-      console.error('PRINTER_DEBUG: Error saving printer to localStorage:', error);
+      this.log.error('Error saving printer to localStorage', error);
     }
   }
 
@@ -752,12 +754,12 @@ export class Printer implements OnDestroy {
    */
   cleanup(): void {
     try {
-      console.log('PRINTER_DEBUG: cleanup() called');
+      this.log.trace('cleanup() called');
       this.isScanning = false;
       this.discoveredPrinters = [];
       // Do NOT disconnect the printer here - connection should persist
     } catch (error) {
-      console.error('PRINTER_DEBUG: Error during cleanup:', error);
+      this.log.error('Error during cleanup', error);
     }
   }
 
@@ -775,14 +777,14 @@ export class Printer implements OnDestroy {
     }
 
     try {
-      console.log(`PRINTER_DEBUG: checkPrinterAvailability address=${this.selectedPrinter.address}`);
+      this.log.trace('checkPrinterAvailability', { address: this.selectedPrinter.address });
 
       // The actual availability check would depend on the Capacitor plugin capabilities
       // For now, we'll set printerAvailable to true as default
       this.printerAvailable.set(true);
       return true;
     } catch (error) {
-      console.error('PRINTER_DEBUG: checkPrinterAvailability – error:', error);
+      this.log.error('checkPrinterAvailability – error', error);
       this.printerAvailable.set(false);
       return false;
     }
@@ -793,7 +795,7 @@ export class Printer implements OnDestroy {
    */
   setPrinterUnavailable(): void {
     this.printerAvailable.set(false);
-    console.warn('PRINTER_DEBUG: Printer marked as unavailable');
+    this.log.warn('Printer marked as unavailable');
   }
 
   /**
@@ -818,19 +820,19 @@ export class Printer implements OnDestroy {
    */
   resetManualDisconnectionFlag(): void {
     this.userManuallyDisconnected = false;
-    console.log('PRINTER_DEBUG: Manual disconnection flag reset');
+    this.log.trace('Manual disconnection flag reset');
   }
 
   async printSample() {
     if (!this.selectedPrinter) {
-      console.warn('PRINTER_DEBUG: printSample() – no printer selected');
+      this.log.warn('printSample() – no printer selected');
       return;
     }
 
     try {
       await this.connectOrThrow(this.selectedPrinter.address);
 
-      console.log('PRINTER_DEBUG: printSample() – connected, sending print job');
+      this.log.trace('printSample() – connected, sending print job');
 
       await this.thermal.begin()
         .align('center')
@@ -840,9 +842,9 @@ export class Printer implements OnDestroy {
         .cutPaper()
         .write();
 
-      console.log('PRINTER_DEBUG: printSample() – print completed successfully');
+      this.log.trace('printSample() – print completed successfully');
     } catch (error) {
-      console.error('PRINTER_DEBUG: printSample() – error:', error);
+      this.log.error('printSample() – error', error);
     }
   }
 
@@ -858,16 +860,16 @@ export class Printer implements OnDestroy {
     try {
       await this.connectOrThrow(this.selectedPrinter.address);
 
-      console.log('PRINTER_DEBUG: printReceipt() – sending receipt');
+      this.log.trace('printReceipt() – sending receipt');
 
       await this.thermal.begin()
         .text(receiptContent)
         .cutPaper()
         .write();
 
-      console.log('PRINTER_DEBUG: printReceipt() – receipt printed successfully');
+      this.log.trace('printReceipt() – receipt printed successfully');
     } catch (error) {
-      console.error('PRINTER_DEBUG: printReceipt() – error:', error);
+      this.log.error('printReceipt() – error', error);
       throw error;
     }
   }

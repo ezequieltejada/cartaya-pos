@@ -1,10 +1,75 @@
-.logout-item {
-  --color: var(--ion-color-danger);
-  --color-hover: var(--ion-color-danger-shade);
+// Side menu — tokens only. Icons inherit text colour so they stay legible in both themes.
+
+ion-menu {
+  --width: 300px;
+  --background: var(--surface);
+  --border: 1px solid var(--border);
+
+  ion-toolbar {
+    --background: var(--black);
+    --color: var(--white);
+    --border-width: 0;
+  }
+
+  ion-toolbar ion-button {
+    --color: var(--white);
+  }
+
+  ion-title {
+    font-weight: 800;
+    font-style: italic;
+  }
+
+  ion-list {
+    padding: var(--space-3) var(--space-2);
+    background: transparent;
+  }
+
+  ion-item {
+    --background: transparent;
+    --color: var(--ink);
+    --min-height: 52px;
+    --border-width: 0;
+    --inner-border-width: 0;
+    --padding-start: var(--space-4);
+    --border-radius: var(--radius-md);
+    margin-bottom: var(--space-1);
+    font-weight: 700;
+
+    // Ionic paints slot=start icons at 54% black: force a token colour instead.
+    > ion-icon[slot='start'] {
+      color: var(--ink);
+      font-size: 22px;
+      margin-inline-end: var(--space-4);
+    }
+
+    &.selected {
+      --background: var(--surface-raised);
+
+      &::part(native) {
+        box-shadow: inset 4px 0 0 var(--ink);
+      }
+    }
+  }
+
+  ion-item-divider {
+    --background: transparent;
+    min-height: var(--space-4);
+    border: 0;
+  }
+
+  ion-badge {
+    --background: var(--inverse);
+    --color: var(--on-inverse);
+  }
 }
 
-.logout-item ion-icon {
-  color: var(--ion-color-danger);
+ion-menu ion-item.logout-item {
+  --color: var(--danger);
+
+  > ion-icon[slot='start'] {
+    color: var(--danger);
+  }
 }
 
 .language-switcher-container {

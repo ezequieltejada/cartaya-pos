@@ -5,5 +5,6 @@ export const environment = {
     dsn: 'https://9876bd9f9b6d4dce8c006bbb1bf8db22@rustrak.ezetejada.com/4',
     environment: 'production',
     tracesSampleRate: 0.1,
+    enableLogs: false, // production reports errors only
   },
 };

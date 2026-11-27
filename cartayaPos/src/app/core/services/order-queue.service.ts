@@ -5,6 +5,7 @@ import { openDB } from 'idb';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { parseApiError } from '../utils/api-error';
+import { LoggerService } from './logger.service';
 import { NetworkService } from './network.service';
 
 /**
@@ -106,6 +107,7 @@ export interface RetryResult {
 export class OrderQueueService {
   private httpClient = inject(HttpClient);
   private networkService = inject(NetworkService);
+  private readonly log = inject(LoggerService).scope('order-queue');
 
   private readonly API_URL = `${environment.apiUrl}/api`;
   private readonly DB_NAME = 'cartaya-pos-queue';
@@ -164,7 +166,7 @@ export class OrderQueueService {
       // Load initial queue state from IndexedDB
       await this.loadQueue();
     } catch (error) {
-      console.error('Failed to initialize IndexedDB:', error);
+      this.log.error('Failed to initialize IndexedDB', error);
       throw new Error('Queue storage initialization failed');
     }
   }
@@ -179,9 +181,9 @@ export class OrderQueueService {
     try {
       const orders = await this.db.getAll(this.STORE_NAME);
       this._queuedOrders.set(orders);
-      console.log(`Loaded ${orders.length} orders from queue`);
+      this.log.trace('Queue loaded', { count: orders.length });
     } catch (error) {
-      console.error('Failed to load queue from IndexedDB:', error);
+      this.log.error('Failed to load queue from IndexedDB', error);
     }
   }
 
@@ -227,10 +229,10 @@ export class OrderQueueService {
       // Update signal state
       this._queuedOrders.set([...this._queuedOrders(), queueEntry]);
 
-      console.log(`Order queued: ${queueEntry.id}`);
+      this.log.trace('Order queued', { queueId: queueEntry.id });
       return queueEntry.id;
     } catch (error) {
-      console.error('Failed to enqueue order:', error);
+      this.log.error('Failed to enqueue order', error);
       throw error;
     }
   }
@@ -243,7 +245,7 @@ export class OrderQueueService {
    */
   async processQueue(): Promise<RetryResult> {
     if (!this.networkService.getIsOnline()) {
-      console.log('Cannot process queue: offline');
+      this.log.trace('Cannot process queue: offline');
       return { total: 0, successful: 0, failed: 0, errors: [] };
     }
 
@@ -302,15 +304,15 @@ export class OrderQueueService {
     try {
       // Attempt to POST order to backend
       const url = `${this.API_URL}/tenants/${order.tenantId}/pos/${order.posId}/orders`;
-      console.log(`Attempting to sync order ${queueId} to URL: ${url}`, order.payload);
+      this.log.trace('Attempting to sync order', { queueId, tenantId: order.tenantId, posId: order.posId });
       const response = await firstValueFrom(
         this.httpClient.post<{ orderId: string }>(url, order.payload)
       );
 
       // Success! Remove from queue
-      console.log(`Order sync response:`, response);
+      this.log.trace('Order sync response', { queueId, orderId: response?.orderId });
       await this.remove(queueId);
-      console.log(`Order synced successfully: ${queueId}`);
+      this.log.trace('Order synced successfully', { queueId });
       return true;
     } catch (error) {
       // Retry failed
@@ -324,11 +326,11 @@ export class OrderQueueService {
       const errorFields = { error: null, errorCode, errorParams: parsed.params };
       const httpStatus = error instanceof HttpErrorResponse ? error.status : 0;
       
-      console.error(`Order sync failed for ${queueId}:`, error);
+      this.log.error('Order sync failed', error, { queueId, httpStatus });
 
       // Handle authentication failures (401) - these need user intervention, not retries
       if (httpStatus === 401) {
-        console.warn(`Authentication lost for order ${queueId} - marking as out-of-sync`);
+        this.log.warn('Authentication lost, marking order as out-of-sync', { queueId });
         await this.updateOrder(queueId, {
           status: 'out-of-sync',
           retryCount: newRetryCount,
@@ -348,9 +350,7 @@ export class OrderQueueService {
           lastAttemptAt: new Date().toISOString(),
           ...errorFields,
         });
-        console.warn(
-          `Order out of sync after ${newRetryCount} attempts: ${queueId}`
-        );
+        this.log.warn('Order out of sync after max attempts', { queueId, attempts: newRetryCount });
       } else {
         // Update retry count and error, keep as pending
         await this.updateOrder(queueId, {
@@ -364,10 +364,7 @@ export class OrderQueueService {
         this.scheduleRetry(queueId, newRetryCount);
       }
 
-      console.error(
-        `Order retry failed (${newRetryCount}/${order.maxRetries}):`,
-        error
-      );
+      this.log.error('Order retry failed', error, { queueId, retryCount: newRetryCount, maxRetries: order.maxRetries });
       return false;
     }
   }
@@ -385,11 +382,11 @@ export class OrderQueueService {
     const maxDelay = 16000; // 16 seconds
     const delay = Math.min(baseDelay * Math.pow(2, retryCount - 1), maxDelay);
 
-    console.log(`Scheduling retry for ${queueId} in ${delay}ms`);
+    this.log.trace('Scheduling retry', { queueId, delay });
 
     setTimeout(() => {
       this.retryOne(queueId).catch((err) => {
-        console.error('Scheduled retry failed:', err);
+        this.log.error('Scheduled retry failed', err, { queueId });
       });
     }, delay);
   }
@@ -433,7 +430,7 @@ export class OrderQueueService {
       // Update signal state
       this._queuedOrders.set(this._queuedOrders().filter((o) => o.id !== queueId));
     } catch (error) {
-      console.error('Failed to remove from queue:', error);
+      this.log.error('Failed to remove from queue', error, { queueId });
       throw error;
     }
   }
@@ -499,9 +496,9 @@ export class OrderQueueService {
     try {
       await this.db.clear(this.STORE_NAME);
       this._queuedOrders.set([]);
-      console.log('Queue cleared');
+      this.log.trace('Queue cleared');
     } catch (error) {
-      console.error('Failed to clear queue:', error);
+      this.log.error('Failed to clear queue', error);
       throw error;
     }
   }

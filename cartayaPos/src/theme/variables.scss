@@ -1,2 +1,188 @@
-// For information on how to create your own theme, please see:
-// http://ionicframework.com/docs/theming/
+@use 'sass:math';
+
+// Ionic theme -> Carta Ya design tokens (src/theme/tokens.css, vendored from cartaya-design).
+// Never hard-code colours here: every value must reference a token so light/dark follow tokens.css.
+
+:root {
+  --ion-font-family: var(--font-sans);
+  --ion-background-color: var(--surface);
+  --ion-text-color: var(--ink);
+  --ion-border-color: var(--border);
+  --ion-backdrop-color: var(--black);
+
+  --ion-toolbar-background: var(--black);
+  --ion-toolbar-color: var(--white);
+  --ion-toolbar-border-color: var(--black);
+  --ion-item-background: var(--surface);
+  --ion-item-color: var(--ink);
+  --ion-item-border-color: var(--border);
+  --ion-card-background: var(--surface-raised);
+  --ion-card-color: var(--ink);
+  --ion-tab-bar-background: var(--surface);
+  --ion-tab-bar-color: var(--ink-muted);
+  --ion-tab-bar-color-selected: var(--ink);
+  --ion-placeholder-color: var(--ink-muted);
+
+  // primary = volt (primary action). Contrast is always on-volt.
+  --ion-color-primary: var(--volt);
+  --ion-color-primary-contrast: var(--on-volt);
+  --ion-color-primary-shade: var(--volt-hover);
+  --ion-color-primary-tint: var(--volt-hover);
+  --ion-color-primary-rgb: 255, 205, 5;
+  --ion-color-primary-contrast-rgb: 0, 0, 0;
+
+  --ion-color-secondary: var(--info);
+  --ion-color-secondary-contrast: var(--on-status);
+  --ion-color-secondary-shade: var(--info);
+  --ion-color-secondary-tint: var(--info);
+
+  --ion-color-tertiary: var(--ink);
+  --ion-color-tertiary-contrast: var(--surface);
+  --ion-color-tertiary-shade: var(--ink);
+  --ion-color-tertiary-tint: var(--ink);
+
+  --ion-color-success: var(--success);
+  --ion-color-success-contrast: var(--on-status);
+  --ion-color-success-shade: var(--success);
+  --ion-color-success-tint: var(--success);
+
+  // No warning token exists: warnings reuse volt (the "attention" colour).
+  --ion-color-warning: var(--volt);
+  --ion-color-warning-contrast: var(--on-volt);
+  --ion-color-warning-shade: var(--volt-hover);
+  --ion-color-warning-tint: var(--volt-hover);
+
+  --ion-color-danger: var(--danger);
+  --ion-color-danger-contrast: var(--on-status);
+  --ion-color-danger-shade: var(--danger);
+  --ion-color-danger-tint: var(--danger);
+
+  --ion-color-medium: var(--ink-muted);
+  --ion-color-medium-contrast: var(--surface);
+  --ion-color-medium-shade: var(--ink-muted);
+  --ion-color-medium-tint: var(--ink-muted);
+
+  --ion-color-light: var(--surface-raised);
+  --ion-color-light-contrast: var(--ink);
+  --ion-color-light-shade: var(--border);
+  --ion-color-light-tint: var(--surface-raised);
+
+  --ion-color-dark: var(--inverse);
+  --ion-color-dark-contrast: var(--on-inverse);
+  --ion-color-dark-shade: var(--inverse);
+  --ion-color-dark-tint: var(--inverse);
+}
+
+// Ionic derives step colours from text/background; mix tokens so they stay in sync.
+@each $step in 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950 {
+  :root {
+    --ion-background-color-step-#{$step}: color-mix(in srgb, var(--ink) #{math.div($step, 10)}#{'%'}, var(--surface));
+    --ion-text-color-step-#{$step}: color-mix(in srgb, var(--ink) #{100 - math.div($step, 10)}#{'%'}, var(--surface));
+    --ion-color-step-#{$step}: color-mix(in srgb, var(--ink) #{math.div($step, 10)}#{'%'}, var(--surface));
+  }
+}
+
+// Type: Archivo everywhere, 17px Ionic base scaled to token body size.
+body {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 24px;
+}
+
+// Focus ring (DESIGN.md rule 7).
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+// Primary buttons: black on yellow with inset ink edge in light theme only (rule 4).
+ion-button:not([fill='clear']):not([fill='outline']):not([color]),
+ion-button[color='primary']:not([fill='clear']):not([fill='outline']) {
+  --background: var(--volt);
+  --background-hover: var(--volt-hover);
+  --background-activated: var(--volt-hover);
+  --color: var(--on-volt);
+  --border-radius: var(--radius-md);
+  --box-shadow: inset 0 0 0 1px var(--ink);
+  font-weight: 800;
+  min-height: 44px;
+  text-transform: none;
+}
+
+:root[data-theme='dark'] ion-button:not([fill='clear']):not([fill='outline']) {
+  --box-shadow: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) ion-button:not([fill='clear']):not([fill='outline']) {
+    --box-shadow: none;
+  }
+}
+
+// Top bars are brand black in both themes (DESIGN.md: "black = top bars"). Controls inside stay white.
+ion-toolbar {
+  --background: var(--black);
+  --color: var(--white);
+  --border-width: 0;
+}
+
+ion-toolbar ion-back-button,
+ion-toolbar ion-menu-button,
+ion-toolbar ion-buttons ion-button {
+  --color: var(--white);
+  --icon-color: var(--white);
+}
+
+// Buttons: sentence case, extra-bold (outline/clear included). Uppercase belongs to .type-label.
+ion-button {
+  text-transform: none;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+// Notifications: every toast comes from NotificationService (class `cartaya-toast`).
+// Status colours are tokens (via the Ionic colour map); icon + text carry the meaning, the stripe only reinforces it.
+ion-toast.cartaya-toast {
+  --border-radius: var(--radius-md);
+  --box-shadow: var(--shadow-raised);
+  --max-width: 480px;
+  --button-color: currentColor;
+  font-family: var(--font-sans);
+  font-weight: 700;
+
+  &::part(message) {
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  &::part(button) {
+    font-weight: 800;
+    text-transform: none;
+    min-height: 44px;
+  }
+}
+
+// Neutral kinds use the inverse block (readable in both themes); success/error keep their status fill.
+ion-toast.cartaya-toast--info,
+ion-toast.cartaya-toast--warning {
+  // Ionic paints coloured toasts from --ion-color-base/contrast, so override those too.
+  --ion-color-base: var(--inverse) !important;
+  --ion-color-contrast: var(--on-inverse) !important;
+  --background: var(--inverse);
+  --color: var(--on-inverse);
+}
+
+// Warning: volt edge only, never a yellow fill (one yellow per screen).
+ion-toast.cartaya-toast--warning::part(container) {
+  border-inline-start: 4px solid var(--volt);
+}
+
+// Toolbar buttons are icon actions on the black bar, never filled primary buttons.
+ion-toolbar ion-buttons ion-button:not([fill='clear']):not([fill='outline']):not([color]),
+ion-toolbar ion-buttons ion-button {
+  --background: transparent;
+  --background-hover: transparent;
+  --background-activated: transparent;
+  --box-shadow: none;
+  min-width: 44px;
+}

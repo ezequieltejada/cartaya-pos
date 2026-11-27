@@ -1,186 +1,145 @@
+// Order history — tokens only. Rows are real buttons (44px+ targets); centred column on larger screens.
+
 ion-content {
-  --padding-start: 0;
-  --padding-end: 0;
-  --padding-top: 0;
-  --padding-bottom: 0;
+  --background: var(--surface);
 }
 
-/* State containers (loading, empty, error) */
+.history {
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
+  padding: var(--space-4);
+}
+
+.history__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.order {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: 72px;
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-sans);
+  text-align: start;
+  color: var(--ink);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--border-strong);
+  }
+
+  &:active {
+    border-color: var(--ink);
+  }
+}
+
+.order__main {
+  display: flex;
+  flex: 1 1 96px;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.order__number {
+  overflow: hidden;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.order__date {
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.order__side {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+
+.order__total {
+  color: var(--ink);
+}
+
+.order__chevron {
+  flex: 0 0 auto;
+  font-size: 20px;
+  color: var(--ink-muted);
+}
+
+// Status badge: always carries its word (colour never alone).
+.badge {
+  display: inline-flex;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+
+  &--success {
+    color: var(--on-status);
+    background: var(--success);
+  }
+
+  // "Nuevo": the one place besides the primary action where volt is allowed.
+  &--new {
+    color: var(--on-volt);
+    background: var(--volt);
+  }
+
+  &--neutral {
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--border-strong);
+  }
+}
+
+// ---- States ----
 .state-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: var(--space-3);
   min-height: 60vh;
-  padding: 2rem 1.5rem;
+  padding: var(--space-8) var(--space-4);
   text-align: center;
 
-  ion-spinner {
-    margin-bottom: 1rem;
-  }
-
-  ion-icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-    opacity: 0.6;
-  }
-
   p {
-    font-size: 1.1rem;
-    color: var(--ion-text-color-step-500, #9ca4af);
-    margin: 0.5rem 0 1rem 0;
+    margin: 0;
+    font-size: 16px;
+    line-height: 24px;
+    color: var(--ink-muted);
   }
-}
 
-.loading-state {
-  ion-spinner {
-    color: var(--ion-color-primary, #3880ff);
-  }
-}
-
-.empty-state {
   ion-icon {
-    color: var(--ion-color-medium, #92949c);
-  }
-}
-
-.error-state {
-  ion-icon {
-    color: var(--ion-color-danger, #f04141);
+    font-size: 48px;
+    color: var(--ink-muted);
   }
 
   ion-button {
-    margin-top: 1rem;
-    max-width: 200px;
+    min-width: 200px;
   }
 }
 
-/* Orders list */
-.orders-list {
-  padding: 0.5rem 0;
-
-  ion-item {
-    --padding-start: 1rem;
-    --padding-end: 1rem;
-    --inner-padding-end: 0.5rem;
-    border-bottom: 1px solid var(--ion-border-color, #e0e0e0);
-
-    &:last-child {
-      border-bottom: none;
-    }
-
-    &:hover {
-      background-color: var(--ion-background-color-step-50, #f9f9f9);
-    }
-  }
+.error-state ion-icon {
+  color: var(--danger);
 }
 
-.order-item {
-  --min-height: 80px;
-  display: flex;
-  align-items: center;
-  padding: 0.75rem 1rem;
-}
-
-/* Order header (left side) */
-.order-header {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  flex: 1;
-  min-width: 0;
-}
-
-.order-number {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0;
-  color: var(--ion-text-color, #000);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.order-date {
-  font-size: 0.9rem;
-  margin: 0;
-  color: var(--ion-text-color-step-500, #9ca4af);
-}
-
-/* Order footer (right side) */
-.order-footer {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.5rem;
-  margin-left: 1rem;
-}
-
-.order-total {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--ion-color-success, #2dd36f);
-}
-
-/* Status badge */
-.status-badge {
-  font-size: 0.8rem;
-  font-weight: 500;
-  padding: 0.35rem 0.75rem;
-  border-radius: 4px;
-  display: inline-block;
-
-  &[color='success'] {
-    background-color: var(--ion-color-success-tint, #42d77d);
-    color: white;
-  }
-
-  &[color='warning'] {
-    background-color: var(--ion-color-warning-tint, #ffb946);
-    color: white;
-  }
-
-  &[color='danger'] {
-    background-color: var(--ion-color-danger-tint, #f6685c);
-    color: white;
-  }
-
-  &[color='medium'] {
-    background-color: var(--ion-color-medium-tint, #a3b3cc);
-    color: white;
-  }
-}
-
-/* Responsive adjustments */
-@media (max-width: 480px) {
-  .order-item {
-    --min-height: 70px;
-    padding: 0.5rem 0.75rem;
-  }
-
-  .order-header {
-    gap: 0.15rem;
-  }
-
-  .order-number {
-    font-size: 1rem;
-  }
-
-  .order-date {
-    font-size: 0.85rem;
-  }
-
-  .order-footer {
-    gap: 0.25rem;
-    margin-left: 0.5rem;
-  }
-
-  .order-total {
-    font-size: 1rem;
-  }
-
-  .status-badge {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
+@media (min-width: 768px) {
+  .history {
+    padding: var(--space-8);
   }
 }

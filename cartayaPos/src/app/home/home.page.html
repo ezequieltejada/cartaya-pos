@@ -1,19 +1,11 @@
-<ion-header [translucent]="true">
+<ion-header>
   <ion-toolbar>
-    <ion-title>
-      Cartaya POS
-    </ion-title>
+    <ion-title>{{ 'HOME' | translate }}</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Blank</ion-title>
-    </ion-toolbar>
-  </ion-header>
-
-  <div id="container">
-    <strong>Welcome to Cartaya POS</strong>
-  </div>
+<ion-content>
+  <main class="home">
+    <h1 class="type-display home__title">{{ 'WELCOME' | translate }}</h1>
+  </main>
 </ion-content>

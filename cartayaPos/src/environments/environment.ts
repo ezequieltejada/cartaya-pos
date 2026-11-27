@@ -9,6 +9,7 @@ export const environment = {
     dsn: 'https://9876bd9f9b6d4dce8c006bbb1bf8db22@rustrak.ezetejada.com/4',
     environment: 'development',
     tracesSampleRate: 1.0,
+    enableLogs: true, // structured logs (Rustrak "Logs"): traces + errors in development
   },
 };
 

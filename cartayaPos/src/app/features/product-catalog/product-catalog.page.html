@@ -11,50 +11,31 @@
 
 <ion-content id="product-catalog-content">
   <!-- Category Filter -->
-  <ion-item *ngIf="categoriesWithCount().length > 0" class="category-filter-item">
-    <ion-label>{{ 'PRODUCT_GRID.CATEGORY_FILTER' | translate }}</ion-label>
-    <ion-select
-      [value]="selectedCategoryId"
-      (ionChange)="onCategoryChange($event)"
-      interface="action-sheet">
-      <ion-select-option value="all">{{ 'PRODUCT_GRID.ALL_CATEGORIES' | translate }}</ion-select-option>
-      <ion-select-option *ngFor="let category of categoriesWithCount()" [value]="category.id">
-        {{ category.name | titlecase }} {{ category.productCount === 0 ? '(empty)' : '' }}
-      </ion-select-option>
-    </ion-select>
-  </ion-item>
-
-  <!-- Error banner -->
-  <ion-card *ngIf="errorMessage" color="danger" class="error-card">
-    <ion-card-content>
-      <div class="error-content">
-        <ion-icon name="alert-circle-outline"></ion-icon>
-        <div>
-          <p class="error-message">{{ errorMessage }}</p>
-          <ion-button size="small" fill="outline" (click)="retry()">
-            <ion-icon slot="start" name="refresh-outline"></ion-icon>
-            {{ 'PRODUCT_GRID.RETRY_BUTTON' | translate }}
-          </ion-button>
-        </div>
-      </div>
-    </ion-card-content>
-  </ion-card>
-
-  <!-- Printer Unavailable Banner -->
-  <ion-card *ngIf="isPrinterUnavailable" color="warning" class="printer-unavailable-card">
-    <ion-card-content>
-      <div class="printer-unavailable-content">
-        <ion-icon name="alert-circle-outline"></ion-icon>
-        <div>
-          <p class="printer-message">{{ 'PRODUCT_GRID.PRINTER_UNAVAILABLE' | translate }}</p>
-          <ion-button size="small" fill="outline" (click)="navigateToSettings()">
-            <ion-icon slot="start" name="settings-outline"></ion-icon>
-            {{ 'PRODUCT_GRID.GO_TO_SETTINGS' | translate }}
-          </ion-button>
-        </div>
-      </div>
-    </ion-card-content>
-  </ion-card>
+  <nav
+    *ngIf="categoriesWithCount().length > 0"
+    class="category-chips"
+    [attr.aria-label]="'PRODUCT_GRID.CATEGORY_FILTER' | translate"
+  >
+    <button
+      type="button"
+      class="category-chip type-label"
+      [class.category-chip--active]="selectedCategoryId === 'all'"
+      [attr.aria-pressed]="selectedCategoryId === 'all'"
+      (click)="selectCategory('all', $event)"
+    >
+      {{ 'PRODUCT_GRID.ALL_CATEGORIES' | translate }}
+    </button>
+    <button
+      *ngFor="let category of categoriesWithCount()"
+      type="button"
+      class="category-chip type-label"
+      [class.category-chip--active]="selectedCategoryId === category.id"
+      [attr.aria-pressed]="selectedCategoryId === category.id"
+      (click)="selectCategory(category.id, $event)"
+    >
+      {{ category.name }}<ng-container *ngIf="category.productCount === 0"> · {{ 'PRODUCT_GRID.EMPTY_CATEGORY' | translate }}</ng-container>
+    </button>
+  </nav>
 
   <!-- Loading state -->
   <div *ngIf="isLoading" class="loading-container">

@@ -243,7 +243,7 @@ describe('LanguageService', () => {
 
       await service.setLanguage('invalid_lang');
 
-      expect(console.warn).toHaveBeenCalledWith('Unsupported language: invalid_lang, falling back to \'en\'');
+      expect(console.warn).toHaveBeenCalledWith('[language]', 'Unsupported language, falling back to default', { language: 'invalid_lang', fallback: 'en' });
     });
 
     it('should set loading state during language change', async () => {

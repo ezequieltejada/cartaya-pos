@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 import { TenantSettings } from '../models/tenant-settings.model';
 import { UserSettings } from '../models/user.model';
 import { parseApiError } from '../utils/api-error';
+import { LoggerService } from './logger.service';
 
 /**
  * Settings Service
@@ -17,6 +18,7 @@ import { parseApiError } from '../utils/api-error';
 })
 export class SettingsService {
   private httpClient = inject(HttpClient);
+  private readonly log = inject(LoggerService).scope('settings');
   private readonly API_URL = `${environment.apiUrl}/api`;
 
   // Writable signals
@@ -50,7 +52,7 @@ export class SettingsService {
           this.isLoading.set(false);
           // Store the stable API error code; screens translate it via API_ERRORS.*
           this.error.set(parseApiError(error).code);
-          console.error('Failed to fetch tenant settings:', error);
+          this.log.error('Failed to fetch tenant settings', error);
           throw error;
         })
       );
@@ -148,7 +150,7 @@ export class SettingsService {
           this.userSettings.set({ ...currentSettings, preferredLanguage: settings.preferredLanguage });
         }),
         catchError((error) => {
-          console.error('Failed to update user language preference:', error);
+          this.log.error('Failed to update user language preference', error);
           throw error;
         })
       );
@@ -167,7 +169,7 @@ export class SettingsService {
           this.userSettings.set(settings);
         }),
         catchError((error) => {
-          console.error('Failed to fetch user settings:', error);
+          this.log.error('Failed to fetch user settings', error);
           throw error;
         })
       );

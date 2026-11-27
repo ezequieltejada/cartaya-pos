@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Storage } from '@ionic/storage-angular';
+import { LoggerService } from './logger.service';
 
 /**
  * Type-safe wrapper around Ionic Storage
@@ -10,6 +11,7 @@ import { Storage } from '@ionic/storage-angular';
   providedIn: 'root',
 })
 export class StorageService {
+  private readonly log = inject(LoggerService).scope('storage');
   private initialized = false;
   private storage = inject(Storage);
 
@@ -49,7 +51,7 @@ export class StorageService {
     try {
       return JSON.parse(value) as T;
     } catch (e) {
-      console.error(`Failed to parse stored value for key ${key}:`, e);
+      this.log.error('Failed to parse stored value', e, { key });
       return null;
     }
   }

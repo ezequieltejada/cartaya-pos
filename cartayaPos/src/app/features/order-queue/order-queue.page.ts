@@ -1,24 +1,22 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import {
-  IonBadge,
   IonButton, IonContent, IonIcon,
-  IonItem,
-  IonLabel,
-  IonList, IonRefresher,
+  IonRefresher,
   IonRefresherContent,
   IonSpinner, LoadingController,
-  ToastController
 } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
-import { chevronDownCircleOutline, refreshOutline, syncOutline, trashOutline } from 'ionicons/icons';
+import { chevronDownCircleOutline, cloudOfflineOutline, refreshOutline, syncOutline, trashOutline } from 'ionicons/icons';
 import { NetworkService } from '../../core/services/network.service';
+import { LoggerService } from '../../core/services/logger.service';
 import { OrderQueueService, QueuedOrder } from '../../core/services/order-queue.service';
 import { SyncCoordinatorService } from '../../core/services/sync-coordinator.service';
 import { shortOrderRef } from '../../core/utils/order-ref';
 import { MoneyPipe } from '../../shared/pipes/money.pipe';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { NotificationService } from '../../core/services/notification.service';
 
 @Component({
   selector: 'app-order-queue',
@@ -27,10 +25,6 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
     CommonModule,
     TranslateModule,
     IonContent,
-    IonList,
-    IonItem,
-    IonLabel,
-    IonBadge,
     IonButton,
     IonIcon,
     IonSpinner,
@@ -47,8 +41,9 @@ export class OrderQueuePage {
   syncCoordinator = inject(SyncCoordinatorService);
   networkService = inject(NetworkService);
   private loadingCtrl = inject(LoadingController);
-  private toastCtrl = inject(ToastController);
+  private notifications = inject(NotificationService);
   private translate = inject(TranslateService);
+  private readonly log = inject(LoggerService).scope('order-queue');
 
   readonly shortRef = shortOrderRef;
 
@@ -69,7 +64,7 @@ export class OrderQueuePage {
   trashOutline = trashOutline;
 
   constructor() {
-    addIcons({ refreshOutline, syncOutline, trashOutline, chevronDownCircleOutline });
+    addIcons({ refreshOutline, syncOutline, trashOutline, chevronDownCircleOutline, cloudOfflineOutline });
   }
 
   /**
@@ -87,12 +82,12 @@ export class OrderQueuePage {
    */
   async retryAll(): Promise<void> {
     if (!this.networkService.getIsOnline()) {
-      this.showToast('Cannot retry while offline', 'warning');
+      this.showToast(this.translate.instant('ORDER_QUEUE.CANNOT_RETRY_OFFLINE'), 'warning');
       return;
     }
 
     const loading = await this.loadingCtrl.create({
-      message: 'Retrying all orders...',
+      message: this.translate.instant('ORDER_QUEUE.RETRYING_ALL'),
       spinner: 'crescent',
     });
     await loading.present();
@@ -102,17 +97,23 @@ export class OrderQueuePage {
       await loading.dismiss();
 
       if (result.successful === result.total) {
-        this.showToast(`All ${result.successful} orders synced!`, 'success');
+        this.showToast(
+          this.translate.instant('ORDER_QUEUE.ALL_SYNCED', { count: result.successful }),
+          'success'
+        );
       } else {
         this.showToast(
-          `${result.successful}/${result.total} orders synced`,
+          this.translate.instant('ORDER_QUEUE.PARTIAL_SYNCED', {
+            successful: result.successful,
+            total: result.total,
+          }),
           result.successful > 0 ? 'warning' : 'danger'
         );
       }
     } catch (error) {
       await loading.dismiss();
-      this.showToast('Retry failed', 'danger');
-      console.error('Retry all failed:', error);
+      this.showToast(this.translate.instant('ORDER_QUEUE.RETRY_FAILED'), 'danger');
+      this.log.error('Retry all failed', error);
     }
   }
 
@@ -121,12 +122,12 @@ export class OrderQueuePage {
    */
   async retryOne(order: QueuedOrder): Promise<void> {
     if (!this.networkService.getIsOnline()) {
-      this.showToast('Cannot retry while offline', 'warning');
+      this.showToast(this.translate.instant('ORDER_QUEUE.CANNOT_RETRY_OFFLINE'), 'warning');
       return;
     }
 
     const loading = await this.loadingCtrl.create({
-      message: 'Retrying order...',
+      message: this.translate.instant('ORDER_QUEUE.RETRYING_ONE'),
       spinner: 'crescent',
     });
     await loading.present();
@@ -136,14 +137,14 @@ export class OrderQueuePage {
       await loading.dismiss();
 
       if (success) {
-        this.showToast('Order synced successfully!', 'success');
+        this.showToast(this.translate.instant('ORDER_QUEUE.ORDER_SYNCED'), 'success');
       } else {
-        this.showToast('Retry failed', 'danger');
+        this.showToast(this.translate.instant('ORDER_QUEUE.RETRY_FAILED'), 'danger');
       }
     } catch (error) {
       await loading.dismiss();
-      this.showToast('Retry failed', 'danger');
-      console.error('Retry one failed:', error);
+      this.showToast(this.translate.instant('ORDER_QUEUE.RETRY_FAILED'), 'danger');
+      this.log.error('Retry one failed', error);
     }
   }
 
@@ -153,10 +154,10 @@ export class OrderQueuePage {
   async removeOrder(order: QueuedOrder): Promise<void> {
     try {
       await this.queueService.remove(order.id);
-      this.showToast('Order removed from queue', 'success');
+      this.showToast(this.translate.instant('ORDER_QUEUE.ORDER_REMOVED'), 'success');
     } catch (error) {
-      this.showToast('Failed to remove order', 'danger');
-      console.error('Remove failed:', error);
+      this.showToast(this.translate.instant('ORDER_QUEUE.REMOVE_FAILED'), 'danger');
+      this.log.error('Remove failed', error);
     }
   }
 
@@ -178,6 +179,18 @@ export class OrderQueuePage {
     }
   }
 
+  /** Badge variant: pending/syncing neutral, failed danger, synced success. */
+  statusClass(status: QueuedOrder['status']): 'neutral' | 'danger' | 'success' {
+    switch (status) {
+      case 'out-of-sync':
+        return 'danger';
+      case 'synced':
+        return 'success';
+      default:
+        return 'neutral';
+    }
+  }
+
   /**
    * Get translated status text
    */
@@ -196,13 +209,8 @@ export class OrderQueuePage {
   /**
    * Show toast notification
    */
-  private async showToast(message: string, color: string): Promise<void> {
-    const toast = await this.toastCtrl.create({
-      message,
-      duration: 3000,
-      color,
-      position: 'bottom',
-    });
-    await toast.present();
+  private async showToast(message: string, color: 'success' | 'danger' | 'warning'): Promise<void> {
+    const kind = color === 'danger' ? 'error' : color;
+    await this.notifications[kind](message);
   }
 }

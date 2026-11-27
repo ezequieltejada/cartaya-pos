@@ -469,7 +469,7 @@ describe('OfflineInterceptor', () => {
           expect(toastController.create).toHaveBeenCalledWith(
             jasmine.objectContaining({
               message: 'COMMON.NETWORK.ORDER_QUEUED',
-              position: 'bottom',
+              position: 'top',
               color: 'warning',
             })
           );

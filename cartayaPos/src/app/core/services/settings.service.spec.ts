@@ -197,7 +197,8 @@ describe('SettingsService', () => {
         service.setUserLanguage('es').subscribe({
           error: () => {
             expect(console.error).toHaveBeenCalledWith(
-              'Failed to update user language preference:',
+              '[settings]',
+              'Failed to update user language preference',
               jasmine.any(Object)
             );
           }
@@ -265,7 +266,8 @@ describe('SettingsService', () => {
         service.fetchUserSettings().subscribe({
           error: () => {
             expect(console.error).toHaveBeenCalledWith(
-              'Failed to fetch user settings:',
+              '[settings]',
+              'Failed to fetch user settings',
               jasmine.any(Object)
             );
           }

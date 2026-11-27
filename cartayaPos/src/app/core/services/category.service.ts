@@ -6,6 +6,7 @@ import { environment } from '../../../environments/environment';
 import { Category } from '../models/category.model';
 import { Product } from '../models/product.model';
 import { translateLoadError } from '../utils/api-error';
+import { LoggerService } from './logger.service';
 import { StorageService } from './storage.service';
 import { TenantService } from './tenant.service';
 
@@ -27,6 +28,7 @@ interface CategoryCache {
   providedIn: 'root',
 })
 export class CategoryService {
+  private readonly log = inject(LoggerService).scope('category');
   private httpClient = inject(HttpClient);
   // Resolved lazily: TranslateService loads its files over HttpClient (and its
   // interceptors), so injecting it eagerly here risks a circular dependency.
@@ -85,7 +87,7 @@ export class CategoryService {
 
       return cached.categories;
     } catch (e) {
-      console.debug('Failed to retrieve category cache:', e);
+      this.log.trace('Failed to retrieve category cache', { error: String(e) });
       return null;
     }
   }
@@ -106,7 +108,7 @@ export class CategoryService {
       };
       await this.storageService.set(key, cache);
     } catch (e) {
-      console.debug('Failed to save category cache:', e);
+      this.log.trace('Failed to save category cache', { error: String(e) });
     }
   }
 
@@ -133,7 +135,7 @@ export class CategoryService {
         }
       }
     } catch (e) {
-      console.debug('Failed to clear category cache:', e);
+      this.log.trace('Failed to clear category cache', { error: String(e) });
     }
   }
 
@@ -153,7 +155,7 @@ export class CategoryService {
     const activeTenantId = tenantId || this.tenantService.getCurrentTenantId();
 
     if (!activeTenantId) {
-      console.error('No tenant ID available for fetching categories');
+      this.log.error('No tenant ID available for fetching categories');
       return of([]);
     }
 
@@ -182,7 +184,7 @@ export class CategoryService {
               void this.setCache(activeTenantId, data);
             }),
             catchError((error) => {
-              console.error('Failed to fetch categories:', error);
+              this.log.error('Failed to fetch categories', error);
               this.isLoading.set(false);
 
               const errorMessage = this.getErrorMessage(error);

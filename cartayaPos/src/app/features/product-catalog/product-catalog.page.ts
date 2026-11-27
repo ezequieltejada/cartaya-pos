@@ -1,25 +1,20 @@
 import { ScrollingModule } from '@angular/cdk/scrolling';
-import { CommonModule, TitleCasePipe } from '@angular/common';
-import { Component, computed, inject, OnDestroy, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component, computed, effect, inject, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
   IonBadge,
-  IonButton, IonCard,
-  IonCardContent,
+  IonButton,
   IonCol,
   IonContent,
   IonFab,
   IonFabButton,
   IonGrid, IonIcon,
-  IonItem,
-  IonLabel,
   IonRouterOutlet,
   IonRow,
   IonSearchbar,
-  IonSelect,
-  IonSelectOption,
-  IonSpinner, ToastController
+  IonSpinner
 } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
@@ -34,9 +29,11 @@ import { PosService } from '../../core/services/pos.service';
 import { ProductService } from '../../core/services/product.service';
 import { SettingsService } from '../../core/services/settings.service';
 import { TenantService } from '../../core/services/tenant.service';
+import { LoggerService } from '../../core/services/logger.service';
 import { Printer } from '../../services/printer';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { ProductCardComponent } from './components/product-card/product-card.component';
+import { NotificationService } from '../../core/services/notification.service';
 
 /**
  * ProductCatalogPage Component
@@ -66,7 +63,6 @@ import { ProductCardComponent } from './components/product-card/product-card.com
     FormsModule,
     ScrollingModule,
     TranslateModule,
-    TitleCasePipe,
     IonContent,
     IonButton,
     IonIcon,
@@ -76,14 +72,8 @@ import { ProductCardComponent } from './components/product-card/product-card.com
     IonCol,
     IonSpinner,
     IonSearchbar,
-    IonCard,
-    IonCardContent,
     IonFab,
     IonFabButton,
-    IonItem,
-    IonLabel,
-    IonSelect,
-    IonSelectOption,
     PageHeaderComponent,
     ProductCardComponent,
   ],
@@ -91,13 +81,14 @@ import { ProductCardComponent } from './components/product-card/product-card.com
   styleUrls: ['./product-catalog.page.scss'],
 })
 export class ProductCatalogPage implements OnInit, OnDestroy {
+  private readonly log = inject(LoggerService).scope('product-catalog');
   private productService = inject(ProductService);
   private categoryService = inject(CategoryService);
   private tenantService = inject(TenantService);
   private settingsService = inject(SettingsService);
   private posService = inject(PosService);
   private router = inject(Router);
-  private toastController = inject(ToastController);
+  private notifications = inject(NotificationService);
   private modifierService = inject(ModifierService);
   private translate = inject(TranslateService);
   protected printerService = inject(Printer);
@@ -108,7 +99,42 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
   constructor() {
     // Register ionicons for printer unavailable message
     addIcons({alertCircleOutline,refreshOutline,settingsOutline,searchOutline,cartOutline});
+
+    // Persistent notices (as toasts): load error with Retry, printer unavailable with a settings shortcut.
+    effect(() => {
+      const error = this.errorMessage;
+      if (!error) {
+        void this.notifications.dismiss(ProductCatalogPage.ERROR_NOTICE_ID);
+        return;
+      }
+      void this.notifications.error(error, {
+        id: ProductCatalogPage.ERROR_NOTICE_ID,
+        duration: 0,
+        action: { text: this.translate.instant('PRODUCT_GRID.RETRY_BUTTON'), handler: () => this.retry() },
+        dismissText: this.translate.instant('COMMON.NETWORK.DISMISS'),
+      });
+    });
+
+    effect(() => {
+      if (!this.isPrinterUnavailable) {
+        void this.notifications.dismiss(ProductCatalogPage.PRINTER_NOTICE_ID);
+        return;
+      }
+      void this.notifications.warning(this.translate.instant('PRODUCT_GRID.PRINTER_UNAVAILABLE'), {
+        id: ProductCatalogPage.PRINTER_NOTICE_ID,
+        duration: 0,
+        icon: 'print-outline',
+        action: {
+          text: this.translate.instant('PRODUCT_GRID.GO_TO_SETTINGS'),
+          handler: () => this.navigateToSettings(),
+        },
+        dismissText: this.translate.instant('COMMON.NETWORK.DISMISS'),
+      });
+    });
   }
+
+  private static readonly ERROR_NOTICE_ID = 'catalog-error';
+  private static readonly PRINTER_NOTICE_ID = 'catalog-printer-unavailable';
 
   /**
    * Computed signal for reactive cart item count
@@ -154,7 +180,7 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
     const tenantId = this.tenantService.getCurrentTenantId();
 
     if (!tenantId) {
-      console.warn('No tenant selected when attempting to load settings');
+      this.log.warn('No tenant selected when loading settings');
       return;
     }
 
@@ -169,7 +195,7 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
     const tenantId = this.tenantService.getCurrentTenantId();
 
     if (!tenantId) {
-      console.warn('No tenant selected when attempting to load categories');
+      this.log.warn('No tenant selected when loading categories');
       return;
     }
 
@@ -204,7 +230,7 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
     const tenantId = this.tenantService.getCurrentTenantId();
 
     if (!tenantId) {
-      console.error('No tenant selected. Redirecting to tenant selection.');
+      this.log.error('No tenant selected, redirecting to tenant selection');
       this.router.navigate(['/']);
       return;
     }
@@ -296,8 +322,14 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
    * @param event - IonChange event from IonSelect
    */
   onCategoryChange(event: any): void {
-    const categoryId = event.detail.value;
+    this.selectCategory(event.detail.value);
+  }
+
+  /** Select a category chip ('all' clears the filter). */
+  selectCategory(categoryId: string, event?: Event): void {
     this.productService.setSelectedCategoryId(categoryId);
+    // Keep the chosen chip in view when the row scrolls (many categories on a phone).
+    (event?.currentTarget as HTMLElement | null)?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
   }
 
   /**
@@ -319,15 +351,10 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
    * @param product - The selected product
    */
    async onProductTap(product: Product): Promise<void> {
-     // Log for analytics (future)
-     console.log('Product selected:', product.id, product.name);
-     
-     // DEBUG: Step 1 - Product Selection
-     console.debug('STEP 1 - Product selected from catalog:', {
+     this.log.trace('Product selected', {
        productId: product.id,
        productName: product.name,
        price: product.defaultPrice,
-       fullProduct: JSON.stringify(product, null, 2)
      });
 
      // Check if product has modifiers
@@ -340,7 +367,7 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
        });
      } else {
        // Add directly to order without modifiers
-       console.debug('STEP 1b - Adding product directly (no modifiers):', {
+       this.log.trace('Adding product directly without modifiers', {
          productId: product.id,
          defaultPrice: product.defaultPrice
        });
@@ -368,7 +395,7 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
       const pos = this.posService.getSelectedPos();
 
       if (!tenantId || !pos) {
-        console.warn('Cannot check modifiers: missing tenantId or PoS');
+        this.log.warn('Cannot check modifiers, missing tenantId or PoS');
         return false;
       }
 
@@ -385,10 +412,7 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
 
       return hasModifiers;
     } catch (error) {
-      console.error(
-        `Failed to check modifiers for product ${product.id}:`,
-        error
-      );
+      this.log.error('Failed to check product modifiers', error, { productId: product.id });
       // On error, assume no modifiers to allow graceful degradation
       this.modifierCheckCache.set(product.id, false);
       return false;
@@ -400,14 +424,7 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
    * @param message - Success message to display
    */
   private async showSuccessToast(message: string): Promise<void> {
-    const toast = await this.toastController.create({
-      message,
-      duration: 2000,
-      position: 'top',
-      color: 'success',
-      icon: 'checkmark-circle-outline',
-    });
-    await toast.present();
+    await this.notifications.success(message);
   }
 
   /**
@@ -439,6 +456,8 @@ export class ProductCatalogPage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    void this.notifications.dismiss(ProductCatalogPage.ERROR_NOTICE_ID);
+    void this.notifications.dismiss(ProductCatalogPage.PRINTER_NOTICE_ID);
     // Restore the swipe-back gesture when leaving this page
     if (this.ionRouterOutlet) {
       this.ionRouterOutlet.swipeGesture = true;

@@ -1,24 +1,16 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
     IonBackButton,
     IonButton,
     IonButtons,
     IonContent,
-    IonFab,
-    IonFabButton,
     IonHeader,
     IonIcon,
-    IonItem,
-    IonItemDivider,
-    IonLabel,
-    IonList,
     IonSpinner,
-    IonText,
     IonTitle,
     IonToolbar,
-    ToastController,
 } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { add, checkmark, remove } from 'ionicons/icons';
@@ -33,6 +25,7 @@ import { OrderService } from '../../core/services/order.service';
 import { PosService } from '../../core/services/pos.service';
 import { ProductService } from '../../core/services/product.service';
 import { TenantService } from '../../core/services/tenant.service';
+import { NotificationService } from '../../core/services/notification.service';
 
 /**
  * Default maximum quantity per modifier when the modifier does not define
@@ -60,210 +53,120 @@ export const DEFAULT_MAX_MODIFIER_QUANTITY = 10;
     IonBackButton,
     IonTitle,
     IonContent,
-    IonList,
-    IonItem,
-    IonLabel,
     IonButton,
     IonIcon,
     IonSpinner,
-    IonText,
-    IonFab,
-    IonFabButton,
-    IonItemDivider,
   ],
   template: `
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button defaultHref="/products"></ion-back-button>
+          <ion-back-button defaultHref="/products" [text]="'MODIFIERS.BACK_BUTTON' | translate"></ion-back-button>
         </ion-buttons>
-        <ion-title>{{ product()?.name }}</ion-title>
+        <ion-title>{{ 'MODIFIERS.TITLE' | translate }}</ion-title>
       </ion-toolbar>
     </ion-header>
 
-    <ion-content class="ion-padding">
-      <!-- Loading State -->
-      <div *ngIf="isLoading()" class="loading-container">
-        <ion-spinner></ion-spinner>
-        <p>{{ 'MODIFIERS.LOADING' | translate }}</p>
-      </div>
-
-      <!-- Error State -->
-      <div *ngIf="error() && !isLoading()" class="error-container">
-        <ion-text color="danger">
-          <h2>{{ 'MODIFIERS.ERROR_TITLE' | translate }}</h2>
-          <p>{{ error() }}</p>
-        </ion-text>
-        <ion-button expand="block" (click)="retryFetchModifiers()">
-          {{ 'MODIFIERS.RETRY_BUTTON' | translate }}
-        </ion-button>
-        <ion-button expand="block" fill="outline" (click)="addWithoutModifiers()">
-          {{ 'MODIFIERS.CONTINUE_WITHOUT' | translate }}
-        </ion-button>
-      </div>
-
-      <!-- Empty State -->
-      <div *ngIf="!isLoading() && !error() && modifiersList().length === 0" class="empty-state">
-        <ion-text>
-          <h2>{{ 'MODIFIERS.NO_MODIFIERS' | translate }}</h2>
-          <p>{{ 'MODIFIERS.NO_MODIFIERS_MESSAGE' | translate }}</p>
-        </ion-text>
-        <ion-button expand="block" (click)="addWithoutModifiers()">
-          {{ 'MODIFIERS.ADD_TO_ORDER' | translate }}
-        </ion-button>
-      </div>
-
-      <!-- Modifiers List -->
-      <ion-list *ngIf="!isLoading() && !error() && modifiersList().length > 0">
-        <ion-item-divider>
-          <ion-label>{{ 'MODIFIERS.SELECT_LABEL' | translate }}</ion-label>
-        </ion-item-divider>
-
-        <ion-item
-          *ngFor="let modifier of modifiersList()"
-          class="modifier-item"
-        >
-          <ion-label>
-            <h2>{{ modifier.name }}</h2>
-            <p [class.positive]="modifier.priceDelta > 0" [class.negative]="modifier.priceDelta < 0">
-              {{ formatPriceDelta(modifier.priceDelta) }}
-            </p>
-            <!-- Display included quantity text when present -->
-            <p class="included-quantity-info" *ngIf="getIncludedQuantityText(modifier)">
-              {{ getIncludedQuantityText(modifier) }}
-            </p>
-          </ion-label>
-
-          <div slot="end" class="quantity-controls">
-            <ion-button
-              fill="outline"
-              size="small"
-              [disabled]="isDecrementDisabled(modifier)"
-              (click)="decrementModifier(modifier.id)"
-              [attr.aria-label]="'Decrease ' + modifier.name"
-            >
-              <ion-icon slot="icon-only" [icon]="remove"></ion-icon>
-            </ion-button>
-
-            <span class="quantity-display" [attr.aria-live]="'polite'">
-              {{ selectedModifiers().get(modifier.id) || 0 }}
-            </span>
-
-            <!-- Display quantity breakdown when selected -->
-            <span class="quantity-breakdown" 
-                  [attr.aria-live]="'polite'"
-                  *ngIf="getQuantityBreakdown(modifier)">
-              ({{ getQuantityBreakdown(modifier) }})
-            </span>
-
-            <ion-button
-              fill="outline"
-              size="small"
-              [disabled]="isIncrementDisabled(modifier)"
-              (click)="incrementModifier(modifier.id)"
-              [attr.aria-label]="'Increase ' + modifier.name"
-            >
-              <ion-icon slot="icon-only" [icon]="add"></ion-icon>
-            </ion-button>
+    <ion-content>
+      <main class="mods">
+        <!-- Product summary -->
+        <header class="mods__product" *ngIf="product() as p">
+          <div class="mods__product-text">
+            <h1 class="type-display mods__name">{{ p.name }}</h1>
+            <p class="type-body-sm mods__description" *ngIf="p.description">{{ p.description }}</p>
           </div>
-        </ion-item>
-      </ion-list>
+        </header>
+
+        <!-- Loading State -->
+        <div *ngIf="isLoading()" class="mods__state" role="status">
+          <ion-spinner></ion-spinner>
+          <p class="type-body">{{ 'MODIFIERS.LOADING' | translate }}</p>
+        </div>
+
+        <!-- Error State -->
+        <div *ngIf="error() && !isLoading()" class="mods__state" role="alert">
+          <h2 class="type-heading mods__error-title">{{ 'MODIFIERS.ERROR_TITLE' | translate }}</h2>
+          <p class="type-body mods__muted">{{ error() }}</p>
+          <ion-button expand="block" (click)="retryFetchModifiers()">
+            {{ 'MODIFIERS.RETRY_BUTTON' | translate }}
+          </ion-button>
+          <ion-button expand="block" fill="outline" (click)="addWithoutModifiers()">
+            {{ 'MODIFIERS.CONTINUE_WITHOUT' | translate }}
+          </ion-button>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="!isLoading() && !error() && modifiersList().length === 0" class="mods__state">
+          <h2 class="type-heading">{{ 'MODIFIERS.NO_MODIFIERS' | translate }}</h2>
+          <p class="type-body mods__muted">{{ 'MODIFIERS.NO_MODIFIERS_MESSAGE' | translate }}</p>
+          <ion-button expand="block" (click)="addWithoutModifiers()">
+            {{ 'MODIFIERS.ADD_TO_ORDER' | translate }}
+          </ion-button>
+        </div>
+
+        <!-- Modifiers list -->
+        <section *ngIf="!isLoading() && !error() && modifiersList().length > 0" class="mods__section">
+          <h2 class="type-label mods__section-title">{{ 'MODIFIERS.SELECT_LABEL' | translate }}</h2>
+
+          <ul class="mods__list">
+            <li
+              *ngFor="let modifier of modifiersList()"
+              class="mod"
+              [class.mod--active]="(selectedModifiers().get(modifier.id) || 0) > 0"
+            >
+              <div class="mod__info">
+                <span class="type-title mod__name">{{ modifier.name }}</span>
+                <span class="type-body-sm mod__price" [class.mod__price--negative]="modifier.priceDelta < 0">
+                  {{ formatPriceDelta(modifier.priceDelta) }}
+                </span>
+                <span class="type-body-sm mod__included" *ngIf="getIncludedQuantityText(modifier)">
+                  {{ getIncludedQuantityText(modifier) }}
+                </span>
+                <span class="type-body-sm mod__breakdown" aria-live="polite" *ngIf="getQuantityBreakdown(modifier)">
+                  {{ getQuantityBreakdown(modifier) }}
+                </span>
+              </div>
+
+              <div class="stepper" role="group" [attr.aria-label]="modifier.name">
+                <button
+                  type="button"
+                  class="stepper__btn"
+                  [disabled]="isDecrementDisabled(modifier)"
+                  (click)="decrementModifier(modifier.id)"
+                  [attr.aria-label]="('MODIFIERS.DECREASE' | translate) + ' ' + modifier.name"
+                >
+                  <ion-icon [icon]="remove" aria-hidden="true"></ion-icon>
+                </button>
+                <span class="stepper__value type-price" aria-live="polite">{{ selectedModifiers().get(modifier.id) || 0 }}</span>
+                <button
+                  type="button"
+                  class="stepper__btn"
+                  [disabled]="isIncrementDisabled(modifier)"
+                  (click)="incrementModifier(modifier.id)"
+                  [attr.aria-label]="('MODIFIERS.INCREASE' | translate) + ' ' + modifier.name"
+                >
+                  <ion-icon [icon]="add" aria-hidden="true"></ion-icon>
+                </button>
+              </div>
+            </li>
+          </ul>
+        </section>
+      </main>
     </ion-content>
 
-    <!-- Floating Action Button (FAB) -->
-    <ion-fab
-      *ngIf="!isLoading() && !error() && modifiersList().length > 0"
-      slot="fixed"
-      vertical="bottom"
-      horizontal="end"
-    >
-      <ion-fab-button
-        (click)="confirmSelection()"
-        [attr.aria-label]="'Confirm selection and add to order'"
-      >
-        <ion-icon [icon]="checkmarkIcon"></ion-icon>
-      </ion-fab-button>
-    </ion-fab>
+    <!-- Sticky confirm bar -->
+    <footer class="mods__bar" *ngIf="!isLoading() && !error() && modifiersList().length > 0">
+      <div class="mods__total">
+        <span class="type-label mods__muted">{{ 'MODIFIERS.TOTAL_LABEL' | translate }}</span>
+        <span class="type-price mods__total-value">{{ formatAmount(totalAmount()) }}</span>
+      </div>
+      <ion-button class="mods__confirm" (click)="confirmSelection()">
+        <ion-icon slot="start" [icon]="checkmarkIcon"></ion-icon>
+        {{ 'MODIFIERS.CONFIRM_BUTTON' | translate }}
+      </ion-button>
+    </footer>
   `,
-  styles: [
-    `
-      .loading-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 300px;
-        gap: 16px;
-      }
-
-      .error-container {
-        padding: 24px 0;
-        text-align: center;
-      }
-
-      .empty-state {
-        padding: 24px 0;
-        text-align: center;
-      }
-
-      .modifier-item {
-        --padding-start: 16px;
-        --padding-end: 8px;
-      }
-
-      .quantity-controls {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        min-width: fit-content;
-      }
-
-      .quantity-display {
-        min-width: 32px;
-        text-align: center;
-        font-weight: 600;
-        font-size: 18px;
-      }
-
-      .quantity-breakdown {
-        display: inline-block;
-        margin-left: 4px;
-        font-size: 14px;
-        color: var(--ion-color-medium, #92949c);
-        font-weight: 500;
-      }
-
-      .included-quantity-info {
-        font-size: 13px;
-        color: var(--ion-color-success, #2dd36f);
-        font-weight: 500;
-        margin: 4px 0 0 0;
-      }
-
-      ion-button {
-        --padding-start: 8px;
-        --padding-end: 8px;
-        min-width: 44px;
-        min-height: 44px;
-      }
-
-      .positive {
-        color: var(--ion-color-success, #2dd36f);
-      }
-
-      .negative {
-        color: var(--ion-color-warning, #ffc409);
-      }
-
-      ion-fab-button {
-        --padding-start: 0;
-        --padding-end: 0;
-        width: 56px;
-        height: 56px;
-        --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      }
-    `,
-  ],
+  styleUrl: './modifiers.page.scss',
 })
 export class ModifiersPage implements OnInit, OnDestroy {
   private activatedRoute = inject(ActivatedRoute);
@@ -273,7 +176,7 @@ export class ModifiersPage implements OnInit, OnDestroy {
   private productService = inject(ProductService);
   private tenantService = inject(TenantService);
   private posService = inject(PosService);
-  private toastController = inject(ToastController);
+  private notifications = inject(NotificationService);
   private menuService = inject(MenuService);
   private translate = inject(TranslateService);
   private moneyService = inject(MoneyService);
@@ -293,6 +196,21 @@ export class ModifiersPage implements OnInit, OnDestroy {
   readonly add = add;
   readonly remove = remove;
   readonly checkmarkIcon = checkmark;
+
+  /** Base price + modifier charges (priceDelta x quantity above the included amount). */
+  readonly totalAmount = computed(() => {
+    const base = this.product()?.defaultPrice?.amount ?? 0;
+    const extras = this.modifiersList().reduce((sum, modifier) => {
+      const qty = this.selectedModifiers().get(modifier.id) || 0;
+      const billable = Math.max(0, qty - (modifier.includedQuantity ?? 0));
+      return sum + modifier.priceDelta * billable;
+    }, 0);
+    return base + extras;
+  });
+
+  formatAmount(amount: number): string {
+    return this.moneyService.format(amount);
+  }
 
   ngOnInit(): void {
     this.initializePage();
@@ -670,18 +588,6 @@ export class ModifiersPage implements OnInit, OnDestroy {
   private async showSuccessToast(): Promise<void> {
     const messageKey = this.isEditing() ? 'MODIFIERS.ITEM_UPDATED' : 'MODIFIERS.ITEM_ADDED';
     const message = this.translate.instant(messageKey);
-    const toast = await this.toastController.create({
-      message,
-      duration: 2000,
-      position: 'top',
-      color: 'success',
-      buttons: [
-        {
-          text: 'Close',
-          role: 'cancel',
-        },
-      ],
-    });
-    await toast.present();
+    await this.notifications.success(message);
   }
 }

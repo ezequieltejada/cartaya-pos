@@ -7,7 +7,7 @@ import {
 } from '@angular/common/http';
 import { Injector, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { ToastController } from '@ionic/angular/standalone';
+import { NotificationService } from '../services/notification.service';
 import { TranslateService } from '@ngx-translate/core';
 import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { catchError, filter, switchMap, take } from 'rxjs/operators';
@@ -33,7 +33,7 @@ export const authInterceptor: HttpInterceptorFn = (
 ): Observable<HttpEvent<unknown>> => {
   const authService = inject(AuthService);
   const router = inject(Router);
-  const toastController = inject(ToastController);
+  const notifications = inject(NotificationService);
   const injector = inject(Injector);
 
   // Skip auth header for auth endpoints (login, refresh, etc.)
@@ -57,7 +57,7 @@ export const authInterceptor: HttpInterceptorFn = (
     catchError((error: HttpErrorResponse) => {
       if (error.status === 401 && !isAuthEndpoint) {
         // Access token expired, attempt to refresh
-        return handle401Error(authReq, next, authService, router, toastController, injector);
+        return handle401Error(authReq, next, authService, router, notifications, injector);
       }
 
       return throwError(() => error);
@@ -74,7 +74,7 @@ function handle401Error(
   next: HttpHandlerFn,
   authService: AuthService,
   router: Router,
-  toastController: ToastController,
+  notifications: NotificationService,
   injector: Injector
 ): Observable<HttpEvent<unknown>> {
   if (!isRefreshing) {
@@ -87,7 +87,7 @@ function handle401Error(
       // No refresh token available, clear session
       isRefreshing = false;
       authService.clearSession();
-      showSessionExpiredToast(toastController, injector);
+      showSessionExpiredToast(notifications, injector);
       router.navigate(['/auth/login'], { replaceUrl: true });
       return throwError(() => new Error('No refresh token available'));
     }
@@ -112,7 +112,7 @@ function handle401Error(
         
         // Refresh failed, clear session and redirect
         authService.clearSession();
-        showSessionExpiredToast(toastController, injector);
+        showSessionExpiredToast(notifications, injector);
         router.navigate(['/auth/login'], { replaceUrl: true });
         
         return throwError(() => error);
@@ -140,15 +140,6 @@ function handle401Error(
 /**
  * Show toast notification for session expiration
  */
-function showSessionExpiredToast(toastController: ToastController, injector: Injector): void {
-  toastController
-    .create({
-      message: injector.get(TranslateService).instant('API_ERRORS.SESSION_EXPIRED'),
-      duration: 3000,
-      position: 'bottom',
-      color: 'warning',
-    })
-    .then((toast) => {
-      toast.present();
-    });
+function showSessionExpiredToast(notifications: NotificationService, injector: Injector): void {
+  void notifications.warning(injector.get(TranslateService).instant('API_ERRORS.SESSION_EXPIRED'));
 }

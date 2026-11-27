@@ -5,15 +5,9 @@ import { Router } from '@angular/router';
 import {
     IonButton,
     IonContent,
-    IonHeader,
-    IonItem,
-    IonLabel,
     IonRadio,
     IonRadioGroup,
     IonSpinner,
-    IonText,
-    IonTitle,
-    IonToolbar,
 } from '@ionic/angular/standalone';
 import { TranslateModule } from '@ngx-translate/core';
 import { Pos } from '../../core/models/pos.model';
@@ -28,16 +22,10 @@ import { PosService } from '../../core/services/pos.service';
     FormsModule,
     TranslateModule,
     IonContent,
-    IonHeader,
-    IonTitle,
-    IonToolbar,
-    IonItem,
-    IonLabel,
     IonRadio,
     IonRadioGroup,
     IonButton,
     IonSpinner,
-    IonText,
   ],
   templateUrl: './pos-selection.page.html',
   styleUrls: ['./pos-selection.page.scss'],

@@ -7,7 +7,8 @@ import {
     HttpResponse,
 } from '@angular/common/http';
 import { Injector, inject } from '@angular/core';
-import { ToastController } from '@ionic/angular/standalone';
+import { LoggerService, ScopedLogger } from '../services/logger.service';
+import { NotificationService } from '../services/notification.service';
 import { Observable, of, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { TranslateService } from '@ngx-translate/core';
@@ -33,9 +34,10 @@ export const offlineInterceptor: HttpInterceptorFn = (
   req: HttpRequest<unknown>,
   next: HttpHandlerFn
 ): Observable<HttpEvent<unknown>> => {
+  const log = inject(LoggerService).scope('offline');
   const queueService = inject(OrderQueueService);
   const networkService = inject(NetworkService);
-  const toastController = inject(ToastController);
+  const notifications = inject(NotificationService);
   // Resolved lazily: the translation files themselves are loaded over HttpClient,
   // so injecting TranslateService here eagerly would be a circular dependency.
   const injector = inject(Injector);
@@ -48,12 +50,13 @@ export const offlineInterceptor: HttpInterceptorFn = (
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
       // Check if we should queue this request
-      if (shouldQueueRequest(error, networkService)) {
+      if (shouldQueueRequest(error, networkService, log)) {
         return queueAndReturnSuccess(
           req,
           error,
           queueService,
-          toastController,
+          notifications,
+          log,
           () => injector.get(TranslateService)
         );
       }
@@ -84,35 +87,36 @@ function isOrderRequest(req: HttpRequest<unknown>): boolean {
  */
 function shouldQueueRequest(
   error: HttpErrorResponse,
-  networkService: NetworkService
+  networkService: NetworkService,
+  log: ScopedLogger
 ): boolean {
   // Network error (no response from server)
   if (error.error instanceof ErrorEvent) {
-    console.log('Network error detected, queueing order');
+    log.trace('Network error detected, queueing order');
     return true;
   }
 
   // Check if offline
   if (!networkService.getIsOnline()) {
-    console.log('Offline detected, queueing order');
+    log.trace('Offline detected, queueing order');
     return true;
   }
 
   // HTTP error response
   if (error.status >= 500 && error.status < 600) {
     // Server errors - queue for retry
-    console.log(`Server error ${error.status} detected, queueing order`);
+    log.trace('Server error detected, queueing order', { status: error.status });
     return true;
   }
 
   // Timeout errors (0 = network error, 408 = timeout, 504 = gateway timeout)
   if (error.status === 0 || error.status === 408 || error.status === 504) {
-    console.log('Timeout error detected, queueing order');
+    log.trace('Timeout error detected, queueing order', { status: error.status });
     return true;
   }
 
   // 4xx errors (bad request, unauthorized, etc.) - don't queue
-  console.log(`Client error ${error.status}, not queueing`);
+  log.trace('Client error, not queueing', { status: error.status });
   return false;
 }
 
@@ -123,7 +127,8 @@ function queueAndReturnSuccess(
   req: HttpRequest<unknown>,
   error: HttpErrorResponse,
   queueService: OrderQueueService,
-  toastController: ToastController,
+  notifications: NotificationService,
+  log: ScopedLogger,
   getTranslate: () => TranslateService
 ): Observable<HttpEvent<unknown>> {
   // Extract posId and tenantId from URL
@@ -136,7 +141,7 @@ function queueAndReturnSuccess(
   const posId = urlParts[posIdIndex];
 
   if (!tenantId || !posId) {
-    console.error('Failed to extract tenantId/posId from URL:', req.url);
+    log.error('Failed to extract tenantId/posId from URL', undefined, { url: req.url });
     return throwError(() => error);
   }
 
@@ -154,12 +159,12 @@ function queueAndReturnSuccess(
   queueService
     .enqueue(payload, posId, tenantId, metadata)
     .then((queueId) => {
-      console.log(`Order queued with ID: ${queueId}`);
+      log.trace('Order queued', { queueId });
       // Show user feedback
-      showQueuedToast(toastController, translate);
+      showQueuedToast(notifications, translate);
     })
     .catch((queueError) => {
-      console.error('Failed to queue order:', queueError);
+      log.error('Failed to queue order', queueError);
       // If queueing fails, we've already committed to returning success
       // The original error is logged but not propagated
     });
@@ -188,21 +193,11 @@ function queueAndReturnSuccess(
  * Show toast notification that order was queued
  */
 async function showQueuedToast(
-  toastController: ToastController,
+  notifications: NotificationService,
   translate: TranslateService
 ): Promise<void> {
-  const toast = await toastController.create({
-    message: translate.instant('COMMON.NETWORK.ORDER_QUEUED'),
-    duration: 3000,
-    position: 'bottom',
-    color: 'warning',
+  await notifications.warning(translate.instant('COMMON.NETWORK.ORDER_QUEUED'), {
     icon: 'cloud-upload-outline',
-    buttons: [
-      {
-        text: translate.instant('COMMON.NETWORK.DISMISS'),
-        role: 'cancel',
-      },
-    ],
+    dismissText: translate.instant('COMMON.NETWORK.DISMISS'),
   });
-  await toast.present();
 }

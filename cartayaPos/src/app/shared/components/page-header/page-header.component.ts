@@ -54,7 +54,7 @@ type PrinterStatusUi = {
       </ion-toolbar>
       
       <!-- Secondary toolbar for search bars (explicitly wrapped in toolbar) -->
-      <ion-toolbar>
+      <ion-toolbar class="secondary-toolbar">
         <ng-content select="[slot='secondary']"></ng-content>
       </ion-toolbar>
       
@@ -63,6 +63,11 @@ type PrinterStatusUi = {
     </ion-header>
   `,
   styles: [`
+    /* No projected search bar: don't render an empty band. */
+    .secondary-toolbar:not(:has(> *)) {
+      display: none;
+    }
+
     .printer-status-icon {
       position: relative;
       display: inline-flex;

@@ -3,9 +3,10 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { IonButton, IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonContent, IonInput, IonItem, IonLabel, IonSpinner, IonText, IonToggle, ToastController } from '@ionic/angular/standalone';
+import { IonButton, IonContent, IonInput, IonSpinner, IonToggle } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../../core/services/auth.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { apiErrorKey, parseApiError } from '../../../core/utils/api-error';
 
 @Component({
@@ -16,16 +17,9 @@ import { apiErrorKey, parseApiError } from '../../../core/utils/api-error';
     ReactiveFormsModule,
     TranslateModule,
     IonContent,
-    IonCard,
-    IonCardHeader,
-    IonCardTitle,
-    IonCardContent,
     IonInput,
     IonButton,
     IonSpinner,
-    IonText,
-    IonItem,
-    IonLabel,
     IonToggle,
   ],
   templateUrl: './login.page.html',
@@ -35,7 +29,7 @@ export class LoginPage implements OnInit {
   private authService = inject(AuthService);
   private router = inject(Router);
   private formBuilder = inject(FormBuilder);
-  private toastController = inject(ToastController);
+  private notifications = inject(NotificationService);
   private translate = inject(TranslateService);
 
   loginForm!: FormGroup;
@@ -91,13 +85,7 @@ export class LoginPage implements OnInit {
   async onLogin(): Promise<void> {
     if (this.loginForm.invalid) {
       const message = this.translate.instant('AUTH.LOGIN.VALIDATION.FILL_ALL_FIELDS');
-      const toast = await this.toastController.create({
-        message,
-        duration: 2000,
-        position: 'bottom',
-        color: 'warning',
-      });
-      await toast.present();
+      await this.notifications.warning(message);
       return;
     }
 
@@ -114,13 +102,7 @@ export class LoginPage implements OnInit {
         const messageKey = LoginPage.errorKeyFor(error, navigator.onLine);
         this.errorKey.set(messageKey);
 
-        const toast = await this.toastController.create({
-          message: this.translate.instant(messageKey),
-          duration: 3000,
-          position: 'bottom',
-          color: 'danger',
-        });
-        await toast.present();
+        await this.notifications.error(this.translate.instant(messageKey));
       },
     });
   }

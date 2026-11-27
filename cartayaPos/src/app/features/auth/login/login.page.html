@@ -1,77 +1,73 @@
-<ion-content class="ion-padding">
-  <div class="login-container">
-    <img src="assets/logotipo.svg" alt="CartaYa Logo" class="logo-image" width="400px" height="400px" />
+<ion-content [fullscreen]="true">
+  <main class="login">
+    <section class="login__brand" aria-hidden="false">
+      <img src="assets/logotipo.svg" alt="Carta Ya" class="login__logo" />
+    </section>
 
-    <ion-card>
-      <ion-card-header>
-        <ion-card-title>{{ 'AUTH.LOGIN.CARD_TITLE' | translate }}</ion-card-title>
-      </ion-card-header>
+    <section class="login__panel">
+      <form [formGroup]="loginForm" (ngSubmit)="onLogin()" class="login__form" novalidate>
+        <header class="login__header">
+          <h1 class="type-display">{{ 'AUTH.LOGIN.CARD_TITLE' | translate }}</h1>
+          <p class="type-body-sm login__subtitle">{{ 'AUTH.LOGIN.SUBTITLE' | translate }}</p>
+        </header>
 
-      <ion-card-content>
-        <form [formGroup]="loginForm" (ngSubmit)="onLogin()">
-          <div class="form-group">
-            <ion-input
-              formControlName="email"
-              type="email"
-              autocomplete="off"
-              [placeholder]="'AUTH.LOGIN.EMAIL_LABEL' | translate"
-              [class.input-error]="email?.invalid && email?.touched"
-              (keydown.enter)="onLogin()"
-              class="ion-margin-bottom"
-            />
-            <ion-text
-              color="danger"
-              *ngIf="email?.invalid && email?.touched"
-              class="error-message"
-            >
-              <small *ngIf="email?.errors?.['required']">{{ 'AUTH.LOGIN.VALIDATION.EMAIL_REQUIRED' | translate }}</small>
-              <small *ngIf="email?.errors?.['email']">{{ 'AUTH.LOGIN.VALIDATION.EMAIL_INVALID' | translate }}</small>
-            </ion-text>
-          </div>
+        <div class="login__field">
+          <ion-input
+            formControlName="email"
+            type="email"
+            inputmode="email"
+            autocomplete="username"
+            fill="outline"
+            labelPlacement="stacked"
+            [label]="'AUTH.LOGIN.EMAIL_LABEL' | translate"
+            [class.ion-invalid]="email?.invalid && email?.touched"
+            [class.ion-touched]="email?.touched"
+            (keydown.enter)="onLogin()"
+          />
+          <p class="login__error type-body-sm" *ngIf="email?.invalid && email?.touched" role="alert">
+            <ng-container *ngIf="email?.errors?.['required']">{{ 'AUTH.LOGIN.VALIDATION.EMAIL_REQUIRED' | translate }}</ng-container>
+            <ng-container *ngIf="!email?.errors?.['required'] && email?.errors?.['email']">{{ 'AUTH.LOGIN.VALIDATION.EMAIL_INVALID' | translate }}</ng-container>
+          </p>
+        </div>
 
-          <div class="form-group">
-            <ion-input
-              formControlName="password"
-              autocomplete="off"
-              [type]="showPassword ? 'text' : 'password'"
-              [placeholder]="'AUTH.LOGIN.PASSWORD_LABEL' | translate"
-              [class.input-error]="password?.invalid && password?.touched"
-              (keydown.enter)="onLogin()"
-              class="ion-margin-bottom"
-            />
-            <ion-item lines="none" class="show-password-toggle">
-              <ion-toggle
-                slot="start"
-                [checked]="showPassword"
-                (ionChange)="togglePasswordVisibility()"
-              ></ion-toggle>
-              <ion-label>{{ 'AUTH.LOGIN.SHOW_PASSWORD' | translate }}</ion-label>
-            </ion-item>
-            <ion-text
-              color="danger"
-              *ngIf="password?.invalid && password?.touched"
-              class="error-message"
-            >
-              <small *ngIf="password?.errors?.['required']">{{ 'AUTH.LOGIN.VALIDATION.PASSWORD_REQUIRED' | translate }}</small>
-              <small *ngIf="password?.errors?.['minlength']">{{ 'AUTH.LOGIN.VALIDATION.PASSWORD_MIN_LENGTH' | translate }}</small>
-            </ion-text>
-          </div>
+        <div class="login__field">
+          <ion-input
+            formControlName="password"
+            autocomplete="current-password"
+            fill="outline"
+            labelPlacement="stacked"
+            [type]="showPassword ? 'text' : 'password'"
+            [label]="'AUTH.LOGIN.PASSWORD_LABEL' | translate"
+            [class.ion-invalid]="password?.invalid && password?.touched"
+            [class.ion-touched]="password?.touched"
+            (keydown.enter)="onLogin()"
+          />
+          <p class="login__error type-body-sm" *ngIf="password?.invalid && password?.touched" role="alert">
+            <ng-container *ngIf="password?.errors?.['required']">{{ 'AUTH.LOGIN.VALIDATION.PASSWORD_REQUIRED' | translate }}</ng-container>
+            <ng-container *ngIf="!password?.errors?.['required'] && password?.errors?.['minlength']">{{ 'AUTH.LOGIN.VALIDATION.PASSWORD_MIN_LENGTH' | translate }}</ng-container>
+          </p>
+        </div>
 
-          <ion-text color="danger" *ngIf="errorKey() as key" class="login-error" role="alert">
-            <p>{{ key | translate }}</p>
-          </ion-text>
+        <ion-toggle
+          class="login__toggle"
+          justify="start"
+          labelPlacement="end"
+          [checked]="showPassword"
+          (ionChange)="togglePasswordVisibility()"
+        >{{ 'AUTH.LOGIN.SHOW_PASSWORD' | translate }}</ion-toggle>
 
-          <ion-button
-            expand="block"
-            type="submit"
-            [disabled]="loginForm.invalid || isLoading"
-            class="ion-margin-top"
-          >
-            <ion-spinner *ngIf="isLoading" name="crescent" class="spinner-margin"></ion-spinner>
-            {{ isLoading ? ('AUTH.LOGIN.LOGGING_IN' | translate) : ('AUTH.LOGIN.LOGIN_BUTTON' | translate) }}
-          </ion-button>
-        </form>
-      </ion-card-content>
-    </ion-card>
-  </div>
+        <p class="login__error login__error--form type-body-sm" *ngIf="errorKey() as key" role="alert">{{ key | translate }}</p>
+
+        <ion-button
+          class="login__submit"
+          expand="block"
+          type="submit"
+          [disabled]="loginForm.invalid || isLoading"
+        >
+          <ion-spinner *ngIf="isLoading" name="crescent" slot="start"></ion-spinner>
+          {{ isLoading ? ('AUTH.LOGIN.LOGGING_IN' | translate) : ('AUTH.LOGIN.LOGIN_BUTTON' | translate) }}
+        </ion-button>
+      </form>
+    </section>
+  </main>
 </ion-content>

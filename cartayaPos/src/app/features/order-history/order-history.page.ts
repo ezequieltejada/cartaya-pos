@@ -3,21 +3,21 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import {
   IonButton, IonContent, IonIcon,
-  IonItem,
-  IonLabel,
-  IonList, IonRefresher,
+  IonRefresher,
   IonRefresherContent,
   IonSpinner, RefresherEventDetail
 } from '@ionic/angular/standalone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { addIcons } from 'ionicons';
-import { alertCircleOutline, chevronDownCircleOutline, receiptOutline } from 'ionicons/icons';
+import { alertCircleOutline, chevronDownCircleOutline, chevronForward, receiptOutline } from 'ionicons/icons';
 import { firstValueFrom } from 'rxjs';
+import { LoggerService } from '../../core/services/logger.service';
 import { PosService } from '../../core/services/pos.service';
 import { TenantService } from '../../core/services/tenant.service';
 import { Order } from '../../models/order.model';
 import { OrderHistoryService } from '../../services/order-history.service';
 import { shortOrderRef } from '../../core/utils/order-ref';
+import { orderStatusClass, orderStatusLabelKey } from '../../core/utils/order-status';
 import { MoneyPipe } from '../../shared/pipes/money.pipe';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
@@ -28,9 +28,6 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
     CommonModule,
     TranslateModule,
     IonContent,
-    IonList,
-    IonItem,
-    IonLabel,
     IonIcon,
     IonButton,
     IonSpinner,
@@ -43,6 +40,7 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
   styleUrls: ['./order-history.page.scss'],
 })
 export class OrderHistoryPage implements OnInit {
+  private readonly log = inject(LoggerService).scope('order-history');
   private orderHistoryService = inject(OrderHistoryService);
   private posService = inject(PosService);
   private tenantService = inject(TenantService);
@@ -57,7 +55,7 @@ export class OrderHistoryPage implements OnInit {
   error = signal<string | null>(null);
 
   constructor() {
-    addIcons({alertCircleOutline,receiptOutline,chevronDownCircleOutline});
+    addIcons({alertCircleOutline,receiptOutline,chevronDownCircleOutline,chevronForward});
   }
 
   ngOnInit(): void {
@@ -101,7 +99,7 @@ export class OrderHistoryPage implements OnInit {
       const errorMsg =
         err instanceof Error ? err.message : this.translate.instant('ORDER_HISTORY.ERROR_LOAD_FAILED');
       this.error.set(errorMsg);
-      console.error('Error loading orders:', err);
+      this.log.error('Error loading orders', err);
     } finally {
       this.isLoading.set(false);
 
@@ -137,16 +135,6 @@ export class OrderHistoryPage implements OnInit {
   /**
    * Get the status badge color based on order status
    */
-  getStatusBadgeColor(status?: string): string {
-    switch (status) {
-      case 'completed':
-        return 'success';
-      case 'cancelled':
-        return 'warning';
-      case 'refunded':
-        return 'danger';
-      default:
-        return 'medium';
-    }
-  }
+  readonly statusClass = orderStatusClass;
+  readonly statusLabel = orderStatusLabelKey;
 }
