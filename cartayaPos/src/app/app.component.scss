@@ -70,10 +70,11 @@ ion-menu {
 
   .menu-footer__grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1.1fr 1fr;
     gap: var(--space-2);
     padding: var(--space-3) var(--space-2);
-    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+    // Lifted a bit so mobile browser bars and the home indicator never cover it.
+    padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom));
   }
 
   .menu-footer__cell {
@@ -101,6 +102,9 @@ ion-menu {
   }
 
   .menu-footer__text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-weight: 700;
     white-space: nowrap;
   }
@@ -121,6 +125,9 @@ ion-menu {
     --handle-background-checked: var(--surface);
     --handle-box-shadow: none;
     flex: 0 0 auto;
+    margin-inline-start: auto; // keeps the switch on the right edge of its cell in md and ios
+    transform: scale(0.85); // the iOS switch is wider than the md one
+    transform-origin: right center;
   }
 }
 

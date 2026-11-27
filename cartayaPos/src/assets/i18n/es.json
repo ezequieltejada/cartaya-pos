@@ -235,6 +235,7 @@
     "SETTINGS": "Configuración",
     "LANGUAGE": "Idioma",
     "DARK_MODE": "Modo oscuro",
+    "DARK_MODE_SHORT": "Oscuro",
     "LOGOUT": "Cerrar Sesión"
   },
   "HOME": "Inicio",

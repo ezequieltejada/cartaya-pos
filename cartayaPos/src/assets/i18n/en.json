@@ -182,6 +182,7 @@
     "SETTINGS": "Settings",
     "LANGUAGE": "Language",
     "DARK_MODE": "Dark mode",
+    "DARK_MODE_SHORT": "Dark",
     "LOGOUT": "Logout"
   },
   "CART": {
